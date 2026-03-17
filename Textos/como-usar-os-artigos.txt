@@ -1,0 +1,54 @@
+1. "Enhancing UAV Spraying Efficiency through Payload Sensor Integration" (Barcelos et al., 2024)
+
+Ideia Principal: O artigo desenvolve um sistema autônomo de pulverização agrícola por VANTs, usando um sensor de carga para medir o defensivo e um controle de alto nível para enviar comandos de navegação
+
+Como usar no seu trabalho: Será a justificativa do seu problema. Os próprios autores afirmam nas conclusões que trabalhos futuros precisam empregar controladores servo-visuais para a identificação precisa de alvos e posicionamento fino. Isso prova que a sua pesquisa (estabilizar sobre uma gaiola) resolve um gargalo real e atual da indústria.
+
+-----
+
+2. "Fractional Order Robust Visual Servoing Control of A Quadrotor UAV..." (Shang et al., 2016)
+
+Ideia Principal: Propõe o uso de um PID de Ordem Fracionária (FOPD) processando imagens a bordo para fazer o drone pairar (hovering) sobre um alvo vermelho com precisão, sem usar GPS
+
+Como usar no seu trabalho: É a validação da sua arquitetura de software e métricas. O estudo prova que usar um computador externo (no seu caso, o script Python) rodando OpenCV para ler a imagem e DroneKit para enviar comandos ao piloto automático (Pixhawk/SITL) funciona. Você também usará este artigo para basear a extração do seu Erro em Regime Permanente, medindo o raio de oscilação do drone em pixels
+
+-----
+
+3. "Quadrotor Cascade PID Controller Automatic Tuning" (Chen & Wang, 2016)
+
+Ideia Principal: Apresenta um método para sintonizar automaticamente os ganhos de um controlador PID em cascata para VANTs, forçando o sistema a oscilar usando um controle de relé (Bang-Bang com histerese)
+
+Como usar no seu trabalho: É a sua base de Teoria de Controle Clássico. Você usará a matemática do controle de relé deles para programar o seu algoritmo Bang-Bang. Além disso, este artigo justifica o uso do controle em cascata, provando que é correto o ArduPilot SITL cuidar da atitude (malha interna) enquanto seu Python cuida da posição (malha externa)
+
+-----
+
+4. "ROS/Gazebo-based Simulation of Quadcopter Aircrafts" (Sciortino & Fagiolini, 2014)
+
+Ideia Principal: Um tutorial que deriva matematicamente a dinâmica (Newton-Euler) de um quadricóptero e valida seu comportamento em um simulador Gazebo conectado ao controlador Ardupilot
+
+Como usar no seu trabalho: Será o seu "Escudo de Defesa" do simulador. Ele descreve e valida fisicamente a integração Gazebo + ArduPilot SITL (a mesma que você usará) como uma ferramenta científica realista. Você também o usará na Fundamentação para explicar rapidamente as equações físicas do VANT
+
+-----
+
+5. "Visual Control and Mapping for UAV-based Platform Inspection" (Fagundes-Junior et al., 2024)
+
+Ideia Principal: Foca no pouso autônomo sobre bases de inspeção usando uma câmera voltada para baixo, aplicando segmentação de cores em HSV para encontrar a plataforma e calcular o erro
+
+Como usar no seu trabalho: É o seu manual prático para o OpenCV. Você vai usar a exata metodologia deles para o seu código: pegar a imagem, converter para HSV, segmentar a cor da gaiola, encontrar o centroide e calcular o erro em pixels subtraindo o centroide do centro da imagem
+
+-----
+
+6. "Visual Servoing Using Sliding-Mode Control with Dynamic Compensation..." (Carvajal et al., 2024)
+
+Ideia Principal: Utiliza um controle de Modos Deslizantes em duas etapas (malha visual externa e compensação dinâmica interna) para rastrear alvos em movimento
+
+Como usar no seu trabalho: Serve para reforçar a matemática do erro visual (IBVS) e ditar o padrão dos seus gráficos de resultado. As equações de erro em pixels deles são perfeitas para a sua fundamentação, e você criará gráficos idênticos aos deles (Eixo X = Tempo; Eixo Y = Erro em Pixels) para provar visualmente qual dos seus controladores (Bang-Bang, P ou PID) estabiliza mais rápido
+
+-----
+
+7. "Visual Servoing for an Autonomous Hexarotor Using a Neural Network Based PID Controller" (Lopez-Franco et al., 2017)
+
+Ideia Principal: Implementa um controle PID em tempo real onde os ganhos são ajustados por uma Rede Neural para lidar com as não linearidades de um VANT usando servo-visão
+
+Como usar no seu trabalho: A peça que faltava para a sua programação do PID. Como seu Python roda em um loop digital (tempo discreto), você não pode usar equações com integrais reais. Este artigo te dá a versão exata do controlador PID convertido para tempo discreto (Transformada Z), pronta para ser digitada no seu script Python
+
