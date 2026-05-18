@@ -1,1 +1,143 @@
-.venv
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+venv-ardupilot/
+
+# Python packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# Pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =========================
+# VSCode / IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# ROS2
+# =========================
+log/
+build/
+install/
+
+# Colcon
+.colcon/
+
+# =========================
+# Gazebo / Ignition / GZ
+# =========================
+*.state
+*.log
+
+# =========================
+# MAVLink / ArduPilot
+# =========================
+*.tlog
+*.BIN
+*.bin
+*.ulg
+
+# SITL outputs
+logs/
+eeprom.bin
+terrain/
+mav.parm
+
+# =========================
+# YOLO / Ultralytics
+# =========================
+runs/
+datasets/
+
+# YOLO cache
+*.cache
+
+# Labels temporary files
+labels.cache
+
+# =========================
+# Images / Videos generated
+# =========================
+capturas/
+screenshots/
+videos/
+photos/
+frames/
+
+# =========================
+# Model weights
+# =========================
+*.pt
+*.onnx
+*.engine
+*.torchscript
+
+# EXCEPTION:
+# Keep your final trained model if desired
+#!best.pt
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+*.bak
+
+# =========================
+# Linux
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# CUDA / Torch
+# =========================
+*.cuda
+torch_compile_debug/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.local
+
+# =========================
+# Misc
+# =========================
+*.zip
+*.tar
+*.gz

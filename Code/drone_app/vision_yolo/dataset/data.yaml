@@ -1,0 +1,7 @@
+path: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/drone_app/vision_yolo/dataset
+
+train: images/train
+val: images/val
+
+names:
+  0: cilindro_preto
