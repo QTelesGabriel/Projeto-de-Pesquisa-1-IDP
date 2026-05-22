@@ -1,0 +1,7 @@
+path: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/processamento_de_imagens/vision_yolo/dataset
+
+train: images/train
+val: images/val
+
+names:
+  0: red_target
