@@ -17,7 +17,15 @@ from mavsdk.offboard import (
 from hsv_tracker import HSVTracker
 from precision_landing_hsv import precision_land
 from takeoff import takeoff
+from position_selector import (
+    select_test_position
+)
 
+# =========================================================
+# CONFIGURAÇÕES
+# =========================================================
+
+TAKEOFF_ALTITUDE = 10
 
 CAMERA_TOPIC = (
     "/world/iris_runway/model/"
@@ -26,6 +34,9 @@ CAMERA_TOPIC = (
     "sensor/camera/image"
 )
 
+# =========================================================
+# VISÃO
+# =========================================================
 
 class VisionNode(Node):
 
@@ -44,29 +55,57 @@ class VisionNode(Node):
             10
         )
 
-    def image_callback(self, msg):
-
-        self.frame = self.bridge.imgmsg_to_cv2(
-            msg,
-            desired_encoding="bgr8"
+        self.get_logger().info(
+            "Camera iniciada"
         )
 
+    def image_callback(self, msg):
+
+        try:
+
+            self.frame = self.bridge.imgmsg_to_cv2(
+                msg,
+                desired_encoding="bgr8"
+            )
+
+        except Exception as e:
+
+            print(
+                f"ERRO CAMERA: {e}"
+            )
+
+# =========================================================
+# GIMBAL
+# =========================================================
 
 def olhar_para_baixo():
 
+    print(
+        "Virando gimbal para baixo..."
+    )
+
     for _ in range(5):
 
+        comando = """
+        gz topic -t /gimbal/cmd_pitch \
+        -m gz.msgs.Double \
+        -p 'data: 1.57'
+        """
+
         subprocess.run(
-            """
-            gz topic -t /gimbal/cmd_pitch \
-            -m gz.msgs.Double \
-            -p 'data: 1.57'
-            """,
+            comando,
             shell=True
         )
 
         time.sleep(0.5)
 
+    print(
+        "Gimbal apontado para baixo!"
+    )
+
+# =========================================================
+# LOOP ROS
+# =========================================================
 
 async def ros_loop(node):
 
@@ -79,14 +118,33 @@ async def ros_loop(node):
 
         await asyncio.sleep(0.01)
 
+# =========================================================
+# MAIN
+# =========================================================
 
 async def main():
 
+    # =====================================================
+    # GIMBAL
+    # =====================================================
+
     olhar_para_baixo()
+
+    # =====================================================
+    # ROS
+    # =====================================================
+
+    print(
+        "Inicializando ROS..."
+    )
 
     rclpy.init()
 
     node = VisionNode()
+
+    print(
+        "Esperando camera iniciar..."
+    )
 
     while node.frame is None:
 
@@ -97,7 +155,23 @@ async def main():
 
         await asyncio.sleep(0.1)
 
+    print(
+        "Camera funcionando!"
+    )
+
+    # =====================================================
+    # HSV TRACKER
+    # =====================================================
+
     tracker = HSVTracker()
+
+    # =====================================================
+    # DRONE
+    # =====================================================
+
+    print(
+        "Conectando ao drone..."
+    )
 
     drone = System()
 
@@ -105,19 +179,44 @@ async def main():
         system_address="udp://:14550"
     )
 
+    print(
+        "Aguardando conexão..."
+    )
+
     async for state in drone.core.connection_state():
 
         if state.is_connected:
+
+            print(
+                "Drone conectado!"
+            )
+
             break
+
+    # =====================================================
+    # TAKEOFF
+    # =====================================================
 
     await takeoff(drone)
 
+    print(
+        "Takeoff concluído!"
+    )
+
+    # =====================================================
+    # OFFBOARD
+    # =====================================================
+
+    print(
+        "Iniciando OFFBOARD..."
+    )
+
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(
-            0,
-            0,
-            0,
-            0
+            0.0,
+            0.0,
+            0.0,
+            0.0
         )
     )
 
@@ -125,19 +224,60 @@ async def main():
 
         await drone.offboard.start()
 
-    except OffboardError:
+    except OffboardError as e:
+
+        print(
+            f"Erro OFFBOARD: {e}"
+        )
+
+        await drone.action.disarm()
 
         return
 
+    print(
+        "OFFBOARD iniciado!"
+    )
+
+    # =====================================================
+    # POSIÇÃO DE TESTE
+    # =====================================================
+
+    print(
+        "\nMovendo para posição de teste..."
+    )
+
+    await select_test_position(
+        drone,
+        TAKEOFF_ALTITUDE
+    )
+
+    print(
+        "Posição alcançada!"
+    )
+
+    # =====================================================
+    # PRECISION LANDING
+    # =====================================================
+
+    print(
+        "Iniciando Precision Landing HSV..."
+    )
+
     await asyncio.gather(
+
         ros_loop(node),
+
         precision_land(
             drone,
             tracker,
             node
         )
+
     )
 
+# =========================================================
+# START
+# =========================================================
 
 if __name__ == "__main__":
 
