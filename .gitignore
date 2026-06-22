@@ -141,3 +141,21 @@ torch_compile_debug/
 *.zip
 *.tar
 *.gz
+
+# =========================
+# Imagens
+# =========================
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.tiff
+*.webp
+
+# =========================
+# Dados e Planilhas
+# =========================
+*.csv
+*.xlsx
+*.xls
