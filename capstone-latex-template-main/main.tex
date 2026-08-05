@@ -1,0 +1,91 @@
+\documentclass{configs/idp-model}
+
+% FORÇA O USO DE FONTES DO SISTEMA VIA FONT SPEC
+\usepackage{fontspec}
+\setmainfont{Arial}
+
+\input{pacotes/pacotes}
+
+%PREENCHER TODOS OS CAMPOS ABAIXO
+\autor{Linus Torvalds}
+
+
+% Utilizar um dos dois cursos abaixo
+\cienciadacomputacao
+%\engenhariadesoftware
+
+
+\titulo{Um título muito interessante para um trabalho}
+\ano{2025}
+
+% Usar orientador ou orientadora
+% - Argumento opcional caso o orientador seja de uma instituição diferente
+\orientador[IDP]{Dr. Alan Turing}
+%\orientadora{Dra. Ada Lovelace}
+
+% Para membros da banca, são três argumentos obrigatórios:
+% 1 - Nome do membro avaliador
+% 2 - Se o mesmo é membro interno ou externo à instituição
+% 3 - Instituição a qual o membro está vinculado
+\membrobancai{Dr. Dom Quixote de la Mancha}{Internal Member}{IDP}
+\membrobancaii{Dra. Anna Karienina}{Internal Member}{IDP}
+
+\palavraschave{LaTeX, metodologia científica, trabalho de conclusão de curso, artigo, tecnologia}
+\keywords{{LaTeX, metodologia científica, trabalho de conclusão de curso, paper, technology}}
+
+\dataaprovacao{08/05/2025}
+
+
+
+\begin{document}
+
+% Não alterar
+\pagenumbering{roman}
+\capaprincipal
+\folharosto
+\folhaaprovacao
+
+% Opcional
+\dedicatoria
+\agradecimentos
+
+
+% Não alterar 
+% Resumo e abstract - alterar os arquivos na pasta "partes" NÃO ALTERAR O NOME DELES
+\abstract
+\resumo
+
+%List of Figures e Tables são optativos. Caso não esteja utilizando no seu projeto, comentar as linhas abaixo
+\listoffigures
+\listoftables
+
+\tableofcontents
+\pagenumbering{arabic}
+
+
+% Para as seções, o comando \secao deve ter a forma \secao{título}{arquivo .tex}
+
+% Os comandos \subsecao e \subsubsecao seguem a forma \comando{Título}, sem a necessidade de passar um arquivo .tex
+
+\secao{Introduction}{partes/introduction}
+\secao{Literature Review}{partes/literature-review}
+\secao{Methodology}{partes/methodology}
+\secao{Results and Discussion}{partes/results}
+\secao{Conclusion}{partes/conclusion}
+
+% Não alterar
+\referencias
+
+% Opcionais
+\apendice[ap:meuapendice]{Título do apêndice A}{partes/apendicei}
+% Alternativa sem o primeiro parâmetro também funciona
+% \apendice{Título do apêndice A}{partes/apendicei}
+
+\anexo{Título do Anexo A}{partes/anexoi}
+
+
+% Não alterar
+\capafinal
+
+ 
+\end{document}
