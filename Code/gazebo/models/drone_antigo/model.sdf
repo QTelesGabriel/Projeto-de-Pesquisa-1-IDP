@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+
+<sdf version="1.10">
+
+    <model name="drone">
+
+        <!-- Drone agora possui física -->
+        <static>false</static>
+
+        <pose>0 0 2 0 0 0</pose>
+
+        <link name="body">
+
+            <!-- ========================= -->
+            <!-- VISUAL                     -->
+            <!-- ========================= -->
+
+            <visual name="visual">
+
+                <!-- Orientação que corrigimos anteriormente -->
+                <pose>0 0 0 1.570796 0 0</pose>
+
+                <geometry>
+                    <mesh>
+                        <uri>model://drone/meshes/montagem-drone.STL</uri>
+                        <scale>0.001 0.001 0.001</scale>
+                    </mesh>
+                </geometry>
+
+                <material>
+                    <ambient>0.03 0.03 0.03 1</ambient>
+                    <diffuse>0.05 0.05 0.05 1</diffuse>
+                    <specular>0.01 0.01 0.01 1</specular>
+                </material>
+
+            </visual>
+
+
+            <!-- ========================= -->
+            <!-- COLISÃO                    -->
+            <!-- ========================= -->
+
+            <collision name="collision">
+
+                <pose>
+                    0.475543
+                    -0.687929
+                    0.281686
+                    0
+                    0
+                    0
+                </pose>
+
+                <geometry>
+
+                    <box>
+                        <size>
+                            0.913818
+                            1.365944
+                            0.544782
+                        </size>
+                    </box>
+
+                </geometry>
+
+            </collision>
+
+
+            <!-- ========================= -->
+            <!-- MASSA E INÉRCIA            -->
+            <!-- ========================= -->
+
+            <inertial>
+
+                <pose>
+                    0.475543
+                    -0.687929
+                    0.281686
+                    0
+                    0
+                    0
+                </pose>
+
+                <mass>7.0</mass>
+
+                <inertia>
+
+                    <ixx>1.211</ixx>
+                    <iyy>0.700</iyy>
+                    <izz>1.379</izz>
+
+                    <ixy>0</ixy>
+                    <ixz>0</ixz>
+                    <iyz>0</iyz>
+
+                </inertia>
+
+            </inertial>
+
+        </link>
+
+    </model>
+
+</sdf>

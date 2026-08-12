@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+
+<sdf version="1.10">
+
+    <model name="armadilha">
+
+        <static>true</static>
+
+        <pose>5 0 -0.14503352 0 0 0</pose>
+
+        <link name="body">
+
+            <visual name="visual">
+
+                <pose>0 0 0 1.570796 0 0</pose>
+
+                <geometry>
+                    <mesh>
+                        <uri>model://armadilha/meshes/montagem-armadilha.STL</uri>
+                        <scale>0.001 0.001 0.001</scale>
+                    </mesh>
+                </geometry>
+
+                <material>
+                    <ambient>0.03 0.03 0.03 1</ambient>
+                    <diffuse>0.05 0.05 0.05 1</diffuse>
+                    <specular>0.01 0.01 0.01 1</specular>
+                </material>
+
+            </visual>
+
+        </link>
+
+    </model>
+
+</sdf>

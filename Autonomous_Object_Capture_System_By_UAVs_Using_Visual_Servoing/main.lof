@@ -1,0 +1,15 @@
+\babel@toc {english}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Schematic view of the quadrotor: coordinates and motion principle}}{7}{figure.caption.5}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Block diagram of the UAV low-level hardware architecture, illustrating the signal flow from inertial sensing to the mechanical actuation of the motors}}{9}{figure.caption.6}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Fundamental detection architecture of the YOLO family, illustrating the division of the image into spatial grids and the direct regression of bounding boxes}}{11}{figure.caption.8}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Practical example of YOLO model detection in aerial images}}{12}{figure.caption.9}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Flowchart of the Extended Kalman Filter (EKF) algorithm}}{14}{figure.caption.10}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Qualitative comparison between the classical Image-Based Visual Servoing (IBVS) and Position-Based Visual Servoing (PBVS) schemes}}{17}{figure.caption.12}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Geometric representation of perspective projection based on the Pinhole camera model, illustrating the relationship between focal length and the conversion of a point in space onto the two-dimensional image plane}}{18}{figure.caption.13}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Aerial manipulation using attached grippers}}{20}{figure.caption.15}%
+\contentsline {figure}{\numberline {9}{\ignorespaces UAV equipped with an articulated robotic arm}}{20}{figure.caption.16}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Cable-suspended aerial manipulation system}}{21}{figure.caption.17}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Rigid-tool aerial manipulation system mounted on the UAV frame}}{22}{figure.caption.18}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Classification of operational spaces in aerial manipulation systems}}{23}{figure.caption.19}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Comparison between Kalman Filter estimation and object detection output for the width and height of the bounding box}}{27}{figure.caption.23}%
+\contentsfinish 

@@ -1,0 +1,22 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}Introduction}{2}{section*.1}%
+\contentsline {section}{\numberline {2}Literature Review}{7}{section*.2}%
+\contentsline {subsection}{2.1 Theoretical Foundation}{7}{section*.3}%
+\contentsline {subsubsection}{2.1.1Unmanned Aerial Vehicles (UAVs)}{7}{section*.4}%
+\contentsline {subsubsection}{2.1.2Computer Vision Applied to UAVs}{9}{section*.7}%
+\contentsline {subsubsection}{2.1.3Visual Servoing}{15}{section*.11}%
+\contentsline {subsubsection}{2.1.4Aerial Capture and Manipulation Systems}{19}{section*.14}%
+\contentsline {subsection}{2.2 Related Works}{23}{section*.20}%
+\contentsline {subsubsection}{2.2.1Autonomous Object Capture by UAVs}{23}{section*.21}%
+\contentsline {subsubsection}{2.2.2Object Detection and Tracking in UAVs}{25}{section*.22}%
+\contentsline {subsubsection}{2.2.3Visual Servoing Applied to UAVs}{29}{section*.24}%
+\contentsline {subsubsection}{2.2.4Comparative Analysis of Related Works}{32}{section*.25}%
+\contentsline {section}{\numberline {3}Methodology}{37}{section*.26}%
+\contentsline {section}{\numberline {4}Results and Discussion}{39}{section*.27}%
+\contentsline {section}{\numberline {5}Conclusion}{41}{section*.28}%
+\contentsline {section}{References}{42}{section*.29}%
+\contentsline {section}{Appendices}{46}{section*.30}%
+\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{47}{section*.31}%
+\contentsline {section}{Annexes}{48}{section*.32}%
+\contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{49}{section*.33}%
+\contentsfinish 
