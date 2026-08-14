@@ -1,0 +1,160 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="drone_coaxial">
+    <!-- Posição inicial no mundo -->
+    <pose>0 0 0.45 0 0 0</pose>
+
+    <link name="base_link">
+      <inertial>
+        <pose>0.01008 0.29026 -0.05272 0 0 0</pose> 
+        <mass>6.61807</mass>
+        <inertia>
+          <ixx>1.157708</ixx><ixy>0.019616</ixy><ixz>-0.003706</ixz> 
+          <iyy>0.648936</iyy><iyz>-0.101083</iyz><izz>1.569346</izz> 
+        </inertia>
+      </inertial>
+
+      <visual name="corpo_visual">
+        <!-- Compensação exata de Z para alinhar o pé do trem de pouso do CAD com o Gazebo -->
+        <pose>0 0 -0.4003 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://drone_coaxial/meshes/montagem-drone-simplificado.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <!-- Cor Preta Fosca Escura -->
+        <material>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
+      </visual>
+
+      <collision name="corpo_colisao">
+        <pose>0 0 -0.4003 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://drone_coaxial/meshes/montagem-drone-simplificado.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+      </collision>
+
+      <sensor name="imu_sensor" type="imu">
+        <always_on>1</always_on>
+        <update_rate>250</update_rate>
+        <imu>
+          <angular_velocity><x><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></x><y><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></y><z><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></z></angular_velocity>
+          <linear_acceleration><x><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></x><y><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></y><z><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></z></linear_acceleration>
+        </imu>
+      </sensor>
+    </link>
+
+    <!-- BRAÇO 1 -->
+    <link name="rotor_1_sup">
+      <!-- Posição exata do motor com base nos dados brutos do SolidWorks -->
+      <pose>0.36706 0.64076 0.09477 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r1_sup_vis">
+        <!-- Sem offset! A malha vai nascer exatamente na posição do link -->
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-sup-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_1_sup_joint" type="revolute"><child>rotor_1_sup</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <link name="rotor_1_inf">
+      <pose>0.36706 0.64076 0.00529 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r1_inf_vis">
+        <!-- Removida a pose visual! O Gazebo vai ler o STL perfeito do Blender -->
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-inf-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_1_inf_joint" type="revolute"><child>rotor_1_inf</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <!-- BRAÇO 2 -->
+    <link name="rotor_2_sup">
+      <pose>0.36706 -0.16876 0.09477 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r2_sup_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-sup-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_2_sup_joint" type="revolute"><child>rotor_2_sup</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <link name="rotor_2_inf">
+      <pose>0.36706 -0.16876 0.00529 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r2_inf_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-inf-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_2_inf_joint" type="revolute"><child>rotor_2_inf</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <!-- BRAÇO 3 -->
+    <link name="rotor_3_sup">
+      <pose>-0.43306 0.63976 0.09477 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r3_sup_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-sup-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_3_sup_joint" type="revolute"><child>rotor_3_sup</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <link name="rotor_3_inf">
+      <pose>-0.43306 0.63976 0.00529 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r3_inf_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-inf-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_3_inf_joint" type="revolute"><child>rotor_3_inf</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <!-- BRAÇO 4 -->
+    <link name="rotor_4_sup">
+      <pose>-0.43306 -0.16876 0.09477 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r4_sup_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-sup-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_4_sup_joint" type="revolute"><child>rotor_4_sup</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <link name="rotor_4_inf">
+      <pose>-0.43306 -0.16876 0.00529 0 0 0</pose>
+      <inertial><mass>0.01</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="r4_inf_vis">
+        <geometry><mesh><uri>model://drone_coaxial/meshes/helice-inf-simplificado.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
+        <material><ambient>0.08 0.08 0.08 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+      </visual>
+    </link>
+    <joint name="rotor_4_inf_joint" type="revolute"><child>rotor_4_inf</child><parent>base_link</parent><axis><xyz>0 0 1</xyz><limit><lower>-1e+16</lower><upper>1e+16</upper></limit></axis></joint>
+
+    <!-- PLUGIN ARDUPILOT -->
+    <plugin filename="gz-sim-ardupilot-system" name="gz::sim::systems::ArduPilot">
+      <fdm_addr>127.0.0.1</fdm_addr>
+      <fdm_port_in>9002</fdm_port_in>
+      <fdm_port_out>9003</fdm_port_out>
+      <modelXYZToAirplaneXForwardZDown>0 0 0 3.141593 0 0</modelXYZToAirplaneXForwardZDown>
+      <gazeboXYZToNED>0 0 0 3.141593 0 0</gazeboXYZToNED>
+      <imuName>drone_coaxial::base_link::imu_sensor</imuName>
+      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+      <control channel="0"><jointName>rotor_1_sup_joint</jointName><multiplier>838</multiplier><type>VELOCITY</type></control>
+      <control channel="1"><jointName>rotor_1_inf_joint</jointName><multiplier>-838</multiplier><type>VELOCITY</type></control>
+      <control channel="2"><jointName>rotor_2_sup_joint</jointName><multiplier>-838</multiplier><type>VELOCITY</type></control>
+      <control channel="3"><jointName>rotor_2_inf_joint</jointName><multiplier>838</multiplier><type>VELOCITY</type></control>
+      <control channel="4"><jointName>rotor_3_sup_joint</jointName><multiplier>838</multiplier><type>VELOCITY</type></control>
+      <control channel="5"><jointName>rotor_3_inf_joint</jointName><multiplier>-838</multiplier><type>VELOCITY</type></control>
+      <control channel="6"><jointName>rotor_4_sup_joint</jointName><multiplier>-838</multiplier><type>VELOCITY</type></control>
+      <control channel="7"><jointName>rotor_4_inf_joint</jointName><multiplier>838</multiplier><type>VELOCITY</type></control>
+    </plugin>
+  </model>
+</sdf>
