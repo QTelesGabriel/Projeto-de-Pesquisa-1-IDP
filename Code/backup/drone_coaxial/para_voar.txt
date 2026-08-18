@@ -1,3 +1,6 @@
+pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
+
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
 ../Tools/autotest/sim_vehicle.py -v ArduCopter -f octa --model JSON --console
 
 gz sim -v4 tcc.sdf
