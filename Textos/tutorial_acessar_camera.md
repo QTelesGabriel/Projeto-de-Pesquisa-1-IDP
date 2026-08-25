@@ -7,6 +7,10 @@
 ros2 run ros_gz_bridge parameter_bridge \
 /world/iris_runway/model/iris_with_gimbal/model/gimbal/link/pitch_link/sensor/camera/image@sensor_msgs/msg/Image@gz.msgs.Image
 
+ou para o drone coaxial
+
+ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.msgs.Image
+
 # Se não existir rode o seguinte comando e depois tente novamente:
 sudo apt install ros-jazzy-ros-gz -y
 

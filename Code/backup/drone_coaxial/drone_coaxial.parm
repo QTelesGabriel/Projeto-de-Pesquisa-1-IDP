@@ -1,0 +1,17 @@
+# Geometria ArduPilot: X8 coaxial (OctaQuad X)
+FRAME_CLASS      4
+FRAME_TYPE       1
+
+# O modelo Gazebo tem T proporcional a omega^2. Expo=1 faz a conversao
+# de empuxo solicitado para velocidade do rotor de forma consistente.
+MOT_THST_EXPO    1.0
+MOT_THST_HOVER   0.125
+MOT_HOVER_LEARN  2
+
+# Faixa usada tambem pelo ArduPilotPlugin no model.sdf.
+MOT_PWM_MIN      1000
+MOT_PWM_MAX      2000
+MOT_SPIN_ARM     0.01
+MOT_SPIN_MIN     0.02
+MOT_SPIN_MAX     1.00
+

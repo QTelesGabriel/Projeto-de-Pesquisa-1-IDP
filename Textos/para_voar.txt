@@ -1,0 +1,24 @@
+pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
+
+# Terminal 1: Gazebo
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot_gazebo
+export GZ_SIM_RESOURCE_PATH="$PWD/models:$PWD/worlds:/opt/ros/jazzy/share"
+export GZ_SIM_SYSTEM_PLUGIN_PATH="$PWD/build"
+gz sim -v4 worlds/tcc.sdf
+
+# No console do MAVProxy:
+# mode guided
+# arm throttle
+# takeoff 3
+
+
+# Terminal 2: ArduPilot SITL. Use -w na primeira execucao (ou sempre que
+# alterar FRAME_CLASS/FRAME_TYPE) para nao reutilizar parametros antigos.
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
+../Tools/autotest/sim_vehicle.py \
+  -v ArduCopter \
+  -f octa-quad \
+  --model JSON \
+  --add-param-file=../../ardupilot_gazebo/models/drone_coaxial/drone_coaxial.parm \
+  --console \
+  -w
