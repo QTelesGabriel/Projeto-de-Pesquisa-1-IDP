@@ -22,9 +22,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.08 0.08 0.08 1</ambient>
-          <diffuse>0.08 0.08 0.08 1</diffuse>
-          <specular>0.1 0.1 0.1 1</specular>
+          <ambient>0.02 0.02 0.02 1</ambient>
+          <diffuse>0.02 0.02 0.02 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
         </material>
       </visual>
 
@@ -87,7 +87,11 @@
       
       <visual name="camera_visual">
         <geometry><mesh><uri>model://drone_coaxial/meshes/camera-corrigida.stl</uri><scale>0.001 0.001 0.001</scale></mesh></geometry>
-        <material><ambient>0.02 0.02 0.02 1</ambient><diffuse>0.02 0.02 0.02 1</diffuse><specular>0.05 0.05 0.05 1</specular></material>
+        <material>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
       </visual>
       
       <collision name="camera_collision">
@@ -100,7 +104,14 @@
         <pose degrees="true">0 0 -0.035 0 90 0</pose>
         <camera>
           <horizontal_fov>1.4137</horizontal_fov>
-          <image><width>4096</width><height>2160</height><format>R8G8B8</format></image>
+          
+          <!-- RESOLUÇÃO ALTERADA PARA FULL HD (1080p) -->
+          <image>
+            <width>1920</width>
+            <height>1080</height>
+            <format>R8G8B8</format>
+          </image>
+          
           <clip><near>0.01</near><far>1000</far></clip>
         </camera>
         <always_on>1</always_on>
@@ -146,9 +157,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -181,9 +192,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -217,9 +228,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -252,9 +263,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -288,9 +299,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -323,9 +334,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -359,9 +370,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
@@ -394,9 +405,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.02 0.02 0.02 1</ambient>
-          <diffuse>0.02 0.02 0.02 1</diffuse>
-          <specular>0.05 0.05 0.05 1</specular>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.08 0.08 0.08 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
         </material>
       </visual>
     </link>
