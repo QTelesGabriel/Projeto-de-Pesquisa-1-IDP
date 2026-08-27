@@ -15,3 +15,44 @@ MOT_SPIN_ARM     0.01
 MOT_SPIN_MIN     0.02
 MOT_SPIN_MAX     1.00
 
+# ==================================================
+# GIMBAL ATIVO SIYI A8 MINI (3 EIXOS)
+# ==================================================
+
+# O backend Servo do ArduPilot faz a compensacao de atitude usando a AHRS.
+# RC Targeting mantem roll/pitch no referencial da Terra; a missao envia o
+# alvo nadiral com YAW_LOCK para travar tambem a orientacao da imagem.
+MNT1_TYPE        1
+MNT1_DEFLT_MODE  3
+MNT1_RC_RATE     0
+
+# Limites mecanicos publicados pela SIYI.
+MNT1_PITCH_MIN   -135
+MNT1_PITCH_MAX   45
+MNT1_ROLL_MIN    -30
+MNT1_ROLL_MAX    30
+MNT1_YAW_MIN     -160
+MNT1_YAW_MAX     160
+
+# No SITL, RC7 inicia em 1500 us. Esta calibracao faz esse valor equivaler a
+# -90 graus (nadir) enquanto nenhum comando MAVLink foi enviado.
+RC7_OPTION       213
+RC7_MIN          800
+RC7_TRIM         2200
+RC7_MAX          2200
+RC7_DZ           0
+
+# Saidas 9/10/11 correspondem aos canais 8/9/10 do ArduPilotPlugin.
+# 7 = Mount1 Pitch, 8 = Mount1 Roll, 6 = Mount1 Pan (Yaw).
+SERVO9_FUNCTION  7
+SERVO9_MIN       1000
+SERVO9_MAX       2000
+SERVO9_TRIM      1500
+SERVO10_FUNCTION 8
+SERVO10_MIN      1000
+SERVO10_MAX      2000
+SERVO10_TRIM     1500
+SERVO11_FUNCTION 6
+SERVO11_MIN      1000
+SERVO11_MAX      2000
+SERVO11_TRIM     1500
