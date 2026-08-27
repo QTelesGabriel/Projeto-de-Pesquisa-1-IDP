@@ -6,12 +6,6 @@ export GZ_SIM_RESOURCE_PATH="$PWD/models:$PWD/worlds:/opt/ros/jazzy/share"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$PWD/build"
 gz sim -v4 worlds/tcc.sdf
 
-# No console do MAVProxy:
-# mode guided
-# arm throttle
-# takeoff 3
-
-
 # Terminal 2: ArduPilot SITL. Use -w na primeira execucao (ou sempre que
 # alterar FRAME_CLASS/FRAME_TYPE) para nao reutilizar parametros antigos.
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
@@ -22,3 +16,13 @@ cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
   --add-param-file=../../ardupilot_gazebo/models/drone_coaxial/drone_coaxial.parm \
   --console \
   -w
+
+Terminal 3 — executar a missão
+
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/mission
+python3 main.py
+
+Para executar a missão de geração de fotos:
+
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/gerar_fotos
+python3 gerar_fotos.py

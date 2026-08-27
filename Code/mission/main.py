@@ -5,6 +5,7 @@ collections.MutableMapping = collections.abc.MutableMapping
 # ---------------------------------------------------------
 
 from dronekit import connect
+from gimbal import apontar_gimbal_nadir
 from takeoff import arm_and_takeoff
 import time
 
@@ -18,6 +19,9 @@ def main():
 
     try:
         print("Conexão bem-sucedida! Iniciando missão...")
+
+        print("Apontando e estabilizando o gimbal em nadir...")
+        apontar_gimbal_nadir(vehicle)
         
         # Chama a função importada para decolar a 5 metros
         altitude_desejada = 5.0
