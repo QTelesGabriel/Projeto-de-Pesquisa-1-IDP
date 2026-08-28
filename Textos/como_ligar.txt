@@ -1,3 +1,5 @@
+source ~/.profile
+
 pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
 
 # Terminal 1: Gazebo
@@ -17,7 +19,7 @@ cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
   --console \
   -w
 
-Terminal 3 — executar a missão
+# Terminal 3 — executar a missão
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/mission
 python3 main.py
@@ -26,3 +28,6 @@ Para executar a missão de geração de fotos:
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/gerar_fotos
 python3 gerar_fotos.py
+
+# Terminal 4 - Ligar câmera bridge
+ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.msgs.Image

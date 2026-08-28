@@ -10,81 +10,73 @@ class ExtratorDeFotos(Node):
     def __init__(self):
         super().__init__('extrator_de_fotos')
         
-        # Cria a pasta 'fotos' no mesmo diretório deste script
         self.diretorio_fotos = os.path.join(os.path.dirname(__file__), 'fotos')
         os.makedirs(self.diretorio_fotos, exist_ok=True)
         
         # Configurações do usuário
-        self.limite_fotos = 2000
+        self.limite_fotos = 1300  # Quantas fotos você quer capturar NESTA execução? Ajuste como preferir.
         self.intervalo_salvamento = 0.5  # Segundos
         
-        # Variáveis de controle
-        self.contador_fotos = 0
+        # Variáveis de controle ajustadas
+        self.fotos_nesta_sessao = 0
+        self.numero_do_arquivo = 1436
+        
         self.ultimo_tempo_salvo = time.time()
         self.bridge = CvBridge()
         
-        # Inscreve-se no tópico de imagem que vem da ponte ROS-Gazebo
+        self.nome_janela = "Camera SIYI A8 Mini - Visao do Drone"
+        cv2.namedWindow(self.nome_janela, cv2.WINDOW_AUTOSIZE)
+        
         self.subscription = self.create_subscription(
             Image,
             '/camera/image',
             self.image_callback,
-            10 # Tamanho da fila (QoS)
+            10
         )
         
-        self.get_logger().info(f"Nó iniciado! Câmera conectada. Salvando em: {self.diretorio_fotos}")
+        self.get_logger().info(f"Nó iniciado! Começando da foto {self.numero_do_arquivo + 1}. Salvando em: {self.diretorio_fotos}")
 
     def image_callback(self, msg):
-        """Função chamada automaticamente toda vez que um frame de vídeo chega do Gazebo."""
-        
-        # Se já atingimos o limite, ignoramos novos frames
-        if self.contador_fotos >= self.limite_fotos:
+        if self.fotos_nesta_sessao >= self.limite_fotos:
             return
 
-        # 1. Converte a imagem do formato ROS para formato OpenCV (BGR 8-bits = 1080p colorido)
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        
-        # 2. Exibe o vídeo ao vivo na tela (você não precisa mais do rqt_image_view)
-        # Redimensionamos APENAS a janela de exibição para caber na tela do seu PC, 
-        # a foto salva continuará sendo 1920x1080 real.
         imagem_exibicao = cv2.resize(cv_image, (960, 540))
-        cv2.imshow("Camera SIYI A8 Mini - Visão do Drone", imagem_exibicao)
-        cv2.waitKey(1) # Necessário para o OpenCV atualizar a janela
         
-        # 3. Lógica para salvar a cada 0.5 segundos
+        cv2.imshow(self.nome_janela, imagem_exibicao)
+        cv2.waitKey(1)
+        
         tempo_atual = time.time()
         if (tempo_atual - self.ultimo_tempo_salvo) >= self.intervalo_salvamento:
-            self.contador_fotos += 1
             
-            # Gera nomes de arquivo organizados: foto_0001.jpg, foto_0002.jpg...
-            nome_arquivo = f"foto_{self.contador_fotos:04d}.jpg"
+            # Incrementa ambos os contadores
+            self.fotos_nesta_sessao += 1
+            self.numero_do_arquivo += 1
+            
+            # Gera nome do arquivo dando continuidade
+            nome_arquivo = f"foto_{self.numero_do_arquivo:04d}.jpg"
             caminho_completo = os.path.join(self.diretorio_fotos, nome_arquivo)
             
-            # Salva com a compressão JPEG desativada (Qualidade 100) para não perder dados pro YOLO
             cv2.imwrite(caminho_completo, cv_image, [cv2.IMWRITE_JPEG_QUALITY, 100])
-            
             self.ultimo_tempo_salvo = tempo_atual
-            self.get_logger().info(f"[{self.contador_fotos}/{self.limite_fotos}] Foto salva: {nome_arquivo}")
             
-            # Encerra o nó se bater a meta
-            if self.contador_fotos >= self.limite_fotos:
-                self.get_logger().info("Meta de 2000 fotos atingida! Encerrando captura...")
-                raise SystemExit # Força a saída do rclpy.spin()
+            self.get_logger().info(f"[{self.fotos_nesta_sessao}/{self.limite_fotos}] Foto salva: {nome_arquivo}")
+            
+            if self.fotos_nesta_sessao >= self.limite_fotos:
+                self.get_logger().info(f"Meta de {self.limite_fotos} fotos atingida! Encerrando captura...")
+                raise SystemExit
 
 def main(args=None):
     rclpy.init(args=args)
-    
     extrator = ExtratorDeFotos()
     
     try:
-        # Mantém o nó rodando e escutando as imagens
         rclpy.spin(extrator)
     except SystemExit:
-        # Saída suave quando atingir 2000 fotos
         pass
     except KeyboardInterrupt:
         extrator.get_logger().info("Captura interrompida pelo usuário.")
     finally:
-        # Fecha a janela de vídeo e destrói o nó
         cv2.destroyAllWindows()
         extrator.destroy_node()
         rclpy.shutdown()
