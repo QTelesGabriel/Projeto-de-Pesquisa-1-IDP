@@ -1,0 +1,12 @@
+# Caminhos absolutos para as pastas que acabamos de criar
+path: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset
+train: images/train
+val: images/val
+
+# Número de classes (apenas a gaiola/armadilha)
+nc: 1
+
+# Nome das classes (deve estar na mesma ordem que você usou na hora de rotular)
+# Se você rotulou a armadilha como classe 0, coloque o nome dela abaixo:
+names:
+  0: armadilha
