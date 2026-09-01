@@ -1,4 +1,22 @@
- yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv8n_Armadilha
+yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv8n_Armadilha
 
 
-yolo task=detect mode=train model=yolo11n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv11n_Armadilha 
+yolo task=detect mode=train model=yolo11n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv11n_Armadilha
+
+
+ v8n
+
+
+epoch,time,train/box_loss,train/cls_loss,train/dfl_loss,metrics/precision(B),metrics/recall(B),metrics/mAP50(B),metrics/mAP50-95(B),val/box_loss,val/cls_loss,val/dfl_loss,lr/pg0,lr/pg1,lr/pg2
+
+
+100,3623.2,0.69682,0.32666,0.78533,0.9902,1,0.99442,0.784,0.76436,0.32653,0.71638,3.98e-05,3.98e-05,3.98e-05
+
+
+v11n
+
+
+epoch,time,train/box_loss,train/cls_loss,train/dfl_loss,metrics/precision(B),metrics/recall(B),metrics/mAP50(B),metrics/mAP50-95(B),val/box_loss,val/cls_loss,val/dfl_loss,lr/pg0,lr/pg1,lr/pg2
+
+
+100,4076.01,0.69959,0.33046,0.78383,0.98996,1,0.99486,0.79461,0.74373,0.32442,0.71632,3.98e-05,3.98e-05,3.98e-05 
