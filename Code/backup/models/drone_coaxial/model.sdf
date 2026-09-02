@@ -52,7 +52,7 @@
     <!-- A massa total dos tres links e 0.095 kg, conforme a ficha da A8 Mini. -->
     <!-- 1. Estagio de yaw e suporte preso ao drone -->
     <link name="gimbal_yaw_link">
-      <pose>0.00057 -0.04216 -0.04551 0 0 0</pose>
+      <pose>0.00057 0.04216 -0.04551 0 0 0</pose>
       <inertial>
         <mass>0.025</mass>
         <inertia><ixx>0.0000051</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0000051</iyy><iyz>0</iyz><izz>0.0000084</izz></inertia>
@@ -88,7 +88,7 @@
 
     <!-- 2. Estagio de roll -->
     <link name="gimbal_roll_link">
-      <pose>0.00057 -0.04216 -0.04551 0 0 0</pose>
+      <pose>0.00057 0.04216 -0.04551 0 0 0</pose>
       <inertial>
         <mass>0.015</mass>
         <inertia><ixx>0.0000020</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0000020</iyy><iyz>0</iyz><izz>0.0000020</izz></inertia>
@@ -107,7 +107,7 @@
 
     <!-- 3. Pitch Link e Câmera -->
     <link name="camera_pitch_link">
-      <pose>0.00057 -0.04216 -0.04551 0 0 0</pose>
+      <pose>0.00057 0.04216 -0.04551 0 0 0</pose>
       <inertial>
         <mass>0.055</mass>
         <inertia><ixx>0.0000363</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0000363</iyy><iyz>0</iyz><izz>0.0000277</izz></inertia>
@@ -167,7 +167,7 @@
 
     <!-- BRAÇO 1 -->
     <link name="rotor_1_sup">
-      <pose>0.40006 0.40476 0.09529 0 0 0</pose>
+      <pose>0.40230 0.40368 0.10617 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -202,7 +202,7 @@
     </joint>
     
     <link name="rotor_1_inf">
-      <pose>0.40006 0.40476 0.00581 0 0 0</pose>
+      <pose>0.40230 0.40368 0.00597 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -238,7 +238,7 @@
 
     <!-- BRAÇO 2 -->
     <link name="rotor_2_sup">
-      <pose>0.40006 -0.40476 0.09529 0 0 0</pose>
+      <pose>0.40235 -0.40306 0.10624 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -273,7 +273,7 @@
     </joint>
     
     <link name="rotor_2_inf">
-      <pose>0.40006 -0.40476 0.00581 0 0 0</pose>
+      <pose>0.40235 -0.40306 0.00604 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -309,7 +309,7 @@
 
     <!-- BRAÇO 3 -->
     <link name="rotor_3_sup">
-      <pose>-0.40006 0.40476 0.09529 0 0 0</pose>
+      <pose>-0.40462 0.40368 0.10615 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -344,7 +344,7 @@
     </joint>
     
     <link name="rotor_3_inf">
-      <pose>-0.40006 0.40476 0.00581 0 0 0</pose>
+      <pose>-0.40462 0.40368 0.00595 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -380,7 +380,7 @@
 
     <!-- BRAÇO 4 -->
     <link name="rotor_4_sup">
-      <pose>-0.40006 -0.40476 0.09529 0 0 0</pose>
+      <pose>-0.40468 -0.40317 0.10622 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
@@ -415,7 +415,7 @@
     </joint>
     
     <link name="rotor_4_inf">
-      <pose>-0.40006 -0.40476 0.00581 0 0 0</pose>
+      <pose>-0.40468 -0.40317 0.00602 0 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
