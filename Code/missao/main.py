@@ -6,6 +6,7 @@ collections.MutableMapping = collections.abc.MutableMapping
 # ---------------------------------------------------------
 
 from dronekit import connect
+import sys
 import time
 import rclpy
 import cv2
@@ -17,9 +18,30 @@ from visao.rastreador import RastreadorYOLO
 
 CONEXAO = 'udp:127.0.0.1:14550'
 
+def aguardar_atributos(vehicle, timeout=30):
+    start = time.time()
+    print("[*] Aguardando leitura dos dados basicos (mode, location, armable)...")
+    while time.time() - start < timeout:
+        if vehicle.mode.name and vehicle.location.global_relative_frame and vehicle.is_armable is not None:
+            print("[+] Dados recebidos com sucesso!")
+            return True
+        time.sleep(1)
+    return False
+
 def main():
     print(f"Conectando ao drone em: {CONEXAO}")
-    vehicle = connect(CONEXAO, wait_ready=True)
+    try:
+        vehicle = connect(CONEXAO, wait_ready=False, heartbeat_timeout=15)
+        print("[*] Conexão UDP e Heartbeat estabelecidos!")
+        
+        if not aguardar_atributos(vehicle, timeout=40):
+            print("\n[!] ERRO: O drone conectou, mas os dados de voo (GPS/IMU) nao estao chegando!")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"\n[!] ERRO CRITICO AO CONECTAR: {e}")
+        sys.exit(1)
+        
     rclpy.init()
 
     try:

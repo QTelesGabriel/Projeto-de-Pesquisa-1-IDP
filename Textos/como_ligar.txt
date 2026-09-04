@@ -21,7 +21,7 @@ cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
 
 # Terminal 3 — executar a missão
 
-cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/mission
+cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/missao
 python3 main.py
 
 Para executar a missão de geração de fotos:

@@ -43,8 +43,8 @@ class RastreadorYOLO(Node):
         
         # Verifica a altitude atual
         altitude = self.vehicle.location.global_relative_frame.alt
-        if altitude <= 2.0:
-            self.get_logger().info("Altitude de 2 metros atingida! Parando o VANT.")
+        if altitude <= 3.0:
+            self.get_logger().info("Altitude de 3 metros atingida! Parando o VANT.")
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0) # Zera as velocidades
             raise SystemExit # Encerra o loop do ROS para a próxima fase do projeto
             
