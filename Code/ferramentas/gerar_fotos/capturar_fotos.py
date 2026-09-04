@@ -19,7 +19,7 @@ class ExtratorDeFotos(Node):
         
         # Variáveis de controle ajustadas
         self.fotos_nesta_sessao = 0
-        self.numero_do_arquivo = 1436
+        self.numero_do_arquivo = 0
         
         self.ultimo_tempo_salvo = time.time()
         self.bridge = CvBridge()
