@@ -10,6 +10,7 @@ import sys
 import time
 import rclpy
 import cv2
+import random
 
 from controle_voo.gimbal import apontar_gimbal_nadir
 from controle_voo.takeoff import arm_and_takeoff
@@ -51,17 +52,19 @@ def main():
         print("[+] Estabilizando o gimbal em nadir...")
         apontar_gimbal_nadir(vehicle)
         
-        # 2. Decolagem (Decolando mais alto: 6 metros para compensar a gaiola)
-        altitude_inicial = 6.0
+        # 2. Decolagem
+        altitude_inicial = 20.0
         arm_and_takeoff(vehicle, altitude_inicial)
         
-        # 3. Navegação GPS Local (O Ajuste do SDF!)
-        # Vai para X=3m (Frente), Y=0m, Z=-6m (Mantém os 6m de altura, lembrando que NED o Z é negativo para cima)
-        print("[+] Navegando para as coordenadas aproximadas da armadilha (X=3.0)...")
-        ir_para_posicao_local(vehicle, frente_x=3.0, direita_y=0.0, baixo_z=-6.0)
+        # 3. Navegação GPS Local Aproximada
+        # Vai para a região aproximada da gaiola (x=50, y=0) com um erro aleatório (quadrado de lado 10m)
+        alvo_x = 50.0 + random.uniform(-5.0, 5.0)
+        alvo_y = 0.0 + random.uniform(-5.0, 5.0)
+        print(f"[+] Navegando para as coordenadas aproximadas da armadilha (X={alvo_x:.2f}, Y={alvo_y:.2f})...")
+        ir_para_posicao_local(vehicle, frente_x=alvo_x, direita_y=alvo_y, baixo_z=-altitude_inicial)
         
-        # Dá 5 segundos para o drone voar esses 3 metros fisicamente no Gazebo
-        time.sleep(5.0) 
+        # Dá 15 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
+        time.sleep(15.0) 
         print("[+] Posicionamento inicial concluído. Iniciando Inteligência Visual...")
         
         # 4. Inicia o Cérebro ROS (Visão Computacional)

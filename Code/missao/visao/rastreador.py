@@ -5,6 +5,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 import os
+import time
 from ultralytics import YOLO
 
 # Importa a função de movimento que criamos
@@ -22,8 +23,14 @@ class RastreadorYOLO(Node):
         self.get_logger().info(f"Carregando modelo YOLO de: {caminho_modelo}")
         self.yolo = YOLO(caminho_modelo)
         
-        # 2. Configurações de Controle (Controlador Proporcional)
-        self.kp = 0.5  # Ganho proporcional (agressividade da correção horizontal)
+        # 2. Configurações de Controle (Controlador PD)
+        self.kp = 0.8  # Ganho proporcional (aumentado para ir mais rápido)
+        self.kd = 0.3  # Ganho derivativo (freia o movimento perto do alvo)
+        
+        self.erro_x_anterior = 0.0
+        self.erro_y_anterior = 0.0
+        self.ultimo_tempo = None
+        
         self.zona_segura = 0.3  # 30% do centro da tela
         self.velocidade_descida = 0.4  # m/s
         
@@ -66,22 +73,43 @@ class RastreadorYOLO(Node):
             # Desenha o centro
             cv2.circle(cv_image, (int(centro_gaiola_x), int(centro_gaiola_y)), 5, (0, 0, 255), -1)
             
-            # --- MATEMÁTICA DO FUNIL ---
+            # --- MATEMÁTICA DO FUNIL (PD) ---
             # Normaliza o erro de -1.0 a 1.0 (onde 0 é o centro exato)
             erro_x_norm = (centro_gaiola_x - (largura_img / 2)) / (largura_img / 2)
             erro_y_norm = (centro_gaiola_y - (altura_img / 2)) / (altura_img / 2)
             
+            tempo_atual = time.time()
+            if self.ultimo_tempo is None:
+                dt = 0.1 # Valor inicial assumido
+            else:
+                dt = tempo_atual - self.ultimo_tempo
+                if dt <= 0:
+                    dt = 0.01
+            self.ultimo_tempo = tempo_atual
+            
+            # Derivada (Taxa de variação do erro)
+            derivada_x = (erro_x_norm - self.erro_x_anterior) / dt
+            derivada_y = (erro_y_norm - self.erro_y_anterior) / dt
+            
+            self.erro_x_anterior = erro_x_norm
+            self.erro_y_anterior = erro_y_norm
+            
             # Mapeamento da câmera apontada para baixo (-90 pitch):
             # Eixo Y da imagem (cima/baixo) controla o eixo X do drone (frente/trás)
             # Eixo X da imagem (esquerda/direita) controla o eixo Y do drone (lados)
-            vel_x = -erro_y_norm * self.kp
-            vel_y = erro_x_norm * self.kp
+            vel_x = -(erro_y_norm * self.kp + derivada_y * self.kd)
+            vel_y = (erro_x_norm * self.kp + derivada_x * self.kd)
             
-            # Lógica do funil: Só desce se o erro total for menor que a zona segura
+            # Lógica do funil (Descida Contínua)
             erro_total = (erro_x_norm**2 + erro_y_norm**2)**0.5
+            
+            # Se o erro for menor que a zona segura, calcula descida proporcional
             if erro_total < self.zona_segura:
-                vel_z = self.velocidade_descida
-                texto_status = "CENTRO - DESCENDO"
+                # Alinhamento varia de 0.0 (no limite da zona) a 1.0 (perfeito no centro)
+                alinhamento = (self.zona_segura - erro_total) / self.zona_segura
+                vel_z = self.velocidade_descida * alinhamento
+                
+                texto_status = f"DESCENDO (Vz: {vel_z:.2f} m/s)"
                 cor = (0, 255, 0)
             else:
                 vel_z = 0.0
