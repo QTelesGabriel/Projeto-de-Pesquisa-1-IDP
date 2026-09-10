@@ -19,7 +19,10 @@ cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
   --console \
   -w
 
-# Terminal 3 — executar a missão
+# Terminal 3 - Ligar câmera bridge
+ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.msgs.Image
+
+# Terminal 4 — executar a missão
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/missao
 python3 main.py
@@ -28,6 +31,3 @@ Para executar a missão de geração de fotos:
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/gerar_fotos
 python3 gerar_fotos.py
-
-# Terminal 4 - Ligar câmera bridge
-ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.msgs.Image

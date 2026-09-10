@@ -57,15 +57,26 @@ def main():
         arm_and_takeoff(vehicle, altitude_inicial)
         
         # 3. Navegação GPS Local Aproximada
-        # Vai para a região aproximada da gaiola (x=50, y=0) com um erro aleatório (quadrado de lado 10m)
-        alvo_x = 50.0 + random.uniform(-5.0, 5.0)
-        alvo_y = 0.0 + random.uniform(-5.0, 5.0)
-        print(f"[+] Navegando para as coordenadas aproximadas da armadilha (X={alvo_x:.2f}, Y={alvo_y:.2f})...")
-        ir_para_posicao_local(vehicle, frente_x=alvo_x, direita_y=alvo_y, baixo_z=-altitude_inicial)
+        # Vai para a região aproximada da gaiola (Gazebo X=50, Y=0) com um erro aleatório
+        # IMPORTANTE: Gazebo X = Leste, Gazebo Y = Norte. 
+        # Ardupilot LOCAL_NED: X = Norte (frente_x), Y = Leste (direita_y)
+        alvo_gazebo_x = 50.0 + random.uniform(-5.0, 5.0)
+        alvo_gazebo_y = 0.0 + random.uniform(-5.0, 5.0)
+        
+        # Mapeamento ENU (Gazebo) -> NED (Ardupilot)
+        frente_norte = alvo_gazebo_y
+        direita_leste = alvo_gazebo_x
+        
+        print(f"[+] Navegando para as coordenadas aproximadas da armadilha (Gazebo X={alvo_gazebo_x:.2f}, Y={alvo_gazebo_y:.2f})...")
+        ir_para_posicao_local(vehicle, frente_x=frente_norte, direita_y=direita_leste, baixo_z=-altitude_inicial)
         
         # Dá 15 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
         time.sleep(15.0) 
-        print("[+] Posicionamento inicial concluído. Iniciando Inteligência Visual...")
+        
+        print("[+] Posicionamento GPS concluído. Aguardando 5 segundos para estabilização do VANT...")
+        time.sleep(5.0)
+        
+        print("[+] Voo estabilizado! Iniciando Inteligência Visual...")
         
         # 4. Inicia o Cérebro ROS (Visão Computacional)
         rastreador_node = RastreadorYOLO(vehicle)
