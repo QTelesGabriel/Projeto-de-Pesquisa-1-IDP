@@ -6,7 +6,7 @@ pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot_gazebo
 export GZ_SIM_RESOURCE_PATH="$PWD/models:$PWD/worlds:/opt/ros/jazzy/share"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$PWD/build"
-gz sim -v4 worlds/tcc.sdf
+gz sim -v4 -r worlds/tcc.sdf
 
 # Terminal 2: ArduPilot SITL. Use -w na primeira execucao (ou sempre que
 # alterar FRAME_CLASS/FRAME_TYPE) para nao reutilizar parametros antigos.

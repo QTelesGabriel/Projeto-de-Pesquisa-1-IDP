@@ -11,11 +11,11 @@ def enviar_velocidade(vehicle, velocity_x, velocity_y, velocity_z):
         0,       # time_boot_ms (não usado)
         0, 0,    # target_system, target_component
         mavutil.mavlink.MAV_FRAME_BODY_NED, # Referencial: Baseado na frente do drone
-        0b0000111111000111, # Máscara de bits para ignorar posição e aceleração, usar apenas velocidade
+        0b0000011111000111, # Máscara: Usa velocidade e Yaw Rate (para travar o eixo Z)
         0, 0, 0, # Posições X, Y, Z (ignoradas)
         velocity_x, velocity_y, velocity_z, # Velocidades X, Y, Z (m/s)
         0, 0, 0, # Acelerações (ignoradas)
-        0, 0)    # Yaw e Yaw rate (ignorados)
+        0, 0)    # Yaw (ignorado), Yaw rate (0 = não girar)
         
     vehicle.send_mavlink(msg)
     vehicle.flush()

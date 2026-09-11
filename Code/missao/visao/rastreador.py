@@ -24,8 +24,8 @@ class RastreadorYOLO(Node):
         self.yolo = YOLO(caminho_modelo)
         
         # 2. Configurações de Controle (Controlador PD)
-        self.kp = 0.4  # Reduzido para evitar tremedeira
-        self.kd = 0.1  # Reduzido para evitar picos na derivada
+        self.kp = 0.8  # Aumentado para uma velocidade boa (mais ágil)
+        self.kd = 0.05 # Reduzido para evitar que a variação de tempo do YOLO crie picos agressivos
         
         self.erro_x_anterior = 0.0
         self.erro_y_anterior = 0.0
@@ -53,6 +53,16 @@ class RastreadorYOLO(Node):
         self.get_logger().info("Nó de rastreamento iniciado! Procurando armadilha...")
 
     def image_callback(self, msg):
+        # --- CÁLCULO DE TEMPO (dt) e LIMITADOR DE 20 FPS ---
+        tempo_atual = time.time()
+        if self.ultimo_tempo is not None:
+            if (tempo_atual - self.ultimo_tempo) < 0.05:
+                return # Ignora o frame para manter ~20 FPS
+            dt = tempo_atual - self.ultimo_tempo
+        else:
+            dt = 0.05
+        self.ultimo_tempo = tempo_atual
+        
         # Converte ROS para OpenCV
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         altura_img, largura_img, _ = cv_image.shape
@@ -64,16 +74,6 @@ class RastreadorYOLO(Node):
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0) # Zera as velocidades
             raise SystemExit # Encerra o loop do ROS para a próxima fase do projeto
             
-        # --- CÁLCULO DE TEMPO (dt) ---
-        tempo_atual = time.time()
-        if self.ultimo_tempo is None:
-            dt = 0.1 # Valor inicial assumido
-        else:
-            dt = tempo_atual - self.ultimo_tempo
-            if dt <= 0:
-                dt = 0.01
-        self.ultimo_tempo = tempo_atual
-        
         # Roda o YOLO na imagem ORIGINAL (antes de desenharmos qualquer coisa por cima)
         resultados = self.yolo.predict(cv_image, verbose=False, conf=0.7)
         
@@ -141,9 +141,11 @@ class RastreadorYOLO(Node):
             # Fator multiplicador de altitude
             fator_altitude = max(1.0, altitude / 10.0)
             
-            # Mapeamento da câmera apontada para baixo (-90 pitch)
-            vel_x = -(erro_y_norm * self.kp + derivada_y * self.kd) * fator_altitude
-            vel_y = (erro_x_norm * self.kp + derivada_x * self.kd) * fator_altitude
+            # Mapeamento FINAL e paramétrico. 
+            # A câmera e o referencial variam muito dependendo de como o modelo foi importado no Gazebo.
+            # Aqui X controla X, e Y controla Y.
+            vel_x = (erro_x_norm * self.kp + derivada_x * self.kd) * fator_altitude
+            vel_y = (erro_y_norm * self.kp + derivada_y * self.kd) * fator_altitude
             
             # Limite de segurança para evitar movimentos muito agressivos
             max_vel = 1.5
