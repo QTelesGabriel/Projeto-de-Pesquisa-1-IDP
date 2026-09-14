@@ -38,7 +38,7 @@ class RastreadorYOLO(Node):
         
         # 3. Configurações do Filtro EKF
         # DESLIGADO TEMPORARIAMENTE para isolar a causa da tremedeira
-        self.usar_filtro = False
+        self.usar_filtro = True
         if self.usar_filtro:
             from visao.filtro import FiltroAlvoEKF
             self.filtro = FiltroAlvoEKF(dt_inicial=0.1)

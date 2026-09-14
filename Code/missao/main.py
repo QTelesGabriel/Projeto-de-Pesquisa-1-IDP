@@ -74,7 +74,7 @@ def main():
         time.sleep(15.0) 
         
         print("[+] Posicionamento GPS concluído. Aguardando 5 segundos para estabilização do VANT...")
-        time.sleep(5.0)
+        time.sleep(15.0)
         
         print("[+] Voo estabilizado! Iniciando Inteligência Visual...")
         
