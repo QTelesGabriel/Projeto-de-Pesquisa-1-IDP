@@ -17,14 +17,14 @@ class FiltroAlvoEKF:
         self.kf.P *= 1000.0
         
         # Matriz de Ruído de Medição (R) - Quão barulhenta é a YOLO
-        # Reduzido de 50.0 para 5.0 para que o filtro confie mais na YOLO
-        ruido_yolo = 5.0 
+        # Agora o erro é em METROS FÍSICOS. Uma variação de YOLO costuma ser de ~5cm (0.05m)
+        ruido_yolo = 0.05 
         self.kf.R = np.array([[ruido_yolo, 0.0],
                               [0.0, ruido_yolo]])
                                
         # Matriz de Ruído do Processo (Q) - Quão rápido a velocidade da armadilha/drone pode mudar
-        # Aumentado para 20.0 para garantir agilidade e remover o efeito "elástico" (tentando chegar no alvo)
-        self.kf.Q = np.eye(4) * 20.0 
+        # Ajustado para escala em metros (m/s).
+        self.kf.Q = np.eye(4) * 0.5 
         
         # Matriz de Observação (H) - Como extraímos a medição Z a partir do estado X
         self.kf.H = np.array([
