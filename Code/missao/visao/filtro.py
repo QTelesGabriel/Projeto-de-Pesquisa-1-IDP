@@ -17,14 +17,20 @@ class FiltroAlvoEKF:
         self.kf.P *= 1000.0
         
         # Matriz de Ruído de Medição (R) - Quão barulhenta é a YOLO
-        # Agora o erro é em METROS FÍSICOS. Uma variação de YOLO costuma ser de ~5cm (0.05m)
-        ruido_yolo = 0.05 
+        # Aumentado para 0.2 (20cm) para que o filtro não "acredite" em pulos repentinos da caixa YOLO
+        ruido_yolo = 0.2 
         self.kf.R = np.array([[ruido_yolo, 0.0],
                               [0.0, ruido_yolo]])
                                
-        # Matriz de Ruído do Processo (Q) - Quão rápido a velocidade da armadilha/drone pode mudar
-        # Ajustado para escala em metros (m/s).
-        self.kf.Q = np.eye(4) * 0.5 
+        # Matriz de Ruído do Processo (Q)
+        # Posição muda pouco (0.01) porque obedece à física. Velocidade muda mais (0.1) devido a aceleração.
+        # Isso impede o "teletransporte" do alvo e cria um rastreio muito mais suave.
+        self.kf.Q = np.array([
+            [0.01, 0.0, 0.0, 0.0],
+            [0.0, 0.01, 0.0, 0.0],
+            [0.0, 0.0, 0.1, 0.0],
+            [0.0, 0.0, 0.0, 0.1]
+        ]) 
         
         # Matriz de Observação (H) - Como extraímos a medição Z a partir do estado X
         self.kf.H = np.array([
@@ -34,6 +40,10 @@ class FiltroAlvoEKF:
         
         self.iniciado = False
         self.dt_anterior = dt_inicial
+        
+        # Timeout para evitar predições fantasmas longas (Latência aceitável)
+        self.tempo_sem_medicao = 0.0
+        self.timeout_limite = 1.5  # Segundos
 
     def atualizar(self, z_x, z_y, dt):
         """
@@ -48,6 +58,7 @@ class FiltroAlvoEKF:
             if z_x is not None and z_y is not None:
                 self.kf.x = np.array([[z_x], [z_y], [0.0], [0.0]])
                 self.iniciado = True
+                self.tempo_sem_medicao = 0.0
                 return z_x, z_y
             else:
                 return None, None # Ainda não temos nada para iniciar
@@ -67,8 +78,16 @@ class FiltroAlvoEKF:
         if z_x is not None and z_y is not None:
             z = np.array([[z_x], [z_y]])
             self.kf.update(z)
-        
+            self.tempo_sem_medicao = 0.0 # Zera o cronômetro pois vimos o alvo
+        else:
+            self.tempo_sem_medicao += dt # Soma o tempo que ficamos "cegos"
+            
         self.dt_anterior = dt
+        
+        # Lógica de Timeout (Ponto 1)
+        if self.tempo_sem_medicao > self.timeout_limite:
+            self.iniciado = False # Reseta o filtro para evitar voar em predição cega longa
+            return None, None
         
         # Retorna apenas as coordenadas x e y limpas
         x_limpo = float(self.kf.x[0, 0])

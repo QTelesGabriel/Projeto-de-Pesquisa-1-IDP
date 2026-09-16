@@ -73,7 +73,7 @@ def main():
         # Dá 15 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
         time.sleep(15.0) 
         
-        print("[+] Posicionamento GPS concluído. Aguardando 5 segundos para estabilização do VANT...")
+        print("[+] Posicionamento GPS concluído. Aguardando 15 segundos para estabilização do VANT...")
         time.sleep(15.0)
         
         print("[+] Voo estabilizado! Iniciando Inteligência Visual...")
