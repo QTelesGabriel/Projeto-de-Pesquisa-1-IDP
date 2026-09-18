@@ -17,8 +17,8 @@ class FiltroAlvoEKF:
         self.kf.P *= 1000.0
         
         # Matriz de Ruído de Medição (R) - Quão barulhenta é a YOLO
-        # Aumentado para 0.2 (20cm) para que o filtro não "acredite" em pulos repentinos da caixa YOLO
-        ruido_yolo = 0.2 
+        # Aumentado para 0.5 para segurar o tremor (jitter) dos Keypoints do modelo Pose Nano
+        ruido_yolo = 0.5 
         self.kf.R = np.array([[ruido_yolo, 0.0],
                               [0.0, ruido_yolo]])
                                

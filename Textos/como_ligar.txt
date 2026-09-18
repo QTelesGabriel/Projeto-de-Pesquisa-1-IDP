@@ -3,12 +3,14 @@ source ~/.profile
 pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
 
 # Terminal 1: Gazebo
+
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot_gazebo
 export GZ_SIM_RESOURCE_PATH="$PWD/models:$PWD/worlds:/opt/ros/jazzy/share"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$PWD/build"
 gz sim -v4 -r worlds/tcc.sdf
 
 # Terminal 2: ArduPilot SITL. Use -w na primeira execucao (ou sempre que
+
 # alterar FRAME_CLASS/FRAME_TYPE) para nao reutilizar parametros antigos.
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
 ../Tools/autotest/sim_vehicle.py \
@@ -20,6 +22,7 @@ cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot/ArduCopter
   -w
 
 # Terminal 3 - Ligar câmera bridge
+
 ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.msgs.Image
 
 # Terminal 4 — executar a missão

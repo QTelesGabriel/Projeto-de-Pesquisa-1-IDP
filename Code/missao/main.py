@@ -85,12 +85,36 @@ def main():
             # O ROS assume o controle dos motores a partir daqui
             rclpy.spin(rastreador_node)
         except SystemExit:
-            # Note que no rastreador.py precisamos ajustar aquele `if altitude <= 2.0:` para 3.0m
-            print("\n[+] Fase Macro concluída! O Drone desceu e estabilizou perfeitamente sobre o alvo.")
+            print("\n[+] Fase Macro concluída! O Drone desceu a 2m. Iniciando Fase Micro...")
+            # Limpa os processos da fase 1
+            rastreador_node.destroy_node()
+            cv2.destroyAllWindows()
             
-        print("[+] Missão Finalizada. Mantendo Hover. Pressione Ctrl+C para encerrar...")
-        while True:
-            time.sleep(1)
+            # 5. Inicia o Cérebro ROS da Fase 2 (Ajuste Fino)
+            from visao.rastreador_fino import RastreadorFinoYOLO
+            rastreador_fino_node = RastreadorFinoYOLO(vehicle)
+            
+            try:
+                rclpy.spin(rastreador_fino_node)
+            except SystemExit:
+                print("\n[+] Fase Micro concluída! Alvo capturado. Iniciando retorno (Fase 3)...")
+                rastreador_fino_node.destroy_node()
+                cv2.destroyAllWindows()
+                
+                # 6. Fase 3 - Inspeção (Pouso sobre o alvo)
+                from dronekit import VehicleMode
+                print("[+] Acionando modo LAND (Pouso)...")
+                vehicle.mode = VehicleMode("LAND")
+                
+                print("[+] Missão Finalizada com sucesso! O VANT irá pousar e desligar os motores sobre a armadilha.")
+                print("[+] Você poderá inspecionar visualmente o alinhamento 3D no Gazebo.")
+                print("[+] Aguardando o desarme automático...")
+                
+                # Manter o script rodando até que o VANT pouse e desarme
+                while vehicle.armed:
+                    time.sleep(1)
+                    
+                print("\n[+] VANT desarmado sobre a armadilha! Simulação encerrada com sucesso.")
             
     except KeyboardInterrupt:
         print("\n[!] Missão interrompida pelo usuário.")

@@ -16,9 +16,10 @@ NUM_KEYPOINTS = 4
 os.makedirs(LABELS_DIR, exist_ok=True)
 
 keypoints_clicked = []
+redraw_needed = False
 
 def mouse_callback(event, x, y, flags, param):
-    global keypoints_clicked
+    global keypoints_clicked, redraw_needed
     
     if len(keypoints_clicked) >= NUM_KEYPOINTS:
         return
@@ -26,27 +27,12 @@ def mouse_callback(event, x, y, flags, param):
     # BOTÃO ESQUERDO: Ponto Visível
     if event == cv2.EVENT_LBUTTONDOWN:
         keypoints_clicked.append((x, y, 2.0)) # 2.0 = Visível
+        redraw_needed = True
         
     # BOTÃO DIREITO: Ponto Ausente/Invisível (Fora da tela)
     elif event == cv2.EVENT_RBUTTONDOWN:
         keypoints_clicked.append((0, 0, 0.0)) # 0.0 = Ausente
-        
-    if event in [cv2.EVENT_LBUTTONDOWN, cv2.EVENT_RBUTTONDOWN]:
-        img_temp = param.copy()
-        
-        # Redesenha todos os pontos
-        for px, py, v in keypoints_clicked:
-            if v == 2.0:
-                cv2.circle(img_temp, (px, py), 5, (0, 0, 255), -1)
-            # Se for ausente (v=0), não desenha bolinha
-        
-        faltam = NUM_KEYPOINTS - len(keypoints_clicked)
-        if faltam > 0:
-            cv2.putText(img_temp, f"Faltam {faltam}. Esq=Visivel | Dir=Invisivel/Ausente", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
-        else:
-            cv2.putText(img_temp, "Pontos registrados! Aperte ESPACO para continuar.", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            
-        cv2.imshow("Rotulagem Pose", img_temp)
+        redraw_needed = True
 
 # ================================
 # Coletar e ordenar imagens
@@ -65,10 +51,12 @@ print(f"Total de imagens encontradas: {len(image_paths)}")
 print("-" * 50)
 print("INSTRUÇÕES DE USO (YOLO-POSE):")
 print("1. Desenhe a caixa inteira da armadilha e aperte ENTER.")
-print(f"2. A imagem vai congelar. Registre as {NUM_KEYPOINTS - 1} alças:")
-print("   - BOTÃO ESQUERDO: Clica na alça (Se ela estiver na tela).")
-print("   - BOTÃO DIREITO: Marca a alça como INVISÍVEL (Se o drone desceu muito e ela sumiu).")
-print("3. Quando acabar os cliques, aperte ENTER para ir para a próxima foto.")
+print(f"2. A imagem vai congelar com o Centro Automático (Azul).")
+print("   - Se o centro estiver ERRADO, aperte a tecla 'Z' para apagar e clique manualmente.")
+print(f"   - Registre as {NUM_KEYPOINTS - 1} alças:")
+print("     > BOTÃO ESQUERDO: Clica na alça (Se visível).")
+print("     > BOTÃO DIREITO: Alça invisível (Se fora da tela).")
+print("3. Quando acabar os cliques, aperte ENTER para a próxima foto.")
 print("- O programa pulará automaticamente as fotos já rotuladas.")
 print("-" * 50)
 
@@ -108,42 +96,61 @@ for i, image_path in enumerate(image_paths):
         # --- PONTO CENTRAL AUTOMÁTICO (DA CÂMERA) ---
         centro_camera_x = int(img_w / 2.0)
         centro_camera_y = int(img_h / 2.0)
-        # O centro sempre vai estar visível (v=2.0)
+        # Injeta o centro como Ponto 1 automático
         keypoints_clicked.append((centro_camera_x, centro_camera_y, 2.0))
         
-        img_copy = image.copy()
-        cv2.rectangle(img_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.setMouseCallback("Rotulagem Pose", mouse_callback)
+        redraw_needed = True
         
-        # Desenha o 1º ponto em AZUL
-        cv2.circle(img_copy, (centro_camera_x, centro_camera_y), 6, (255, 0, 0), -1)
-        
-        cv2.putText(img_copy, f"Centro salvo! Registre as {NUM_KEYPOINTS - 1} alcas (Esq=Visivel / Dir=Invisivel)", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        
-        cv2.imshow("Rotulagem Pose", img_copy)
-        cv2.setMouseCallback("Rotulagem Pose", mouse_callback, img_copy)
-        
-        print(f"   -> Centro Registrado. Aguardando você registrar as {NUM_KEYPOINTS - 1} alcas...")
-        
-        # Fica travado num laço até o usuário clicar a quantidade certa de vezes E apertar ENTER/ESPACO
+        # Fica travado num laço verificando cliques ou teclas
         while True:
+            if redraw_needed:
+                tela = image.copy()
+                cv2.rectangle(tela, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                
+                for idx, (px, py, v) in enumerate(keypoints_clicked):
+                    if v == 2.0:
+                        # Pinta o 1º Ponto (Centro) de Azul, e os demais de Vermelho
+                        cor = (255, 0, 0) if idx == 0 else (0, 0, 255)
+                        cv2.circle(tela, (px, py), 6, cor, -1)
+                        
+                faltam = NUM_KEYPOINTS - len(keypoints_clicked)
+                if faltam > 0:
+                    cv2.putText(tela, f"Faltam {faltam}. Esq=Visivel | Dir=Ausente | Z=Desfazer", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                    if len(keypoints_clicked) == 1:
+                        cv2.putText(tela, "Centro automatico OK. Aperte Z se quiser apagar e refazer.", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1)
+                else:
+                    cv2.putText(tela, "Pontos OK! Aperte ENTER ou ESPACO.", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                
+                cv2.imshow("Rotulagem Pose", tela)
+                redraw_needed = False
+                
             k = cv2.waitKey(10)
+            
+            # Se apertou ENTER(13) ou ESPACO(32) e já tem todos os pontos
             if len(keypoints_clicked) == NUM_KEYPOINTS and k in [13, 32]:
                 break
+                
+            # Se apertou Z ou z para desfazer
+            if k in [ord('z'), ord('Z')]:
+                if len(keypoints_clicked) > 0:
+                    keypoints_clicked.pop()
+                    redraw_needed = True
 
         # Tira o evento de clique do mouse
         cv2.setMouseCallback("Rotulagem Pose", lambda *args: None) 
         
         boxes.append((x, y, w, h, keypoints_clicked))
         
-        # Desenha na imagem de fundo para feedback visual
-        for px, py, v in keypoints_clicked:
+        # Desenha na imagem de fundo para feedback visual final
+        for idx, (px, py, v) in enumerate(keypoints_clicked):
             if v == 2.0:
-                cv2.circle(image, (px, py), 5, (0, 0, 255), -1)
+                cor = (255, 0, 0) if idx == 0 else (0, 0, 255)
+                cv2.circle(image, (px, py), 5, cor, -1)
         cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     # ==========================
     # Salvar YOLO Pose (Formato: ID x_box y_box w_box h_box px1 py1 v1 px2 py2 v2...)
-    # Tudo normalizado entre 0 e 1, 'v' é a visibilidade (0 = Ausente, 2 = Visível)
     # ==========================
     with open(label_path, "w") as f:
         for x, y, w, h, kpts in boxes:
@@ -156,10 +163,8 @@ for i, image_path in enumerate(image_paths):
             
             for px, py, v in kpts:
                 if v == 0.0:
-                    # Ponto invisível (Drone muito perto e alça sumiu da tela)
                     line += " 0.000000 0.000000 0.000000"
                 else:
-                    # Ponto visível
                     norm_x = px / img_w
                     norm_y = py / img_h
                     line += f" {norm_x:.6f} {norm_y:.6f} 2.000000"
