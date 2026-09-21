@@ -42,3 +42,24 @@ def ir_para_posicao_local(vehicle, frente_x, direita_y, baixo_z):
         
     vehicle.send_mavlink(msg)
     vehicle.flush()
+
+def girar_drone(vehicle, angulo_graus):
+    """
+    Gira o drone para um ângulo absoluto (0 a 360).
+    Utilizado para bagunçar a rotação antes da fase 2 provar que funciona.
+    """
+    if angulo_graus < 0:
+        angulo_graus += 360
+        
+    msg = vehicle.message_factory.command_long_encode(
+        0, 0,    # target system, target component
+        mavutil.mavlink.MAV_CMD_CONDITION_YAW, # command
+        0,       # confirmation
+        angulo_graus, # param 1, yaw in degrees
+        0,       # param 2, yaw speed deg/s
+        1,       # param 3, direction -1 ccw, 1 cw
+        0,       # param 4, relative offset 1, absolute angle 0
+        0, 0, 0) # param 5 ~ 7 not used
+        
+    vehicle.send_mavlink(msg)
+    vehicle.flush()

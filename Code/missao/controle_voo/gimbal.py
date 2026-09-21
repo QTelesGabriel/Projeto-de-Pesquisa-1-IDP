@@ -17,10 +17,13 @@ def _limitar(valor, minimo, maximo):
 
 
 def apontar_gimbal_nadir(vehicle, yaw_deg=0.0):
-    """Mantem a camera em -90 graus e com yaw travado no referencial da Terra."""
+    """Mantem a camera em -90 graus, mas o Yaw acompanha o nariz do drone."""
     pitch_deg = _limitar(-90.0, PITCH_MIN_DEG, PITCH_MAX_DEG)
+    # Sem compensação: a câmera deve olhar perfeitamente para frente (0 graus relativo ao corpo)
     yaw_deg = _limitar(yaw_deg, YAW_MIN_DEG, YAW_MAX_DEG)
-    yaw_lock = mavutil.mavlink.GIMBAL_MANAGER_FLAGS_YAW_LOCK
+    # GIMBAL_MANAGER_FLAGS_ROLL_LOCK (4) + GIMBAL_MANAGER_FLAGS_PITCH_LOCK (8) = 12
+    # Isso trava o Pitch e o Roll no horizonte (estabilização), mas deixa o Yaw solto para acompanhar o drone
+    flags = 12
 
     mensagem = vehicle.message_factory.command_long_encode(
         0,
@@ -31,7 +34,7 @@ def apontar_gimbal_nadir(vehicle, yaw_deg=0.0):
         yaw_deg,
         math.nan,
         math.nan,
-        yaw_lock,
+        flags,
         0,
         0,
     )

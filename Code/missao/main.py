@@ -5,16 +5,17 @@ import collections.abc
 collections.MutableMapping = collections.abc.MutableMapping
 # ---------------------------------------------------------
 
-from dronekit import connect
+from dronekit import connect, VehicleMode
 import sys
 import time
 import rclpy
 import cv2
 import random
 
-from controle_voo.gimbal import apontar_gimbal_nadir
+# Importações dos módulos customizados
 from controle_voo.takeoff import arm_and_takeoff
-from controle_voo.movimento import ir_para_posicao_local, enviar_velocidade
+from controle_voo.gimbal import apontar_gimbal_nadir
+from controle_voo.movimento import ir_para_posicao_local, enviar_velocidade, girar_drone
 from visao.rastreador import RastreadorYOLO
 
 CONEXAO = 'udp:127.0.0.1:14550'
@@ -73,8 +74,18 @@ def main():
         # Dá 15 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
         time.sleep(15.0) 
         
-        print("[+] Posicionamento GPS concluído. Aguardando 15 segundos para estabilização do VANT...")
-        time.sleep(15.0)
+        # Rotaciona para provar que o Yaw visual da Fase 2 funciona
+        angulo_aleatorio = random.uniform(0, 360)
+        print(f"[+] Posicionamento concluído. Bagunçando o Yaw do drone para {angulo_aleatorio:.1f} graus...")
+        girar_drone(vehicle, angulo_aleatorio)
+        
+        tempo_espera = 20
+        print(f"[+] Aguardando {tempo_espera} segundos para estabilização da rotação...")
+        for i in range(tempo_espera, 0, -1):
+            sys.stdout.write(f"\rIniciando Fase 1 (Visual) em: {i} segundos... ")
+            sys.stdout.flush()
+            time.sleep(1.0)
+        print() # Quebra de linha após o contador
         
         print("[+] Voo estabilizado! Iniciando Inteligência Visual...")
         

@@ -167,10 +167,12 @@ class RastreadorYOLO(Node):
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            # Controlador PD operando sobre Metros Físicos (Não precisa de fator_altitude!)
-            # kp = 0.8 significa que 1 metro de erro vai gerar 0.8 m/s de velocidade
-            vel_x = (erro_x * self.kp + derivada_x * self.kd)
-            vel_y = (erro_y * self.kp + derivada_y * self.kd)
+            # O eixo Y da imagem (Cima/Baixo) controla o eixo X do Drone (Frente/Trás)
+            # Sinal invertido: Tela Y+ é para baixo, Drone X+ é para frente
+            vel_x = -(erro_y * self.kp + derivada_y * self.kd)
+            
+            # O eixo X da imagem (Esquerda/Direita) controla o eixo Y do Drone (Esquerda/Direita)
+            vel_y = (erro_x * self.kp + derivada_x * self.kd)
             
             # Limite de segurança para evitar movimentos muito agressivos
             max_vel = 1.5

@@ -10,4 +10,4 @@ names:
 
 # Formato dos Keypoints (Obrigatório para a Fase 2)
 # [4 pontos totais, 3 dimensões (X, Y, Visibilidade)]
-kpt_shape: [4, 3]
+kpt_shape: [3, 3]

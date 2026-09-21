@@ -19,7 +19,7 @@ class RastreadorFinoYOLO(Node):
         
         # 1. Carrega o modelo YOLO da Fase 2
         # ATENÇÃO: Atualize o nome da pasta do seu novo modelo aqui!
-        caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv11n_Pose_Armadilha', 'weights', 'best.pt')
+        caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv11n_Pose_Armadilha_TCC', 'weights', 'best.pt')
         self.get_logger().info(f"Carregando modelo YOLO FASE 2 de: {caminho_modelo}")
         self.yolo = YOLO(caminho_modelo)
         
@@ -39,7 +39,12 @@ class RastreadorFinoYOLO(Node):
         
         # 3. Geometria Física e Máquina de Estados (Passo 4 e 5)
         self.altura_gaiola = 0.36 # Altura exata extraída do STL
-        self.ponto_critico = 0.50 # Altitude RELATIVA em que inicia a Descida Cega (Blind Drop)
+        
+        # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
+        # Valores calculados pela ferramenta de calibração visual
+        self.offset_pct_x = -0.0113
+        self.offset_pct_y = 0.1543
+        
         self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
         
         self.erro_final_x = None
@@ -125,54 +130,54 @@ class RastreadorFinoYOLO(Node):
         cv2.line(cv_image, (int(self.cx) - 20, int(self.cy)), (int(self.cx) + 20, int(self.cy)), (255, 255, 255), 2)
         cv2.line(cv_image, (int(self.cx), int(self.cy) - 20), (int(self.cx), int(self.cy) + 20), (255, 255, 255), 2)
         
+        img_h, img_w = cv_image.shape[:2]
+        tocar_borda = False
+        
         if len(resultados[0].boxes) > 0:
-            # Desenha a Bounding Box inteira da armadilha
+            # 1. Analisa a Bounding Box (A gaiola inteira)
             x1, y1, x2, y2 = map(int, resultados[0].boxes[0].xyxy[0].cpu().numpy())
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), (255, 255, 0), 2)
             
-            # Extrai os Keypoints (Pose)
+            box_w = x2 - x1
+            box_h = y2 - y1
+            box_cx = x1 + box_w / 2.0
+            box_cy = y1 + box_h / 2.0
+            
+            cv2.circle(cv_image, (int(box_cx), int(box_cy)), 4, (255, 255, 0), -1) # Centro geométrico da BB
+            
+            # 2. Calcula o Alvo Virtual com Offset Proporcional
+            # offset_pct_x positivo = Direita, offset_pct_y positivo = Cima (Y negativo no pixel)
+            alvo_x = box_cx + (box_w * self.offset_pct_x)
+            alvo_y = box_cy - (box_h * self.offset_pct_y)
+            
+            centro_x, centro_y = alvo_x, alvo_y
+            cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 8, (0, 0, 255), -1)
+            cv2.putText(cv_image, "ALVO VIRTUAL", (int(alvo_x)+10, int(alvo_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+            
+            # 3. Verifica se a armadilha está tocando a borda da câmera (Transição para Ajuste Final)
+            # 15 pixels de tolerância para lidar com o "tremor" normal da Bounding Box do YOLO
+            margem = 15
+            if x1 <= margem or y1 <= margem or x2 >= (img_w - margem) or y2 >= (img_h - margem):
+                tocar_borda = True
+            
+            # 4. Extrai os Keypoints apenas para achar a Rotação (Modelo Retreinado com 3 pontos)
             if resultados[0].keypoints is not None:
                 kpts = resultados[0].keypoints.xy[0].cpu().numpy()
+                # Coleta até 3 pontos, preservando estritamente a ordem de anotação
+                pts_validos = [k for k in kpts[:3] if k[0] > 0 and k[1] > 0]
                 
-                # Se o modelo detectou os keypoints
-                if len(kpts) >= 4:
-                    # Filtra apenas pontos válidos (não ocluídos)
-                    pts_validos = [k for k in kpts[:4] if k[0] > 0 and k[1] > 0]
-                    
-                    if len(pts_validos) >= 2:
-                        # Inteligência Geométrica: O Alvo (Gancho) está sempre no centro físico da armadilha.
-                        # Logo, o ponto que estiver mais próximo do centroide geométrico de todos os pontos é o Alvo.
-                        cx_geo = sum([k[0] for k in pts_validos]) / len(pts_validos)
-                        cy_geo = sum([k[1] for k in pts_validos]) / len(pts_validos)
-                        
-                        idx_alvo = 0
-                        menor_dist = float('inf')
-                        for i, p in enumerate(pts_validos):
-                            dist = (p[0] - cx_geo)**2 + (p[1] - cy_geo)**2
-                            if dist < menor_dist:
-                                menor_dist = dist
-                                idx_alvo = i
-                                
-                        # Aloca o Alvo (Centro para Translação)
-                        px_alvo, py_alvo = pts_validos[idx_alvo]
-                        centro_x, centro_y = px_alvo, py_alvo
-                        cv2.circle(cv_image, (int(px_alvo), int(py_alvo)), 8, (0, 0, 255), -1)
-                        cv2.putText(cv_image, "ALVO", (int(px_alvo)+10, int(py_alvo)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
-                        
-                        # Aloca os demais pontos como Alças (Para Rotação Yaw)
-                        for i, p in enumerate(pts_validos):
-                            if i != idx_alvo:
-                                alcas.append((p[0], p[1]))
-                                cv2.circle(cv_image, (int(p[0]), int(p[1])), 6, (255, 0, 255), -1)
-                                cv2.putText(cv_image, "ALCA", (int(p[0])+10, int(p[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,255), 1)
+                for i, p in enumerate(pts_validos):
+                    alcas.append((p[0], p[1]))
+                    cv2.circle(cv_image, (int(p[0]), int(p[1])), 6, (255, 0, 255), -1)
+                    cv2.putText(cv_image, f"P{i}", (int(p[0])+10, int(p[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,255), 1)
         
-        # Converte pixel para metros (medida bruta)
+        # Converte o Alvo Virtual de pixel para metros (medida bruta)
         x_m_bruto, y_m_bruto = None, None
         if centro_x is not None and centro_y is not None:
             x_m_bruto = (centro_x - self.cx) * altitude_relativa / self.fx
             y_m_bruto = (centro_y - self.cy) * altitude_relativa / self.fy
             
-        # Filtro EKF (para limpar saltos e lidar com frames perdidos)
+        # Filtro EKF (Lidando com Jitter)
         if self.usar_filtro:
             erro_x, erro_y = self.filtro.atualizar(x_m_bruto, y_m_bruto, dt)
         else:
@@ -188,64 +193,83 @@ class RastreadorFinoYOLO(Node):
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            vel_x = (erro_x * self.kp + derivada_x * self.kd)
-            vel_y = (erro_y * self.kp + derivada_y * self.kd)
+            # O eixo Y da imagem (Cima/Baixo) controla o eixo X do Drone (Frente/Trás)
+            vel_x = -(erro_y * self.kp + derivada_y * self.kd)
+            
+            # O eixo X da imagem (Esquerda/Direita) controla o eixo Y do Drone (Esquerda/Direita)
+            vel_y = (erro_x * self.kp + derivada_x * self.kd)
             
             max_vel = 0.5
             vel_x = max(-max_vel, min(max_vel, vel_x))
             vel_y = max(-max_vel, min(max_vel, vel_y))
             
-            # PD para Rotação (Yaw Rate)
+            # PD para Rotação (Yaw Rate) baseado na geometria Isósceles
             yaw_rate = 0.0
-            menor_erro_yaw = float('inf')
             
-            if len(alcas) > 0 and centro_x is not None:
-                for alca in alcas:
-                    dx = alca[0] - centro_x
-                    dy = alca[1] - centro_y
-                    angulo_alca = math.atan2(dy, dx)
-                    
-                    # Erro: A câmera é um sistema inverso. Se queremos que a alça suba para o topo (-PI/2),
-                    # a conta correta para o Drone girar no sentido certo é (Atual - Alvo).
-                    erro_angular = angulo_alca - (-math.pi / 2.0)
-                    erro_angular = (erro_angular + math.pi) % (2 * math.pi) - math.pi
-                    
-                    if abs(erro_angular) < abs(menor_erro_yaw):
-                        menor_erro_yaw = erro_angular
-                        
-                if menor_erro_yaw != float('inf'):
-                    derivada_yaw = (menor_erro_yaw - self.erro_yaw_anterior) / dt
-                    self.erro_yaw_anterior = menor_erro_yaw
-                    
-                    yaw_rate = menor_erro_yaw * self.kp_yaw + derivada_yaw * self.kd_yaw
-                    max_yaw = 0.5
-                    yaw_rate = max(-max_yaw, min(max_yaw, yaw_rate))
+            # Se as 3 alças do modelo retreinado forem vistas
+            if len(alcas) == 3:
+                # O usuário determinou a ordem no dataset:
+                # Ponto 0 e Ponto 2 são as alças mais distantes (a base do triângulo)
+                # Ponto 1 é a alça inferior (a ponta do triângulo)
+                
+                mid_x = (alcas[0][0] + alcas[2][0]) / 2.0
+                mid_y = (alcas[0][1] + alcas[2][1]) / 2.0
+                
+                # Vetor do meio da base apontando para a ponta (Ponto 1)
+                dx = alcas[1][0] - mid_x
+                dy = alcas[1][1] - mid_y
+                angulo_atual = math.atan2(dy, dx)
+                
+                # Objetivo: Esse vetor deve apontar para a ESQUERDA (Base na direita, ponta na esquerda).
+                # No OpenCV, apontar para a Esquerda (X negativo) é um ângulo de PI radianos (180 graus).
+                angulo_alvo = math.pi
+                
+                # Cálculo do menor caminho rotacional
+                erro_angular = angulo_atual - angulo_alvo
+                erro_angular = (erro_angular + math.pi) % (2 * math.pi) - math.pi
+                
+                derivada_yaw = (erro_angular - self.erro_yaw_anterior) / dt
+                self.erro_yaw_anterior = erro_angular
+                
+                yaw_rate = erro_angular * self.kp_yaw + derivada_yaw * self.kd_yaw
+                max_yaw = 0.5
+                yaw_rate = max(-max_yaw, min(max_yaw, yaw_rate))
+                
+                menor_erro_yaw = erro_angular
             else:
-                menor_erro_yaw = self.erro_yaw_anterior # Mantém a memória para o teste abaixo
+                menor_erro_yaw = self.erro_yaw_anterior
             
-            # --- LÓGICA DE TRANSIÇÃO PARA BLIND DROP ---
+            # --- LÓGICA DE TRANSIÇÃO PARA BLIND DROP (BORDA DA TELA) ---
             erro_xy_atual = (erro_x**2 + erro_y**2)**0.5
             
-            if altitude_relativa <= self.ponto_critico:
-                # O drone só aciona a queda cega se estiver PERFEITAMENTE alinhado e TENDO VISTO o alvo neste frame
-                if erro_xy_atual < 0.03 and abs(menor_erro_yaw) < 0.08 and centro_x is not None: 
+            if tocar_borda:
+                # Como a IA perde precisão dos pontos de perto, TRAVAMOS o Yaw e ajustamos só X/Y
+                yaw_rate = 0.0
+                
+                # MOMENTO 2: Trava de Ajuste Final na Borda (Antes do Blind Drop)
+                # O drone só aciona a queda cega se X/Y estiverem alinhados (Ignora o Yaw aqui)
+                if erro_xy_atual < 0.05 and centro_x is not None: 
                     self.iniciou_blind_drop = True
-                    self.get_logger().info("ALINHAMENTO PERFEITO ATINGIDO! Iniciando Blind Drop.")
+                    self.get_logger().info("BORDA ATINGIDA E X/Y ALINHADO! Iniciando Blind Drop.")
                     return # Próximo frame fará a queda cega
                 else:
-                    # Trava a altitude (hover) para terminar de alinhar
+                    # Trava a altitude (hover) para terminar o pente-fino de X/Y
                     vel_z = 0.0
-                    texto_status = "HOVER: ALINHAMENTO FINAL PRE-DROP"
+                    texto_status = "MOMENTO 2: ALINHAMENTO X/Y (YAW TRAVADO)"
                     cor_status = (0, 255, 255) # Amarelo de alerta
             else:
-                # Acima do ponto crítico, a histerese de descida normal opera
-                if erro_xy_atual < 0.12:
+                # MOMENTO 1: Trava de Alinhamento Inicial
+                # O drone SÓ desce depois que conseguir um bom alinhamento de Yaw e X/Y
+                if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.13:
                     vel_z = 0.2
-                    texto_status = "ALINHAMENTO 3D ATIVO + DESCENDO"
+                    # Trava a rotação! Uma vez que começou a descer, só ajusta X e Y
+                    yaw_rate = 0.0
+                    texto_status = "DESCENDO (YAW TRAVADO)..."
                     cor_status = (0, 255, 0)
                 else:
+                    # Trava a altitude (hover) enquanto briga com o giro inicial e o alinhamento
                     vel_z = 0.0
-                    texto_status = "ALINHANDO XY e YAW..."
+                    texto_status = "MOMENTO 1: ALINHANDO TUDO..."
                     cor_status = (0, 165, 255)
             
             enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z, yaw_rate)

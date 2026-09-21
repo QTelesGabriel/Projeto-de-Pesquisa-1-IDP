@@ -4,7 +4,10 @@ yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=100 imgsz=640
 yolo task=detect mode=train model=yolo11n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv11n_Armadilha_TCC degrees=180.0
 
 
- v8n
+yolo pose train data=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset/data.yaml model=yolo11n-pose.pt epochs=300 imgsz=640 degrees=180.0 project=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA name=YOLOv11n_Pose_Armadilha
+
+
+v8n
 
 
 epoch,time,train/box_loss,train/cls_loss,train/dfl_loss,metrics/precision(B),metrics/recall(B),metrics/mAP50(B),metrics/mAP50-95(B),val/box_loss,val/cls_loss,val/dfl_loss,lr/pg0,lr/pg1,lr/pg2
@@ -20,3 +23,5 @@ epoch,time,train/box_loss,train/cls_loss,train/dfl_loss,metrics/precision(B),met
 
 
 100,4076.01,0.69959,0.33046,0.78383,0.98996,1,0.99486,0.79461,0.74373,0.32442,0.71632,3.98e-05,3.98e-05,3.98e-05 
+
+
