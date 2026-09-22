@@ -10,8 +10,8 @@ IMAGES_DIR = "dataset/imagens"
 LABELS_DIR = "dataset/labels"
 CLASS_ID = 0
 
-# QUANTOS PONTOS A SUA ARMADILHA VAI TER? (Ex: 4 cantos superiores)
-NUM_KEYPOINTS = 4 
+# QUANTOS PONTOS A SUA ARMADILHA VAI TER? (As 3 alças)
+NUM_KEYPOINTS = 3 
 
 os.makedirs(LABELS_DIR, exist_ok=True)
 
@@ -51,9 +51,8 @@ print(f"Total de imagens encontradas: {len(image_paths)}")
 print("-" * 50)
 print("INSTRUÇÕES DE USO (YOLO-POSE):")
 print("1. Desenhe a caixa inteira da armadilha e aperte ENTER.")
-print(f"2. A imagem vai congelar com o Centro Automático (Azul).")
-print("   - Se o centro estiver ERRADO, aperte a tecla 'Z' para apagar e clique manualmente.")
-print(f"   - Registre as {NUM_KEYPOINTS - 1} alças:")
+print(f"2. A imagem vai congelar. Clique nas {NUM_KEYPOINTS} alças:")
+print("   - ORDEM: P0 (Base Esq), P1 (Ponta), P2 (Base Dir) ou conforme sua convenção!")
 print("     > BOTÃO ESQUERDO: Clica na alça (Se visível).")
 print("     > BOTÃO DIREITO: Alça invisível (Se fora da tela).")
 print("3. Quando acabar os cliques, aperte ENTER para a próxima foto.")
@@ -93,12 +92,6 @@ for i, image_path in enumerate(image_paths):
         # Passo 2: O usuário clica os Keypoints
         keypoints_clicked = []
         
-        # --- PONTO CENTRAL AUTOMÁTICO (DA CÂMERA) ---
-        centro_camera_x = int(img_w / 2.0)
-        centro_camera_y = int(img_h / 2.0)
-        # Injeta o centro como Ponto 1 automático
-        keypoints_clicked.append((centro_camera_x, centro_camera_y, 2.0))
-        
         cv2.setMouseCallback("Rotulagem Pose", mouse_callback)
         redraw_needed = True
         
@@ -110,15 +103,11 @@ for i, image_path in enumerate(image_paths):
                 
                 for idx, (px, py, v) in enumerate(keypoints_clicked):
                     if v == 2.0:
-                        # Pinta o 1º Ponto (Centro) de Azul, e os demais de Vermelho
-                        cor = (255, 0, 0) if idx == 0 else (0, 0, 255)
-                        cv2.circle(tela, (px, py), 6, cor, -1)
+                        cv2.circle(tela, (px, py), 6, (0, 0, 255), -1)
                         
                 faltam = NUM_KEYPOINTS - len(keypoints_clicked)
                 if faltam > 0:
                     cv2.putText(tela, f"Faltam {faltam}. Esq=Visivel | Dir=Ausente | Z=Desfazer", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-                    if len(keypoints_clicked) == 1:
-                        cv2.putText(tela, "Centro automatico OK. Aperte Z se quiser apagar e refazer.", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1)
                 else:
                     cv2.putText(tela, "Pontos OK! Aperte ENTER ou ESPACO.", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 
@@ -145,8 +134,7 @@ for i, image_path in enumerate(image_paths):
         # Desenha na imagem de fundo para feedback visual final
         for idx, (px, py, v) in enumerate(keypoints_clicked):
             if v == 2.0:
-                cor = (255, 0, 0) if idx == 0 else (0, 0, 255)
-                cv2.circle(image, (px, py), 5, cor, -1)
+                cv2.circle(image, (px, py), 5, (0, 0, 255), -1)
         cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     # ==========================

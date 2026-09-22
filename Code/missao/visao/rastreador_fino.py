@@ -42,14 +42,19 @@ class RastreadorFinoYOLO(Node):
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
         # Valores calculados pela ferramenta de calibração visual
-        self.offset_pct_x = -0.0113
-        self.offset_pct_y = 0.1543
+        self.offset_pct_x = 0.0269
+        self.offset_pct_y = 0.2216
         
         self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
         
         self.erro_final_x = None
         self.erro_final_y = None
         self.iniciou_blind_drop = False
+        
+        # Variáveis da Máquina de Estados de Descida
+        self.rotacao_concluida = False
+        self.tempo_alinhamento_ok = None
+        self.tempo_borda_ok = None
         
         # Filtro EKF para limpar ruídos da visão a curta distância
         try:
@@ -82,7 +87,7 @@ class RastreadorFinoYOLO(Node):
         tempo_atual = time.time()
         if self.ultimo_tempo is not None:
             if (tempo_atual - self.ultimo_tempo) < 0.05:
-                return # Limita a ~20 FPS
+                return # Limita a ~20 FPS (Exigência física/visual do sistema)
             dt = tempo_atual - self.ultimo_tempo
         else:
             dt = 0.05
@@ -220,9 +225,9 @@ class RastreadorFinoYOLO(Node):
                 dy = alcas[1][1] - mid_y
                 angulo_atual = math.atan2(dy, dx)
                 
-                # Objetivo: Esse vetor deve apontar para a ESQUERDA (Base na direita, ponta na esquerda).
-                # No OpenCV, apontar para a Esquerda (X negativo) é um ângulo de PI radianos (180 graus).
-                angulo_alvo = math.pi
+                # Objetivo: Esse vetor deve apontar para a DIREITA (Base na esquerda, ponta na direita).
+                # No OpenCV, apontar para a Direita (X positivo) é um ângulo de 0.0 radianos.
+                angulo_alvo = 0.0
                 
                 # Cálculo do menor caminho rotacional
                 erro_angular = angulo_atual - angulo_alvo
@@ -243,33 +248,57 @@ class RastreadorFinoYOLO(Node):
             erro_xy_atual = (erro_x**2 + erro_y**2)**0.5
             
             if tocar_borda:
+                agora = time.time()
+                
                 # Como a IA perde precisão dos pontos de perto, TRAVAMOS o Yaw e ajustamos só X/Y
                 yaw_rate = 0.0
                 
                 # MOMENTO 2: Trava de Ajuste Final na Borda (Antes do Blind Drop)
-                # O drone só aciona a queda cega se X/Y estiverem alinhados (Ignora o Yaw aqui)
-                if erro_xy_atual < 0.05 and centro_x is not None: 
-                    self.iniciou_blind_drop = True
-                    self.get_logger().info("BORDA ATINGIDA E X/Y ALINHADO! Iniciando Blind Drop.")
-                    return # Próximo frame fará a queda cega
+                # O drone só aciona a queda cega se X/Y estiverem MUITO alinhados (< 3cm) por 1 segundo inteiro
+                if erro_xy_atual < 0.03 and centro_x is not None:
+                    if self.tempo_borda_ok is None:
+                        self.tempo_borda_ok = agora
+                    elif agora - self.tempo_borda_ok >= 1.0:
+                        self.iniciou_blind_drop = True
+                        self.get_logger().info("BORDA ATINGIDA E X/Y ALINHADO (1s)! Iniciando Blind Drop.")
+                        return # Próximo frame fará a queda cega
                 else:
-                    # Trava a altitude (hover) para terminar o pente-fino de X/Y
-                    vel_z = 0.0
-                    texto_status = "MOMENTO 2: ALINHAMENTO X/Y (YAW TRAVADO)"
-                    cor_status = (0, 255, 255) # Amarelo de alerta
+                    self.tempo_borda_ok = None
+                
+                # Trava a altitude (hover) para terminar o pente-fino de X/Y
+                vel_z = 0.0
+                if self.tempo_borda_ok is not None:
+                    texto_status = "MOMENTO 2: CRAVANDO ALVO... (Aguarde 1s)"
+                else:
+                    texto_status = "MOMENTO 2: BUSCANDO ALVO X/Y (YAW TRAVADO)"
+                cor_status = (0, 255, 255) # Amarelo de alerta
             else:
+                agora = time.time()
+                
                 # MOMENTO 1: Trava de Alinhamento Inicial
                 # O drone SÓ desce depois que conseguir um bom alinhamento de Yaw e X/Y
-                if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.13:
+                if not self.rotacao_concluida:
+                    if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.13:
+                        if self.tempo_alinhamento_ok is None:
+                            self.tempo_alinhamento_ok = agora
+                        elif agora - self.tempo_alinhamento_ok >= 1.0:
+                            # Ficou 1 segundo perfeito! Trava a rotação permanentemente
+                            self.rotacao_concluida = True
+                            self.get_logger().info("ROTAÇÃO TRAVADA! Iniciando descida.")
+                    else:
+                        # Se perder o alinhamento antes de 1 segundo, zera o contador
+                        self.tempo_alinhamento_ok = None
+                
+                if self.rotacao_concluida:
                     vel_z = 0.2
-                    # Trava a rotação! Uma vez que começou a descer, só ajusta X e Y
+                    # Trava a rotação PERMANENTEMENTE para o resto do voo
                     yaw_rate = 0.0
                     texto_status = "DESCENDO (YAW TRAVADO)..."
                     cor_status = (0, 255, 0)
                 else:
                     # Trava a altitude (hover) enquanto briga com o giro inicial e o alinhamento
                     vel_z = 0.0
-                    texto_status = "MOMENTO 1: ALINHANDO TUDO..."
+                    texto_status = "MOMENTO 1: ALINHANDO (Aguarde 1s)..."
                     cor_status = (0, 165, 255)
             
             enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z, yaw_rate)
@@ -277,6 +306,7 @@ class RastreadorFinoYOLO(Node):
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
             texto_status = "ALVO PERDIDO (Filtro Aguardando)"
             cor_status = (0, 0, 255)
+            self.tempo_alinhamento_ok = None
             
         cv2.putText(cv_image, f"Alt Rel: {altitude_relativa:.2f}m | {texto_status}", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, cor_status, 2)

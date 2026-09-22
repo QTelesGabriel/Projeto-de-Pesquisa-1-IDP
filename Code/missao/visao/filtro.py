@@ -43,7 +43,7 @@ class FiltroAlvoEKF:
         
         # Timeout para evitar predições fantasmas longas (Latência aceitável)
         self.tempo_sem_medicao = 0.0
-        self.timeout_limite = 1.5  # Segundos
+        self.timeout_limite = 4.0  # Segundos (Aumentado para segurar predição por mais tempo sem YOLO)
 
     def atualizar(self, z_x, z_y, dt):
         """
