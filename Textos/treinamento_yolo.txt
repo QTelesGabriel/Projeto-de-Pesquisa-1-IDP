@@ -4,7 +4,7 @@ yolo task=detect mode=train model=yolov8n.pt data=data.yaml epochs=100 imgsz=640
 yolo task=detect mode=train model=yolo11n.pt data=data.yaml epochs=100 imgsz=640 batch=8 project=Modelos_Treinados name=YOLOv11n_Armadilha_TCC degrees=180.0
 
 
-yolo pose train data=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset/data.yaml model=yolo11n-pose.pt epochs=300 imgsz=640 degrees=180.0 project=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA name=YOLOv11n_Pose_Armadilha
+yolo pose train batch=8 data=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset/data.yaml model=yolo11n-pose.pt epochs=300 imgsz=640 degrees=180.0 project=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA name=YOLOv11n_Pose_Armadilha_TCC
 
 
 v8n
