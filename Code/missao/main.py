@@ -49,9 +49,10 @@ def main():
     try:
         print("[+] Conexão bem-sucedida! Iniciando missão...")
 
-        # 1. Aponta câmera para baixo
-        print("[+] Estabilizando o gimbal em nadir...")
-        apontar_gimbal_nadir(vehicle)
+        # 1. Aponta câmera para baixo e VIRA ELA 90 GRAUS PARA A ESQUERDA (-90)
+        # Isso garante que desde a Fase 1 o drone vai voar com o chassi 90º rotacionado à direita
+        print("[+] Estabilizando o gimbal em nadir (Rotacionado -90 graus)...")
+        apontar_gimbal_nadir(vehicle, yaw_deg=-90.0)
         
         # 2. Decolagem
         altitude_inicial = 20.0
@@ -71,8 +72,8 @@ def main():
         print(f"[+] Navegando para as coordenadas aproximadas da armadilha (Gazebo X={alvo_gazebo_x:.2f}, Y={alvo_gazebo_y:.2f})...")
         ir_para_posicao_local(vehicle, frente_x=frente_norte, direita_y=direita_leste, baixo_z=-altitude_inicial)
         
-        # Dá 15 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
-        time.sleep(15.0) 
+        # Dá 20 segundos para o drone voar esses ~50 metros fisicamente no Gazebo
+        time.sleep(20.0) 
         
         # Rotaciona para provar que o Yaw visual da Fase 2 funciona
         angulo_aleatorio = random.uniform(0, 360)

@@ -18,15 +18,13 @@ class RastreadorYOLO(Node):
         self.bridge = CvBridge()
         
         # 1. Carrega o modelo YOLOv11n
-        # Como o rastreador.py está em Code/missao/visao/, precisamos subir dois níveis ('..', '..') para chegar em Code/
         caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv11n_Armadilha_TCC', 'weights', 'best.pt')
         self.get_logger().info(f"Carregando modelo YOLO de: {caminho_modelo}")
         self.yolo = YOLO(caminho_modelo)
         
         # 2. Configurações de Controle (Controlador PD em Cascata)
-        # Mantendo a arquitetura PD conforme citado na sua introdução acadêmica.
-        # Kp reduzido para 0.4 (evita chegar muito rápido) e Kd ajustado para 0.01
-        # para agir como um compensador de latência visual extremamente fino.
+        # Kp com valor 0.4 (evita chegar muito rápido)
+        # Kd com valor de 0.01 para agir como um compensador de latência visual extremamente fino.
         self.kp = 0.4  
         self.kd = 0.01 
         
@@ -37,22 +35,22 @@ class RastreadorYOLO(Node):
         
         self.zona_segura = 0.4  # 40% do centro da tela (Retângulo interno)
         self.limite_fuga = 0.6  # 60% do centro da tela (Retângulo externo / histerese)
-        self.velocidade_descida = 1.5  # m/s (Triplicado! Descida macro muito mais rápida)
+        self.velocidade_descida = 1.5  # m/s
         
         # 3. Configurações do Filtro EKF
-        # DESLIGADO TEMPORARIAMENTE para isolar a causa da tremedeira
         self.usar_filtro = True
         if self.usar_filtro:
             from visao.filtro import FiltroAlvoEKF
             self.filtro = FiltroAlvoEKF(dt_inicial=0.1)
             
-        # Parâmetros intrínsecos dinâmicos da câmera (Iniciados com valores default, mas atualizados pelo ROS2)
+        # Parâmetros intrínsecos dinâmicos da câmera 
+        # Esses valores são iniciados com valores padrão da SIYI A8 mini, mas atualizados pelo ROS2
         self.fx = 1124.0
         self.fy = 1124.0
         self.cx = 960.0
         self.cy = 540.0
         
-        # 3. Inscreve no tópico da câmera do Gazebo
+        # 4. Inscreve no tópico da câmera do Gazebo
         self.subscription = self.create_subscription(
             Image, '/camera/image', self.image_callback, 10
         )
@@ -167,12 +165,12 @@ class RastreadorYOLO(Node):
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            # O eixo Y da imagem (Cima/Baixo) controla o eixo X do Drone (Frente/Trás)
-            # Sinal invertido: Tela Y+ é para baixo, Drone X+ é para frente
-            vel_x = -(erro_y * self.kp + derivada_y * self.kd)
+            # Câmera apontando pela asa ESQUERDA (Gimbal -90):
+            # Erro X da imagem (Esquerda/Direita) controla o eixo X do Drone (Frente/Trás)
+            vel_x = (erro_x * self.kp + derivada_x * self.kd)
             
-            # O eixo X da imagem (Esquerda/Direita) controla o eixo Y do Drone (Esquerda/Direita)
-            vel_y = (erro_x * self.kp + derivada_x * self.kd)
+            # Erro Y da imagem (Cima/Baixo) controla o eixo Y do Drone (Lados)
+            vel_y = (erro_y * self.kp + derivada_y * self.kd)
             
             # Limite de segurança para evitar movimentos muito agressivos
             max_vel = 1.5

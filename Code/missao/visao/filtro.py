@@ -92,5 +92,80 @@ class FiltroAlvoEKF:
         # Retorna apenas as coordenadas x e y limpas
         x_limpo = float(self.kf.x[0, 0])
         y_limpo = float(self.kf.x[1, 0])
-        
         return x_limpo, y_limpo
+
+import math
+
+class FiltroAnguloEKF:
+    def __init__(self, dt_inicial=0.1):
+        """
+        Inicializa o Filtro de Kalman para 1 Dimensão (Ângulo).
+        Estado X: [theta, omega] (ângulo, velocidade angular)
+        Medição Z: [theta]
+        """
+        self.kf = KalmanFilter(dim_x=2, dim_z=1)
+        
+        self.kf.x = np.array([[0.0], [0.0]])
+        self.kf.P *= 1000.0
+        
+        ruido_yolo_pose = 0.5 
+        self.kf.R = np.array([[ruido_yolo_pose]])
+                               
+        self.kf.Q = np.array([
+            [0.01, 0.0],
+            [0.0, 0.1]
+        ]) 
+        
+        self.kf.H = np.array([[1.0, 0.0]])
+        
+        self.iniciado = False
+        self.dt_anterior = dt_inicial
+        
+        self.tempo_sem_medicao = 0.0
+        self.timeout_limite = 4.0
+
+    def atualizar(self, z_theta, dt):
+        if dt <= 0:
+            dt = self.dt_anterior
+
+        if not self.iniciado:
+            if z_theta is not None:
+                self.kf.x = np.array([[z_theta], [0.0]])
+                self.iniciado = True
+            return z_theta
+
+        self.kf.F = np.array([
+            [1.0, dt],
+            [0.0, 1.0]
+        ])
+
+        if z_theta is not None:
+            # Precisamos tratar o wrap-around (salto brusco) do ângulo!
+            # Se o ângulo pulou de -3.14 para +3.14, o erro cruza a fronteira.
+            # Então, vamos corrigir a medição Z para ficar perto do estado atual.
+            estado_theta_atual = self.kf.x[0, 0]
+            diferenca = z_theta - estado_theta_atual
+            # Normaliza a diferença para o intervalo [-PI, PI]
+            diferenca = (diferenca + np.pi) % (2 * np.pi) - np.pi
+            
+            # Z corrigido é o estado atual + a menor diferença física
+            z_corrigido = estado_theta_atual + diferenca
+
+            self.tempo_sem_medicao = 0.0
+            self.kf.predict()
+            self.kf.update(np.array([[z_corrigido]]))
+        else:
+            self.tempo_sem_medicao += dt
+            if self.tempo_sem_medicao > self.timeout_limite:
+                self.iniciado = False
+                return None
+            self.kf.predict()
+
+        self.dt_anterior = dt
+        x_pred = self.kf.x
+        
+        # Normaliza o ângulo de saída filtrado para [-PI, PI]
+        theta_filtrado = x_pred[0, 0]
+        theta_filtrado = (theta_filtrado + np.pi) % (2 * np.pi) - np.pi
+        
+        return float(theta_filtrado)

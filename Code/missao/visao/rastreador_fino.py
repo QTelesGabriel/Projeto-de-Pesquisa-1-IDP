@@ -10,6 +10,7 @@ import math
 from ultralytics import YOLO
 
 from controle_voo.movimento import enviar_velocidade
+from controle_voo.gimbal import apontar_gimbal_nadir
 
 class RastreadorFinoYOLO(Node):
     def __init__(self, vehicle):
@@ -42,8 +43,8 @@ class RastreadorFinoYOLO(Node):
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
         # Valores calculados pela ferramenta de calibração visual
-        self.offset_pct_x = 0.0269
-        self.offset_pct_y = 0.2216
+        self.offset_pct_x = 0.0135
+        self.offset_pct_y = 0.1804
         
         self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
         
@@ -58,8 +59,12 @@ class RastreadorFinoYOLO(Node):
         
         # Filtro EKF para limpar ruídos da visão a curta distância
         try:
-            from visao.filtro import FiltroAlvoEKF
+            from visao.filtro import FiltroAlvoEKF, FiltroAnguloEKF
             self.filtro = FiltroAlvoEKF(dt_inicial=0.1)
+            self.filtro_p0 = FiltroAlvoEKF(dt_inicial=0.1)
+            self.filtro_p1 = FiltroAlvoEKF(dt_inicial=0.1)
+            self.filtro_p2 = FiltroAlvoEKF(dt_inicial=0.1)
+            self.filtro_angulo = FiltroAnguloEKF(dt_inicial=0.1)
             self.usar_filtro = True
         except ImportError:
             self.usar_filtro = False
@@ -171,9 +176,30 @@ class RastreadorFinoYOLO(Node):
                 # Coleta até 3 pontos, preservando estritamente a ordem de anotação
                 pts_validos = [k for k in kpts[:3] if k[0] > 0 and k[1] > 0]
                 
+                filtros_pts = [self.filtro_p0, self.filtro_p1, self.filtro_p2]
+                
                 for i, p in enumerate(pts_validos):
-                    alcas.append((p[0], p[1]))
-                    cv2.circle(cv_image, (int(p[0]), int(p[1])), 6, (255, 0, 255), -1)
+                    px, py = p[0], p[1]
+                    
+                    if self.usar_filtro:
+                        # Converte para metros para a matriz do Kalman funcionar
+                        x_m_kpt = (px - self.cx) * altitude_relativa / self.fx
+                        y_m_kpt = (py - self.cy) * altitude_relativa / self.fy
+                        
+                        f_x, f_y = filtros_pts[i].atualizar(x_m_kpt, y_m_kpt, dt)
+                        
+                        if f_x is not None and f_y is not None:
+                            # Converte de volta para pixel
+                            px = (f_x * self.fx / altitude_relativa) + self.cx
+                            py = (f_y * self.fy / altitude_relativa) + self.cy
+                            
+                            # Desenha a bolinha Ciano mostrando onde está o ponto filtrado
+                            cv2.circle(cv_image, (int(px), int(py)), 6, (255, 255, 0), -1)
+                            cv2.putText(cv_image, f"F_P{i}", (int(px)+10, int(py)+15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,255,0), 1)
+                    
+                    alcas.append((px, py))
+                    # Desenha a bolinha Magenta original (bruta)
+                    cv2.circle(cv_image, (int(p[0]), int(p[1])), 4, (255, 0, 255), -1)
                     cv2.putText(cv_image, f"P{i}", (int(p[0])+10, int(p[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255,0,255), 1)
         
         # Converte o Alvo Virtual de pixel para metros (medida bruta)
@@ -185,6 +211,13 @@ class RastreadorFinoYOLO(Node):
         # Filtro EKF (Lidando com Jitter)
         if self.usar_filtro:
             erro_x, erro_y = self.filtro.atualizar(x_m_bruto, y_m_bruto, dt)
+            if erro_x is not None and erro_y is not None:
+                # Projeta o alvo 3D filtrado de volta para Pixel (2D) para mostrar na tela
+                pixel_x_filtrado = int((erro_x * self.fx / altitude_relativa) + self.cx)
+                pixel_y_filtrado = int((erro_y * self.fy / altitude_relativa) + self.cy)
+                # Bolinha Azul Clara para o Alvo Filtrado
+                cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 6, (255, 255, 0), -1)
+                cv2.putText(cv_image, "FILTRADO", (pixel_x_filtrado+10, pixel_y_filtrado), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         else:
             erro_x, erro_y = x_m_bruto, y_m_bruto
             
@@ -198,11 +231,12 @@ class RastreadorFinoYOLO(Node):
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            # O eixo Y da imagem (Cima/Baixo) controla o eixo X do Drone (Frente/Trás)
-            vel_x = -(erro_y * self.kp + derivada_y * self.kd)
+            # Câmera apontando pela asa ESQUERDA (Gimbal -90):
+            # Erro X da imagem (Esquerda/Direita) controla o eixo X do Drone (Frente/Trás)
+            vel_x = (erro_x * self.kp + derivada_x * self.kd)
             
-            # O eixo X da imagem (Esquerda/Direita) controla o eixo Y do Drone (Esquerda/Direita)
-            vel_y = (erro_x * self.kp + derivada_x * self.kd)
+            # Erro Y da imagem (Cima/Baixo) controla o eixo Y do Drone (Lados)
+            vel_y = (erro_y * self.kp + derivada_y * self.kd)
             
             max_vel = 0.5
             vel_x = max(-max_vel, min(max_vel, vel_x))
@@ -223,11 +257,20 @@ class RastreadorFinoYOLO(Node):
                 # Vetor do meio da base apontando para a ponta (Ponto 1)
                 dx = alcas[1][0] - mid_x
                 dy = alcas[1][1] - mid_y
-                angulo_atual = math.atan2(dy, dx)
+                angulo_atual_bruto = math.atan2(dy, dx)
                 
-                # Objetivo: Esse vetor deve apontar para a DIREITA (Base na esquerda, ponta na direita).
-                # No OpenCV, apontar para a Direita (X positivo) é um ângulo de 0.0 radianos.
-                angulo_alvo = 0.0
+                if self.usar_filtro:
+                    angulo_atual = self.filtro_angulo.atualizar(angulo_atual_bruto, dt)
+                else:
+                    angulo_atual = angulo_atual_bruto
+                
+                # Se o filtro desarmou por falta de medição
+                if angulo_atual is None:
+                    angulo_atual = angulo_atual_bruto
+                
+                # Objetivo: Esse vetor deve apontar para BAIXO (Base em cima, ponta embaixo).
+                # No OpenCV, apontar para Baixo (Y positivo) é um ângulo de PI/2 radianos (90 graus).
+                angulo_alvo = math.pi / 2
                 
                 # Cálculo do menor caminho rotacional
                 erro_angular = angulo_atual - angulo_alvo
@@ -250,17 +293,15 @@ class RastreadorFinoYOLO(Node):
             if tocar_borda:
                 agora = time.time()
                 
-                # Como a IA perde precisão dos pontos de perto, TRAVAMOS o Yaw e ajustamos só X/Y
-                yaw_rate = 0.0
-                
                 # MOMENTO 2: Trava de Ajuste Final na Borda (Antes do Blind Drop)
-                # O drone só aciona a queda cega se X/Y estiverem MUITO alinhados (< 3cm) por 1 segundo inteiro
-                if erro_xy_atual < 0.03 and centro_x is not None:
+                # Agora o Yaw não está mais travado! Graças ao filtro de Kalman, podemos corrigir o ângulo aqui.
+                # O drone só aciona a queda cega se X/Y (< 1cm) E Yaw (< 3 graus) estiverem cravados por 5 segundos inteiros.
+                if erro_xy_atual < 0.01 and abs(menor_erro_yaw) < 0.05 and centro_x is not None:
                     if self.tempo_borda_ok is None:
                         self.tempo_borda_ok = agora
-                    elif agora - self.tempo_borda_ok >= 1.0:
+                    elif agora - self.tempo_borda_ok >= 5.0:
                         self.iniciou_blind_drop = True
-                        self.get_logger().info("BORDA ATINGIDA E X/Y ALINHADO (1s)! Iniciando Blind Drop.")
+                        self.get_logger().info("BORDA ATINGIDA, X/Y E YAW ZERADOS (5s)! Iniciando Blind Drop.")
                         return # Próximo frame fará a queda cega
                 else:
                     self.tempo_borda_ok = None
@@ -268,9 +309,9 @@ class RastreadorFinoYOLO(Node):
                 # Trava a altitude (hover) para terminar o pente-fino de X/Y
                 vel_z = 0.0
                 if self.tempo_borda_ok is not None:
-                    texto_status = "MOMENTO 2: CRAVANDO ALVO... (Aguarde 1s)"
+                    texto_status = "MOMENTO 2: CRAVANDO ALVO ZERO... (5s)"
                 else:
-                    texto_status = "MOMENTO 2: BUSCANDO ALVO X/Y (YAW TRAVADO)"
+                    texto_status = "MOMENTO 2: ZERANDO ALVO E YAW (5s)"
                 cor_status = (0, 255, 255) # Amarelo de alerta
             else:
                 agora = time.time()
@@ -278,7 +319,7 @@ class RastreadorFinoYOLO(Node):
                 # MOMENTO 1: Trava de Alinhamento Inicial
                 # O drone SÓ desce depois que conseguir um bom alinhamento de Yaw e X/Y
                 if not self.rotacao_concluida:
-                    if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.13:
+                    if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.05:
                         if self.tempo_alinhamento_ok is None:
                             self.tempo_alinhamento_ok = agora
                         elif agora - self.tempo_alinhamento_ok >= 1.0:
@@ -291,9 +332,7 @@ class RastreadorFinoYOLO(Node):
                 
                 if self.rotacao_concluida:
                     vel_z = 0.2
-                    # Trava a rotação PERMANENTEMENTE para o resto do voo
-                    yaw_rate = 0.0
-                    texto_status = "DESCENDO (YAW TRAVADO)..."
+                    texto_status = "DESCENDO E ALINHANDO..."
                     cor_status = (0, 255, 0)
                 else:
                     # Trava a altitude (hover) enquanto briga com o giro inicial e o alinhamento
