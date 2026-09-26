@@ -43,8 +43,8 @@ class RastreadorFinoYOLO(Node):
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
         # Valores calculados pela ferramenta de calibração visual
-        self.offset_pct_x = 0.0135
-        self.offset_pct_y = 0.1804
+        self.offset_pct_x = -0.0083
+        self.offset_pct_y = 0.1916
         
         self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
         
@@ -295,13 +295,13 @@ class RastreadorFinoYOLO(Node):
                 
                 # MOMENTO 2: Trava de Ajuste Final na Borda (Antes do Blind Drop)
                 # Agora o Yaw não está mais travado! Graças ao filtro de Kalman, podemos corrigir o ângulo aqui.
-                # O drone só aciona a queda cega se X/Y (< 1cm) E Yaw (< 3 graus) estiverem cravados por 5 segundos inteiros.
-                if erro_xy_atual < 0.01 and abs(menor_erro_yaw) < 0.05 and centro_x is not None:
+                # O drone só aciona a queda cega se X/Y (<= 0.1cm) estiver cravado por 5 segundos inteiros. (Yaw ignorado)
+                if erro_xy_atual <= 0.001 and centro_x is not None:
                     if self.tempo_borda_ok is None:
                         self.tempo_borda_ok = agora
                     elif agora - self.tempo_borda_ok >= 5.0:
                         self.iniciou_blind_drop = True
-                        self.get_logger().info("BORDA ATINGIDA, X/Y E YAW ZERADOS (5s)! Iniciando Blind Drop.")
+                        self.get_logger().info("BORDA ATINGIDA, X/Y ZERADOS (5s)! Iniciando Blind Drop.")
                         return # Próximo frame fará a queda cega
                 else:
                     self.tempo_borda_ok = None
@@ -309,17 +309,19 @@ class RastreadorFinoYOLO(Node):
                 # Trava a altitude (hover) para terminar o pente-fino de X/Y
                 vel_z = 0.0
                 if self.tempo_borda_ok is not None:
-                    texto_status = "MOMENTO 2: CRAVANDO ALVO ZERO... (5s)"
+                    tempo_restante = max(0.0, 5.0 - (agora - self.tempo_borda_ok))
+                    texto_status = f"AJUSTE FINAL: ALVO CRAVADO (<0.1cm) - {tempo_restante:.1f}s"
+                    cor_status = (0, 255, 0) # Verde quando cravado
                 else:
-                    texto_status = "MOMENTO 2: ZERANDO ALVO E YAW (5s)"
-                cor_status = (0, 255, 255) # Amarelo de alerta
+                    texto_status = "AJUSTE FINAL: BUSCANDO ALVO (<0.1cm)..."
+                    cor_status = (0, 255, 255) # Amarelo de alerta
             else:
                 agora = time.time()
                 
                 # MOMENTO 1: Trava de Alinhamento Inicial
-                # O drone SÓ desce depois que conseguir um bom alinhamento de Yaw e X/Y
+                # O drone SÓ desce depois que conseguir um bom alinhamento de X/Y
                 if not self.rotacao_concluida:
-                    if erro_xy_atual < 0.12 and abs(menor_erro_yaw) < 0.05:
+                    if erro_xy_atual < 0.12:
                         if self.tempo_alinhamento_ok is None:
                             self.tempo_alinhamento_ok = agora
                         elif agora - self.tempo_alinhamento_ok >= 1.0:
@@ -339,8 +341,8 @@ class RastreadorFinoYOLO(Node):
                     vel_z = 0.0
                     texto_status = "MOMENTO 1: ALINHANDO (Aguarde 1s)..."
                     cor_status = (0, 165, 255)
-            
-            enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z, yaw_rate)
+            # Rotação desativada temporariamente, focando apenas no offset (yaw_rate = 0.0)
+            enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z, 0.0)
         else:
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
             texto_status = "ALVO PERDIDO (Filtro Aguardando)"

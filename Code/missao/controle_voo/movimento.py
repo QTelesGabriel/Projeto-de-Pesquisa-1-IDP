@@ -29,16 +29,18 @@ def ir_para_posicao_local(vehicle, frente_x, direita_y, baixo_z):
     direita_y: Positivo é Leste (Direita no Gazebo)
     baixo_z: Positivo é para BAIXO, negativo é para CIMA (Ex: -5.0 sobe 5m)
     """
-    # 0b0000111111111000 = Máscara para ignorar velocidade e aceleração, usando só posição
+    yaw_atual = vehicle.attitude.yaw
+    
+    # 0b0000101111111000 = Máscara para ignorar velocidade e aceleração, mas USAR o Yaw (Bit 10 zerado)
     msg = vehicle.message_factory.set_position_target_local_ned_encode(
         0,       # time_boot_ms
         0, 0,    # target_system, target_component
         mavutil.mavlink.MAV_FRAME_LOCAL_NED, 
-        0b0000111111111000, 
+        0b0000101111111000, 
         frente_x, direita_y, baixo_z, 
         0, 0, 0, # Velocidades (ignoradas)
         0, 0, 0, # Acelerações (ignoradas)
-        0, 0)    # Yaw e Yaw rate
+        yaw_atual, 0)    # Yaw e Yaw rate
         
     vehicle.send_mavlink(msg)
     vehicle.flush()
