@@ -28,6 +28,10 @@ class RastreadorFinoYOLO(Node):
         # Ganhos bem menores que a Fase 1 para evitar oscilações brutas de perto
         self.kp = 0.2  
         self.kd = 0.05 
+        self.ki = 0.02 # Ganho integral para o Momento 2
+        
+        self.integral_x = 0.0
+        self.integral_y = 0.0
         
         # Ganhos para a rotação (Yaw)
         self.kp_yaw = 0.4
@@ -56,6 +60,13 @@ class RastreadorFinoYOLO(Node):
         self.rotacao_concluida = False
         self.tempo_alinhamento_ok = None
         self.tempo_borda_ok = None
+        
+        # Filtro EMA para Bounding Box
+        self.ema_x1 = None
+        self.ema_y1 = None
+        self.ema_x2 = None
+        self.ema_y2 = None
+        self.ema_alpha = 0.5 # 0.5 suaviza bem sem adicionar muito atraso
         
         # Filtro EKF para limpar ruídos da visão a curta distância
         try:
@@ -145,7 +156,19 @@ class RastreadorFinoYOLO(Node):
         
         if len(resultados[0].boxes) > 0:
             # 1. Analisa a Bounding Box (A gaiola inteira)
-            x1, y1, x2, y2 = map(int, resultados[0].boxes[0].xyxy[0].cpu().numpy())
+            x1_raw, y1_raw, x2_raw, y2_raw = map(float, resultados[0].boxes[0].xyxy[0].cpu().numpy())
+            
+            # Aplica o Filtro EMA para matar os tremores da Bounding Box
+            if self.ema_x1 is None:
+                self.ema_x1, self.ema_y1, self.ema_x2, self.ema_y2 = x1_raw, y1_raw, x2_raw, y2_raw
+            else:
+                self.ema_x1 = (self.ema_alpha * x1_raw) + ((1 - self.ema_alpha) * self.ema_x1)
+                self.ema_y1 = (self.ema_alpha * y1_raw) + ((1 - self.ema_alpha) * self.ema_y1)
+                self.ema_x2 = (self.ema_alpha * x2_raw) + ((1 - self.ema_alpha) * self.ema_x2)
+                self.ema_y2 = (self.ema_alpha * y2_raw) + ((1 - self.ema_alpha) * self.ema_y2)
+                
+            x1, y1, x2, y2 = int(self.ema_x1), int(self.ema_y1), int(self.ema_x2), int(self.ema_y2)
+            
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), (255, 255, 0), 2)
             
             box_w = x2 - x1
@@ -164,10 +187,9 @@ class RastreadorFinoYOLO(Node):
             cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 8, (0, 0, 255), -1)
             cv2.putText(cv_image, "ALVO VIRTUAL", (int(alvo_x)+10, int(alvo_y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
             
-            # 3. Verifica se a armadilha está tocando a borda da câmera (Transição para Ajuste Final)
-            # 15 pixels de tolerância para lidar com o "tremor" normal da Bounding Box do YOLO
-            margem = 15
-            if x1 <= margem or y1 <= margem or x2 >= (img_w - margem) or y2 >= (img_h - margem):
+            # 3. Transição para Ajuste Final (Momento 2)
+            # Aciona quando o drone chegar a exatos 0.8 metro (80 centímetros) de ALTITUDE ABSOLUTA
+            if altitude_bruta <= 0.8:
                 tocar_borda = True
             
             # 4. Extrai os Keypoints apenas para achar a Rotação (Modelo Retreinado com 3 pontos)
@@ -231,14 +253,30 @@ class RastreadorFinoYOLO(Node):
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            # Câmera apontando pela asa ESQUERDA (Gimbal -90):
-            # Erro X da imagem (Esquerda/Direita) controla o eixo X do Drone (Frente/Trás)
-            vel_x = (erro_x * self.kp + derivada_x * self.kd)
-            
-            # Erro Y da imagem (Cima/Baixo) controla o eixo Y do Drone (Lados)
-            vel_y = (erro_y * self.kp + derivada_y * self.kd)
-            
-            max_vel = 0.5
+            if tocar_borda:
+                max_vel = 0.05  # Velocidade super lenta (5 cm/s) para o Momento 2
+                
+                # Acumula o erro no tempo apenas no Momento 2
+                self.integral_x += erro_x * dt
+                self.integral_y += erro_y * dt
+                
+                # Anti-windup (limita a força máxima que a integral pode exercer)
+                self.integral_x = max(-0.5, min(0.5, self.integral_x))
+                self.integral_y = max(-0.5, min(0.5, self.integral_y))
+                
+                # PID Completo (Proporcional + Derivativo + Integral)
+                vel_x = (erro_x * self.kp + derivada_x * self.kd + self.integral_x * self.ki)
+                vel_y = (erro_y * self.kp + derivada_y * self.kd + self.integral_y * self.ki)
+            else:
+                max_vel = 0.5
+                
+                # Zera a integral se não estiver no Momento 2
+                self.integral_x = 0.0
+                self.integral_y = 0.0
+                
+                # Apenas PD
+                vel_x = (erro_x * self.kp + derivada_x * self.kd)
+                vel_y = (erro_y * self.kp + derivada_y * self.kd)
             vel_x = max(-max_vel, min(max_vel, vel_x))
             vel_y = max(-max_vel, min(max_vel, vel_y))
             
@@ -293,29 +331,36 @@ class RastreadorFinoYOLO(Node):
             if tocar_borda:
                 agora = time.time()
                 
-                # MOMENTO 2: Trava de Ajuste Final na Borda (Antes do Blind Drop)
-                # Agora o Yaw não está mais travado! Graças ao filtro de Kalman, podemos corrigir o ângulo aqui.
-                # O drone só aciona a queda cega se X/Y (<= 0.1cm) estiver cravado por 5 segundos inteiros. (Yaw ignorado)
-                if erro_xy_atual <= 0.001 and centro_x is not None:
-                    if self.tempo_borda_ok is None:
-                        self.tempo_borda_ok = agora
-                    elif agora - self.tempo_borda_ok >= 5.0:
-                        self.iniciou_blind_drop = True
-                        self.get_logger().info("BORDA ATINGIDA, X/Y ZERADOS (5s)! Iniciando Blind Drop.")
-                        return # Próximo frame fará a queda cega
-                else:
-                    self.tempo_borda_ok = None
+                # MOMENTO 2: Período Obrigatório de Ajuste Final (10s)
+                # O drone ficará exatos 10 segundos travado no eixo Z ajustando X e Y antes da queda cega.
+                if self.tempo_borda_ok is None:
+                    self.tempo_borda_ok = agora
+                
+                tempo_restante = max(0.0, 10.0 - (agora - self.tempo_borda_ok))
+                
+                # Print no terminal a cada segundo redondo
+                segundos_arredondados = int(math.ceil(tempo_restante))
+                if not hasattr(self, 'ultimo_seg_impresso') or self.ultimo_seg_impresso != segundos_arredondados:
+                    if segundos_arredondados > 0:
+                        self.get_logger().info(f"[!] AJUSTE FINAL OBRIGATÓRIO: {segundos_arredondados}s restantes...")
+                    self.ultimo_seg_impresso = segundos_arredondados
+                
+                if tempo_restante <= 0.0:
+                    self.iniciou_blind_drop = True
+                    self.get_logger().info("AJUSTE FINAL CONCLUIDO (10s)! Iniciando Blind Drop.")
+                    return # Próximo frame fará a queda cega
                 
                 # Trava a altitude (hover) para terminar o pente-fino de X/Y
                 vel_z = 0.0
-                if self.tempo_borda_ok is not None:
-                    tempo_restante = max(0.0, 5.0 - (agora - self.tempo_borda_ok))
-                    texto_status = f"AJUSTE FINAL: ALVO CRAVADO (<0.1cm) - {tempo_restante:.1f}s"
-                    cor_status = (0, 255, 0) # Verde quando cravado
+                texto_status = f"AJUSTE FINAL OBRIGATORIO - {tempo_restante:.1f}s"
+                
+                # Cor verde apenas para dar um feedback visual se ele estiver muito bom (< 0.1cm)
+                if erro_xy_atual <= 0.001:
+                    cor_status = (0, 255, 0)
                 else:
-                    texto_status = "AJUSTE FINAL: BUSCANDO ALVO (<0.1cm)..."
                     cor_status = (0, 255, 255) # Amarelo de alerta
             else:
+                self.tempo_borda_ok = None
                 agora = time.time()
                 
                 # MOMENTO 1: Trava de Alinhamento Inicial
