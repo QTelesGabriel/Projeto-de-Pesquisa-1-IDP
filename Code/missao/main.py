@@ -15,7 +15,7 @@ import random
 # Importações dos módulos customizados
 from controle_voo.takeoff import arm_and_takeoff
 from controle_voo.gimbal import apontar_gimbal_nadir
-from controle_voo.movimento import ir_para_posicao_local, enviar_velocidade, girar_drone
+from controle_voo.movimento import ir_para_posicao_local, enviar_velocidade, girar_drone, configurar_parametro
 from visao.rastreador import RastreadorYOLO
 
 CONEXAO = 'udp:127.0.0.1:14550'
@@ -48,6 +48,10 @@ def main():
 
     try:
         print("[+] Conexão bem-sucedida! Iniciando missão...")
+        
+        # Trava total de Yaw no ArduPilot: impede qualquer rotação automática na direção de voo
+        print("[+] Configurando ArduPilot: trava absoluta de Yaw (WP_YAW_BEHAVIOR = 0)...")
+        configurar_parametro(vehicle, 'WP_YAW_BEHAVIOR', 0)
 
         # 1. Aponta câmera para baixo e VIRA ELA 90 GRAUS PARA A ESQUERDA (-90)
         # Isso garante que desde a Fase 1 o drone vai voar com o chassi 90º rotacionado à direita
@@ -55,7 +59,7 @@ def main():
         apontar_gimbal_nadir(vehicle, yaw_deg=-90.0)
         
         # 2. Decolagem
-        altitude_inicial = 20.0
+        altitude_inicial = 18.0
         arm_and_takeoff(vehicle, altitude_inicial)
         
         # 3. Navegação GPS Local Aproximada

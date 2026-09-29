@@ -28,7 +28,7 @@ class RastreadorFinoYOLO(Node):
         # Ganhos bem menores que a Fase 1 para evitar oscilações brutas de perto
         self.kp = 0.2  
         self.kd = 0.05 
-        self.ki = 0.02 # Ganho integral para o Momento 2
+        self.ki = 0.005 # Ganho integral BEM mais suave para o Momento 2
         
         self.integral_x = 0.0
         self.integral_y = 0.0
@@ -47,8 +47,8 @@ class RastreadorFinoYOLO(Node):
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
         # Valores calculados pela ferramenta de calibração visual
-        self.offset_pct_x = -0.0083
-        self.offset_pct_y = 0.1916
+        self.offset_pct_x = -0.0041
+        self.offset_pct_y = 0.1542
         
         self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
         
@@ -134,11 +134,12 @@ class RastreadorFinoYOLO(Node):
             vel_z = 0.25 # Desce constante e firme
             enviar_velocidade(self.vehicle, 0.0, 0.0, vel_z, 0.0) # X, Y e Yaw zerados!
             
-            texto_status = "BLIND DROP ATIVO"
-            cv2.putText(cv_image, f"Alt Rel: {altitude_relativa:.2f}m | {texto_status}", (20, 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.imshow(self.nome_janela, cv_image)
-            cv2.waitKey(1)
+            # Desliga a câmera (fecha a janela) simulando perda de feed de vídeo
+            try:
+                cv2.destroyWindow(self.nome_janela)
+            except:
+                pass
+                
             return
 
         # --- PASSO 3: FUNIL VISUAL (Visão Ativa - POSE) ---
@@ -346,17 +347,22 @@ class RastreadorFinoYOLO(Node):
                     self.ultimo_seg_impresso = segundos_arredondados
                 
                 if tempo_restante <= 0.0:
-                    self.iniciou_blind_drop = True
-                    self.get_logger().info("AJUSTE FINAL CONCLUIDO (10s)! Iniciando Blind Drop.")
-                    return # Próximo frame fará a queda cega
+                    # Só desce se já passou de 10s E o erro estiver menor que um milímetro (0.1cm)
+                    if erro_xy_atual <= 0.001:
+                        self.iniciou_blind_drop = True
+                        self.get_logger().info(f"AJUSTE FINAL CONCLUIDO E ABSURDAMENTE CRAVADO (Erro={erro_xy_atual*100:.2f}cm)! Iniciando Blind Drop.")
+                        return # Próximo frame fará a queda cega
+                    else:
+                        texto_status = f"AGUARDANDO ALINHAMENTO (<0.1cm) | Atual: {erro_xy_atual*100:.2f}cm"
+                else:
+                    texto_status = f"AJUSTE FINAL OBRIGATORIO - {tempo_restante:.1f}s"
                 
                 # Trava a altitude (hover) para terminar o pente-fino de X/Y
                 vel_z = 0.0
-                texto_status = f"AJUSTE FINAL OBRIGATORIO - {tempo_restante:.1f}s"
                 
-                # Cor verde apenas para dar um feedback visual se ele estiver muito bom (< 0.1cm)
+                # Feedback de cores baseado no quão perto estamos de cravar
                 if erro_xy_atual <= 0.001:
-                    cor_status = (0, 255, 0)
+                    cor_status = (0, 255, 0) # Verde = pronto para descer
                 else:
                     cor_status = (0, 255, 255) # Amarelo de alerta
             else:
@@ -396,5 +402,10 @@ class RastreadorFinoYOLO(Node):
             
         cv2.putText(cv_image, f"Alt Rel: {altitude_relativa:.2f}m | {texto_status}", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, cor_status, 2)
+                    
+        if 'erro_xy_atual' in locals():
+            cv2.putText(cv_image, f"Erro Alinhamento: {erro_xy_atual*100:.2f} cm", (20, 70), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, cor_status, 2)
+                        
         cv2.imshow(self.nome_janela, cv_image)
         cv2.waitKey(1)

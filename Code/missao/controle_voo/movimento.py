@@ -1,5 +1,19 @@
 from pymavlink import mavutil
 
+def configurar_parametro(vehicle, nome_parametro, valor):
+    """
+    Envia o comando MAVLink direto (PARAM_SET) sem travar o DroneKit
+    tentando baixar a lista inteira de parâmetros.
+    """
+    msg = vehicle.message_factory.param_set_encode(
+        0, 0,
+        nome_parametro.encode('utf-8') if isinstance(nome_parametro, str) else nome_parametro,
+        float(valor),
+        mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+    )
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
 def enviar_velocidade(vehicle, velocity_x, velocity_y, velocity_z, yaw_rate=0.0):
     """
     Move o veículo especificando velocidades (m/s) e taxa de rotação (rad/s).
