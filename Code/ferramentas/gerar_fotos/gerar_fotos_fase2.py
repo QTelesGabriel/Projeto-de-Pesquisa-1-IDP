@@ -58,8 +58,8 @@ def main():
 
     try:
         print("\n[+] Drone conectado com sucesso!")
-        print("\n[!] Estabilizando o gimbal em nadir (90 graus p/ baixo)...")
-        apontar_gimbal_nadir(vehicle)
+        print("\n[!] Estabilizando o gimbal em nadir (Rotacionado -90 graus)...")
+        apontar_gimbal_nadir(vehicle, yaw_deg=-90.0)
         
         # Posição inicial: Como você já alinhou 100% via terminal, 
         # a origem da nossa espiral será o exato milímetro que o drone está no ar agora!

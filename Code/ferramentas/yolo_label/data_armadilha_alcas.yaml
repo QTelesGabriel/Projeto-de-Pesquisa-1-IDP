@@ -1,0 +1,14 @@
+# Configuração de Dataset YOLOv11n para 2 Classes (Armadilha e Alças)
+# Atualize os caminhos conforme a estrutura de treino/validação gerada
+
+path: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset
+train: images/train
+val: images/val
+
+# Número de classes
+nc: 2
+
+# Nomes das classes (a ordem DEVE coincidir exatamente com os IDs 0 e 1 do rotulador)
+names:
+  0: armadilha
+  1: alca

@@ -80,10 +80,9 @@ def main():
         time.sleep(20.0) 
         
         # Rotaciona para provar que o Yaw visual da Fase 2 funciona
-        # Rotação desativada a pedido do usuário
-        # angulo_aleatorio = random.uniform(0, 360)
-        # print(f"[+] Posicionamento concluído. Bagunçando o Yaw do drone para {angulo_aleatorio:.1f} graus...")
-        # girar_drone(vehicle, angulo_aleatorio)
+        angulo_aleatorio = random.uniform(0, 360)
+        print(f"[+] Posicionamento concluído. Rotacionando o Yaw do drone para ângulo aleatório: {angulo_aleatorio:.1f} graus...")
+        girar_drone(vehicle, angulo_aleatorio)
         
         tempo_espera = 20
         print(f"[+] Aguardando {tempo_espera} segundos para estabilização da rotação...")
