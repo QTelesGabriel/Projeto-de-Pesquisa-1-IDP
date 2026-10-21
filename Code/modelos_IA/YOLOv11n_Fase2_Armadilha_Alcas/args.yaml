@@ -14,7 +14,7 @@ device: null
 workers: 8
 project: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA
 name: YOLOv11n_Fase2_Armadilha_Alcas
-exist_ok: false
+exist_ok: true
 pretrained: true
 optimizer: auto
 verbose: true
@@ -95,7 +95,7 @@ translate: 0.1
 scale: 0.5
 shear: 0.0
 perspective: 0.0
-flipud: 0.0
+flipud: 0.5
 fliplr: 0.5
 bgr: 0.0
 mosaic: 1.0

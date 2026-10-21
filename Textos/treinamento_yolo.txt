@@ -7,6 +7,10 @@ yolo task=detect mode=train model=yolo11n.pt data=data.yaml epochs=100 imgsz=640
 yolo pose train batch=8 data=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset/data.yaml model=yolo11n-pose.pt epochs=300 imgsz=640 degrees=180.0 project=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA name=YOLOv11n_Pose_Armadilha_TCC
 
 
+# Fase 2 - Deteccao de Armadilha e Alcas (2 classes)
+yolo task=detect mode=train model=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/yolo_dataset/yolo11n.pt data=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/datasets/YOLOv11n-Fase2/data.yaml epochs=300 imgsz=640 batch=8 degrees=180.0 project=/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA name=YOLOv11n_Fase2_Armadilha_Alcas exist_ok=True
+
+
 v8n
 
 

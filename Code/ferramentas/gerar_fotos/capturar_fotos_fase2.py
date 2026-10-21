@@ -6,20 +6,26 @@ Captura Automatizada de Fotos - Fase 2 (Micro Ajuste da Armadilha)
 
 Este script:
 1. Conecta ao drone (DroneKit/MAVLink) e ao tópico da câmera ROS 2 (/camera/image).
-2. Se estiver no chão, decola para 2.0m. Se já estiver no ar, comanda descida/estabilização em 2.0m.
-3. Aponta o Gimbal em Nadir (-90 graus pitch) com correção de rotação Yaw ajustável (padrão: -90 graus, idêntico à missão).
-4. Voa em linha reta com precisão milimétrica até a posição exata da armadilha no Gazebo:
+2. Se estiver no chão, decola para a altitude máxima da Fase 2 (padrão: 2.0m). Se no ar, estabiliza nela.
+3. Aponta o Gimbal em Nadir (-90 graus pitch) com correção Yaw em -90.0 graus (idêntico à missão).
+4. Voa em linha reta com precisão até a posição centralizada da armadilha no Gazebo:
    (Gazebo X = 50.0m, Y = 0.0m -> LOCAL_NED: Norte = 0.0m, Leste = 50.0m, Altitude = 2.0m).
-5. VERIFICAÇÃO ATIVA EM MALHA FECHADA: O drone só inicia as fotos quando atingir
-   exatamente 2.0m de altitude física (tolerância +-15 cm) e estiver estabilizado.
-6. Ciclo estrito de descida e subida entre 2.0m e 0.75m (onde a visão da Fase 2 encerra):
-   - Movimento estritamente vertical no eixo Z (sem rotação de Yaw e sem órbita).
-   - O drone aguarda alcançar fisicamente cada degrau de altitude antes de fotografar.
+5. ESPERA INTERATIVA: Pausa o drone sobre o alvo, transmite o vídeo ao vivo e aguarda
+   o usuário pressionar [ENTER] ou [ESPAÇO] para iniciar a captura.
+6. VARREDURA VERTICAL COM FOCO EXTREMO (360° + Z):
+   - O drone permanece ESTRITAMENTE centralizado no plano horizontal (X e Y fixos, sem desvios).
+   - Movimento vertical cíclico entre o Topo (2.00m) e a Base (0.75m).
+   - DISTRIBUIÇÃO PONDERADA DE FOTOS:
+     * TOPO (2.0m) : 40% das fotos tiradas com giro de 360° (visão completa da gaiola).
+     * DESCIDA     : 10% das fotos espaçadas suavemente em altitude (transição).
+     * BASE (0.75m): 40% das fotos tiradas com giro de 360° (detalhe máximo das alças).
+     * SUBIDA      : 10% das fotos espaçadas suavemente em altitude (transição).
+   - Giro contínuo de Yaw durante todo o processo para cobrir todos os ângulos.
 7. Teclas ao vivo na tela:
+   - [ESPAÇO]: Pausar / Retomar movimento
+   - [C]     : Foto manual imediata
    - [J / L] : Gira o gimbal em -90° / +90°
    - [[ / ]] : Ajuste fino do gimbal em -15° / +15°
-   - [C]     : Foto manual imediata
-   - [ESPAÇO]: Pausar / Retomar movimento
    - [Q]     : Sair com segurança
 =============================================================================
 """
@@ -174,57 +180,6 @@ def calcular_erro_yaw_deg(veiculo, yaw_alvo_deg):
     return 0.0
 
 
-def gerar_sequencia_alvos(alt_max=2.0, alt_min=0.75):
-    """
-    Gera alvos 3D contínuos combinando:
-    1. 5 patamares verticais: 2.0m, 1.6m, 1.2m, 0.9m, 0.75m (e no retorno subindo).
-    2. 16 orientações de Yaw (8 na descida: 0°, 45°, 90°... e 8 intermediárias na subida: 22.5°, 67.5°...).
-    3. 9 offsets laterais (centro, cardeais e diagonais), escalados conforme a altitude para manter o alvo no FOV.
-    """
-    altitudes_descida = [2.0, 1.6, 1.2, 0.9, 0.75]
-    altitudes_subida = [0.85, 1.05, 1.4, 1.8, 2.0]
-
-    offsets_base = [
-        (0.0, 0.0),       # Centro perfeito
-        (0.14, 0.0),      # Norte (+X)
-        (-0.14, 0.0),     # Sul (-X)
-        (0.0, 0.14),      # Leste (+Y)
-        (0.0, -0.14),     # Oeste (-Y)
-        (0.10, 0.10),     # Nordeste (+X, +Y)
-        (-0.10, 0.10),    # Sudeste (-X, +Y)
-        (-0.10, -0.10),   # Sudoeste (-X, -Y)
-        (0.10, -0.10),    # Noroeste (+X, -Y)
-    ]
-
-    angulos_principais = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]
-    angulos_secundarios = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5]
-
-    ciclo = 0
-    while True:
-        if ciclo % 2 == 0:
-            alts = altitudes_descida
-            angulos = angulos_principais
-            direcao = "DESCENDO"
-        else:
-            alts = altitudes_subida
-            angulos = angulos_secundarios
-            direcao = "SUBINDO"
-
-        for alt in alts:
-            # Em altitudes menores (mais perto do solo), reduz o offset para manter o alvo bem enquadrado no FOV
-            fator_escala = max(0.65, min(1.0, alt / 2.0))
-
-            for yaw in angulos:
-                for off_n, off_e in offsets_base:
-                    yield {
-                        'alt': alt,
-                        'yaw': yaw,
-                        'off_n': off_n * fator_escala,
-                        'off_e': off_e * fator_escala,
-                        'direcao': direcao,
-                        'ciclo': ciclo + 1
-                    }
-        ciclo += 1
 
 
 def comandar_posicao_absoluta_local(vehicle, frente_x, direita_y, baixo_z, yaw_rad=0.0):
@@ -367,18 +322,18 @@ def navegar_e_estabilizar(vehicle, alvo_x, alvo_y, alt_desejada, node_camera, to
         time.sleep(0.1)
 
 
-def aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_inicial):
+def aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_inicial, altura=2.0):
     """
-    Mantém o drone pairado em 2.0m sobre a armadilha, transmite a câmera ao vivo,
+    Mantém o drone pairado na altitude fixa sobre a armadilha, transmite a câmera ao vivo,
     permite ajustes de rotação do Gimbal e aguarda o usuário pressionar ENTER ou ESPAÇO
-    (seja na janela do vídeo ou no terminal) antes de iniciar a descida e a captura.
+    antes de iniciar a rotação contínua e as fotos.
     """
     print("\n" + "=" * 75)
     print(" [AGUARDANDO SUA CONFIRMAÇÃO PARA INICIAR AS FOTOS]")
-    print(f" Drone pairando estabilizado a 2.0m sobre a armadilha.")
+    print(f" Drone pairando estabilizado a {altura:.2f}m centralizado sobre a armadilha.")
     print(" A câmera está transmitindo ao vivo na janela gráfica.")
     print("")
-    print(" --> Pressione [ENTER] ou [ESPAÇO] para começar o ciclo vertical de fotos!")
+    print(" --> Pressione [ENTER] ou [ESPAÇO] para começar o giro de fotos em 360°!")
     print(" --> [J] / [L]     : Gira a câmera em -90° / +90°")
     print(" --> [ [ ] / [ ] ] : Ajuste fino da câmera em -15° / +15°")
     print(" --> [C]           : Dispara uma foto manual de teste")
@@ -392,8 +347,8 @@ def aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_i
         if rclpy is not None:
             rclpy.spin_once(node_camera, timeout_sec=0.04)
 
-        # Continua mantendo a posição e proa Norte rigorosamente
-        comandar_posicao_absoluta_local(vehicle, ALVO_NORTE_NED, ALVO_LESTE_NED, -ALTURA_MAX_FASE2, yaw_rad=0.0)
+        # Continua mantendo a posição centralizada na altitude configurada
+        comandar_posicao_absoluta_local(vehicle, ALVO_NORTE_NED, ALVO_LESTE_NED, -altura, yaw_rad=0.0)
 
         # Monta exibição com HUD de instrução
         if node_camera.ultimo_frame is not None:
@@ -474,11 +429,15 @@ def aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_i
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Coletor automatizado de fotos para o escopo da Fase 2.")
+    parser = argparse.ArgumentParser(description="Coletor automatizado de fotos para Fase 2 - Varredura Vertical com Foco nos Extremos.")
     parser.add_argument("--conexao", default=DEFAULT_CONEXAO, help="Porta MAVLink de conexão com o drone")
     parser.add_argument("--fotos", type=int, default=500, help="Quantidade total de fotos a serem capturadas (padrão: 500)")
-    parser.add_argument("--alt-min", type=float, default=ALTURA_MIN_FASE2, help=f"Altitude mínima da Fase 2 (padrão: {ALTURA_MIN_FASE2}m, onde a visão desliga antes do blind drop)")
-    parser.add_argument("--alt-max", type=float, default=ALTURA_MAX_FASE2, help=f"Altitude máxima da Fase 2 (padrão: {ALTURA_MAX_FASE2}m)")
+    parser.add_argument("--alt-max", type=float, default=ALTURA_MAX_FASE2, help=f"Altitude máxima / topo da Fase 2 (padrão: {ALTURA_MAX_FASE2}m)")
+    parser.add_argument("--alt-min", type=float, default=ALTURA_MIN_FASE2, help=f"Altitude mínima / base da Fase 2 (padrão: {ALTURA_MIN_FASE2}m)")
+    parser.add_argument("--ciclos", type=int, default=2, help="Número de ciclos de subida e descida (padrão: 2)")
+    parser.add_argument("--pct-extremos", type=float, default=40.0, help="Porcentagem de fotos em cada extremo (padrão: 40%% no topo, 40%% na base, 20%% no trajeto)")
+    parser.add_argument("--velocidade-yaw", type=float, default=6.0, help="Velocidade de rotação em graus/segundo (padrão: 6.0 deg/s)")
+    parser.add_argument("--velocidade-z", type=float, default=0.12, help="Velocidade vertical de subida/descida em m/s (padrão: 0.12 m/s)")
     parser.add_argument("--gimbal-yaw", type=float, default=DEFAULT_GIMBAL_YAW, help=f"Ângulo de Yaw do Gimbal em graus (padrão: {DEFAULT_GIMBAL_YAW}°, idêntico à missão)")
     parser.add_argument("--saida", default=DEFAULT_PASTA_SAIDA, help="Diretório onde as fotos serão salvas")
     parser.add_argument("--sem-auto", action="store_true", help="Desativa foto automática (apenas manual na tecla C)")
@@ -489,10 +448,13 @@ def main():
     contador_foto = obter_proximo_numero_captura(pasta_saida)
 
     print("=" * 75)
-    print(" COLETOR DE FOTOS PARA FASE 2 - GRADE 3D (ALTITUDES, YAWS E OFFSETS)")
+    print(" COLETOR DE FOTOS PARA FASE 2 - VARREDURA VERTICAL COM FOCO EXTREMO")
     print("=" * 75)
-    print(f" Posição no Gazebo      : X=50.0m, Y=0.0m (Norte=0.0m, Leste=50.0m)")
-    print(f" Escopo da Captura      : Grade 3D ({args.alt_min:.2f}m a {args.alt_max:.2f}m, 16 ângulos de Yaw e offsets)")
+    print(f" Posição Centralizada   : Norte={ALVO_NORTE_NED:.1f}m, Leste={ALVO_LESTE_NED:.1f}m (Gazebo X=50.0m, Y=0.0m)")
+    print(f" Faixa de Altitude      : {args.alt_min:.2f}m (Base) até {args.alt_max:.2f}m (Topo)")
+    print(f" Distribuição de Fotos  : {args.pct_extremos:.0f}% no Topo, {args.pct_extremos:.0f}% na Base, {100.0 - 2*args.pct_extremos:.0f}% na Transição")
+    print(f" Ciclos de Varredura    : {args.ciclos} ciclo(s) completos (Desce e Sobe)")
+    print(f" Velocidades            : Z = {args.velocidade_z:.2f} m/s | Yaw = {args.velocidade_yaw:.1f}°/s")
     print(f" Yaw do Gimbal          : {args.gimbal_yaw:+.1f}° (Configurado idêntico à missão)")
     print(f" Meta de Fotos          : {args.fotos} imagens")
     print(f" Próxima Foto Começa em : captura_{contador_foto:03d}_...")
@@ -542,7 +504,7 @@ def main():
     print(f"[+] Apontando Gimbal para Nadir (-90°) com Yaw={yaw_gimbal_atual:+.1f}°...")
     ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
 
-    # 3. Decolagem (se no chão) ou estabilização em altitude exata de 2.0m
+    # 3. Decolagem (se no chão) ou estabilização no Topo (alt_max)
     alt_inicial = vehicle.location.global_relative_frame.alt
     if alt_inicial < 0.5:
         print(f"[!] Drone no solo ({alt_inicial:.2f}m). Decolando para {args.alt_max:.1f}m...")
@@ -550,7 +512,7 @@ def main():
     else:
         print(f"[+] Drone já em voo ({alt_inicial:.2f}m).")
 
-    # Garante a proa travada e estabilização a 2.0m na origem antes de transladar
+    # Garante a proa travada e estabilização na altitude antes de transladar
     travar_proa_norte(vehicle)
     navegar_e_estabilizar(
         vehicle,
@@ -563,8 +525,8 @@ def main():
         timeout_seg=15.0
     )
 
-    # 4. Voa em linha reta (de lado, como um caranguejo, sem girar o nariz) até a armadilha
-    print(f"\n[+] Deslocando lateralmente para a armadilha sem girar a proa (Norte={ALVO_NORTE_NED:.1f}m, Leste={ALVO_LESTE_NED:.1f}m, Altura={args.alt_max:.2f}m)...")
+    # 4. Voa em linha reta até o centro exato da armadilha no Topo
+    print(f"\n[+] Deslocando para o centro da armadilha (Norte={ALVO_NORTE_NED:.1f}m, Leste={ALVO_LESTE_NED:.1f}m, Altura={args.alt_max:.2f}m)...")
     travar_proa_norte(vehicle)
     navegar_e_estabilizar(
         vehicle,
@@ -572,8 +534,8 @@ def main():
         alvo_y=ALVO_LESTE_NED,
         alt_desejada=args.alt_max,
         node_camera=node_camera,
-        tol_h=0.30,
-        tol_alt=0.12,
+        tol_h=0.25,
+        tol_alt=0.10,
         timeout_seg=35.0
     )
     travar_proa_norte(vehicle)
@@ -583,162 +545,225 @@ def main():
     cv2.namedWindow(nome_janela, cv2.WINDOW_AUTOSIZE)
 
     # 6. ESPERA INTERATIVA: Pausa o drone sobre o alvo e aguarda confirmação do usuário
-    yaw_gimbal_atual = aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_atual)
+    yaw_gimbal_atual = aguardar_confirmacao_usuario(vehicle, node_camera, nome_janela, yaw_gimbal_atual, altura=args.alt_max)
 
     print("\n" + "=" * 75)
-    print(" INICIANDO CAPTURA NO ESCOPO VERTICAL DA FASE 2")
+    print(" INICIANDO CAPTURA COM VARREDURA VERTICAL E GIRO DE YAW")
     print("=" * 75)
     print(" Atalhos na Janela de Vídeo:")
-    print("  [J] / [L]     : Girar Câmera em -90° / +90°")
-    print("  [ [ ] / [ ] ] : Ajuste Fino da Câmera (-15° / +15°)")
+    print("  [ESPAÇO]      : Pausar / Retomar Movimento")
     print("  [C]           : Tirar Foto Manual")
-    print("  [ESPAÇO]      : Pausar / Retomar Movimento Vertical")
+    print("  [J] / [L]     : Girar Gimbal em -90° / +90°")
+    print("  [ [ ] / [ ] ] : Ajuste Fino do Gimbal (-15° / +15°)")
     print("  [Q / ESC]     : Sair com Segurança")
     print("=" * 75)
 
+    # Cálculo da cota de fotos por ciclo e por estágio
+    fotos_por_ciclo = args.fotos // max(1, args.ciclos)
+    meta_topo = int(round(fotos_por_ciclo * (args.pct_extremos / 100.0)))
+    meta_base = int(round(fotos_por_ciclo * (args.pct_extremos / 100.0)))
+    sobra = max(0, fotos_por_ciclo - meta_topo - meta_base)
+    meta_descida = max(1, sobra // 2)
+    meta_subida = max(1, sobra - meta_descida)
+
+    # Passos de acionamento
+    graus_giro_estagio = 360.0 / float(args.ciclos)
+    passo_yaw_topo = graus_giro_estagio / float(max(1, meta_topo))
+    passo_yaw_base = graus_giro_estagio / float(max(1, meta_base))
+
+    dist_z = abs(args.alt_max - args.alt_min)
+    passo_alt_descida = dist_z / float(max(1, meta_descida))
+    passo_alt_subida = dist_z / float(max(1, meta_subida))
+
     fotos_salvas = 0
     em_pausa = False
-    gerador_alvos = gerar_sequencia_alvos(alt_max=args.alt_max, alt_min=args.alt_min)
+    graus_girados = 0.0
+
+    pos_norte = ALVO_NORTE_NED
+    pos_leste = ALVO_LESTE_NED
+
+    ciclo = 1
+    estado = 'TOPO'
+    alt_comando = args.alt_max
+    fotos_estagio = 0
+
+    ref_yaw_foto = 0.0
+    ref_alt_foto = alt_comando
+
+    try:
+        yaw_base_deg = (math.degrees(vehicle.attitude.yaw) % 360.0) if (vehicle.attitude and vehicle.attitude.yaw is not None) else 0.0
+    except Exception:
+        yaw_base_deg = 0.0
+
+    t_anterior = time.time()
+
+    print(f"\n[CICLO 1/{args.ciclos}] Iniciando no TOPO ({args.alt_max:.2f}m) - Meta: {meta_topo} fotos concentradas...")
 
     try:
         while fotos_salvas < args.fotos:
-            alvo = next(gerador_alvos)
-            alt_alvo = alvo['alt']
-            yaw_alvo = alvo['yaw']
-            off_norte = alvo['off_n']
-            off_leste = alvo['off_e']
-            direcao = alvo['direcao']
-            ciclo = alvo['ciclo']
+            t_agora = time.time()
+            dt = t_agora - t_anterior
+            t_anterior = t_agora
 
-            pos_norte = ALVO_NORTE_NED + off_norte
-            pos_leste = ALVO_LESTE_NED + off_leste
-            pos_baixo = -alt_alvo
-            yaw_rad = math.radians(yaw_alvo)
+            if rclpy is not None:
+                rclpy.spin_once(node_camera, timeout_sec=0.01)
 
-            # Comanda o giro do drone para a orientação do alvo
-            comandar_yaw_absoluto(vehicle, yaw_alvo)
+            if not em_pausa:
+                graus_girados += args.velocidade_yaw * dt
 
-            # Loop de aproximação e estabilização do waypoint
-            inicio_waypoint = time.time()
-            tempo_dentro_tolerancia = None
+                # Evolução da altitude do comando conforme o estado atual
+                if estado == 'TOPO':
+                    alt_comando = args.alt_max
+                elif estado == 'DESCENDO':
+                    alt_comando = max(args.alt_min, alt_comando - args.velocidade_z * dt)
+                elif estado == 'BASE':
+                    alt_comando = args.alt_min
+                elif estado == 'SUBINDO':
+                    alt_comando = min(args.alt_max, alt_comando + args.velocidade_z * dt)
 
-            while True:
-                if rclpy is not None:
-                    rclpy.spin_once(node_camera, timeout_sec=0.03)
+            yaw_desejado = (yaw_base_deg + graus_girados) % 360.0
+            yaw_rad = math.radians(yaw_desejado)
 
-                if not em_pausa:
-                    comandar_posicao_absoluta_local(vehicle, pos_norte, pos_leste, pos_baixo, yaw_rad=yaw_rad)
+            # Trava o drone rigorosamente no centro (pos_norte, pos_leste), com a altitude comandada e Yaw
+            comandar_posicao_absoluta_local(vehicle, pos_norte, pos_leste, -alt_comando, yaw_rad=yaw_rad)
 
+            # Telemetria
+            try:
                 alt_real = vehicle.location.global_relative_frame.alt
-                dist_h = calcular_distancia_horizontal(vehicle, pos_norte, pos_leste)
-                erro_alt = abs(alt_real - alt_alvo)
-                erro_yaw = calcular_erro_yaw_deg(vehicle, yaw_alvo)
+            except Exception:
+                alt_real = alt_comando
 
-                # Renderiza HUD gráfico informativo
-                if node_camera.ultimo_frame is not None:
-                    frame_raw = node_camera.ultimo_frame.copy()
-                    frame_display = cv2.resize(frame_raw, (960, 540))
+            try:
+                yaw_real_deg = (math.degrees(vehicle.attitude.yaw) % 360.0) if (vehicle.attitude and vehicle.attitude.yaw is not None) else yaw_desejado
+            except Exception:
+                yaw_real_deg = yaw_desejado
 
-                    pct_progresso = (fotos_salvas / float(args.fotos)) * 100.0
-                    yaw_real_deg = (math.degrees(vehicle.attitude.yaw) % 360.0) if vehicle.attitude and vehicle.attitude.yaw is not None else 0.0
-                    hud_modo = "[PAUSADO]" if em_pausa else f"[{direcao} - CICLO {ciclo}]"
-                    hud_linha1 = f"{hud_modo} Progresso: {fotos_salvas}/{args.fotos} ({pct_progresso:.1f}%)"
-                    hud_linha2 = f"Alt: {alt_real:.2f}m (Alvo: {alt_alvo:.2f}m) | Yaw: {yaw_real_deg:.0f}° (Alvo: {yaw_alvo:.0f}°)"
-                    hud_linha3 = f"Offset: ({off_norte:+.2f}, {off_leste:+.2f})m | Gimbal: {yaw_gimbal_atual:+.0f}°"
+            # Renderiza HUD gráfico informativo
+            if node_camera.ultimo_frame is not None:
+                frame_raw = node_camera.ultimo_frame.copy()
+                frame_display = cv2.resize(frame_raw, (960, 540))
 
-                    cv2.rectangle(frame_display, (0, 0), (960, 68), (20, 20, 20), -1)
-                    cor_status = (0, 165, 255) if em_pausa else (0, 255, 0)
-                    cv2.putText(frame_display, hud_linha1, (15, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.52, cor_status, 2)
-                    cv2.putText(frame_display, hud_linha2, (15, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1)
-                    cv2.putText(frame_display, hud_linha3, (15, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-                    cv2.drawMarker(frame_display, (480, 270), (0, 255, 255), cv2.MARKER_CROSS, 16, 1)
+                pct_progresso = (fotos_salvas / float(args.fotos)) * 100.0
+                hud_modo = "[PAUSADO]" if em_pausa else f"[{estado} - CICLO {ciclo}/{args.ciclos}]"
+                hud_linha1 = f"{hud_modo} Fotos: {fotos_salvas}/{args.fotos} ({pct_progresso:.1f}%) | Estagio: {fotos_estagio}"
+                hud_linha2 = f"Alt Real: {alt_real:.2f}m (Cmd: {alt_comando:.2f}m) | Faixa: [{args.alt_min:.2f}m - {args.alt_max:.2f}m]"
+                hud_linha3 = f"Yaw: {yaw_real_deg:.1f} deg | Gimbal: {yaw_gimbal_atual:+.0f} deg | [ESPACO]: Pausa | [C]: Foto"
 
-                    cv2.imshow(nome_janela, frame_display)
+                cv2.rectangle(frame_display, (0, 0), (960, 68), (20, 20, 20), -1)
+                cor_status = (0, 165, 255) if em_pausa else (0, 255, 0)
+                cv2.putText(frame_display, hud_linha1, (15, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.52, cor_status, 2)
+                cv2.putText(frame_display, hud_linha2, (15, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1)
+                cv2.putText(frame_display, hud_linha3, (15, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+                cv2.drawMarker(frame_display, (480, 270), (0, 255, 255), cv2.MARKER_CROSS, 16, 1)
 
-                tecla = cv2.waitKey(20) & 0xFF
+                cv2.imshow(nome_janela, frame_display)
 
-                tirar_foto_manual = False
-                if tecla == ord('c') or tecla == ord('C'):
-                    tirar_foto_manual = True
+            tecla = cv2.waitKey(15) & 0xFF
 
-                elif tecla == 32:  # ESPAÇO
-                    em_pausa = not em_pausa
-                    print(f"\n[!] {'PAUSA ATIVADA' if em_pausa else 'MOVIMENTO RETOMADO'}")
+            tirar_foto_manual = False
+            if tecla == ord('c') or tecla == ord('C'):
+                tirar_foto_manual = True
 
-                elif tecla == ord('j') or tecla == ord('J'):
-                    yaw_gimbal_atual = (yaw_gimbal_atual - 90.0)
-                    if yaw_gimbal_atual < -160.0: yaw_gimbal_atual += 360.0
-                    print(f"\n[GIMBAL] Girando para a esquerda (-90°): {yaw_gimbal_atual:+.1f}°")
-                    ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
+            elif tecla == 32:  # ESPAÇO
+                em_pausa = not em_pausa
+                t_anterior = time.time()
+                print(f"\n[!] {'PAUSA ATIVADA' if em_pausa else 'MOVIMENTO RETOMADO'}")
 
-                elif tecla == ord('l') or tecla == ord('L'):
-                    yaw_gimbal_atual = (yaw_gimbal_atual + 90.0)
-                    if yaw_gimbal_atual > 160.0: yaw_gimbal_atual -= 360.0
-                    print(f"\n[GIMBAL] Girando para a direita (+90°): {yaw_gimbal_atual:+.1f}°")
-                    ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
+            elif tecla == ord('j') or tecla == ord('J'):
+                yaw_gimbal_atual = (yaw_gimbal_atual - 90.0)
+                if yaw_gimbal_atual < -160.0: yaw_gimbal_atual += 360.0
+                print(f"\n[GIMBAL] Girando para a esquerda (-90°): {yaw_gimbal_atual:+.1f}°")
+                ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
 
-                elif tecla == ord('['):
-                    yaw_gimbal_atual = max(-160.0, yaw_gimbal_atual - 15.0)
-                    print(f"\n[GIMBAL] Ajuste fino (-15°): {yaw_gimbal_atual:+.1f}°")
-                    ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
+            elif tecla == ord('l') or tecla == ord('L'):
+                yaw_gimbal_atual = (yaw_gimbal_atual + 90.0)
+                if yaw_gimbal_atual > 160.0: yaw_gimbal_atual -= 360.0
+                print(f"\n[GIMBAL] Girando para a direita (+90°): {yaw_gimbal_atual:+.1f}°")
+                ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
 
-                elif tecla == ord(']'):
-                    yaw_gimbal_atual = min(160.0, yaw_gimbal_atual + 15.0)
-                    print(f"\n[GIMBAL] Ajuste fino (+15°): {yaw_gimbal_atual:+.1f}°")
-                    ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
+            elif tecla == ord('['):
+                yaw_gimbal_atual = max(-160.0, yaw_gimbal_atual - 15.0)
+                print(f"\n[GIMBAL] Ajuste fino (-15°): {yaw_gimbal_atual:+.1f}°")
+                ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
 
-                elif tecla in [ord('q'), ord('Q'), 27]:
-                    print("\n[!] Encerrando por solicitação do usuário.")
-                    raise KeyboardInterrupt
+            elif tecla == ord(']'):
+                yaw_gimbal_atual = min(160.0, yaw_gimbal_atual + 15.0)
+                print(f"\n[GIMBAL] Ajuste fino (+15°): {yaw_gimbal_atual:+.1f}°")
+                ajustar_gimbal_completo(vehicle, pitch_deg=-90.0, yaw_deg=yaw_gimbal_atual)
 
-                if em_pausa:
-                    time.sleep(0.05)
-                    continue
+            elif tecla in [ord('q'), ord('Q'), 27]:
+                print("\n[!] Encerrando por solicitação do usuário.")
+                raise KeyboardInterrupt
 
-                if tirar_foto_manual and node_camera.ultimo_frame is not None:
-                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    nome_arq = f"captura_{contador_foto:03d}_{timestamp_str}.jpg"
-                    caminho_foto = os.path.join(pasta_saida, nome_arq)
-                    cv2.imwrite(caminho_foto, node_camera.ultimo_frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
-                    fotos_salvas += 1
-                    contador_foto += 1
-                    print(f"[MANUAL {fotos_salvas}/{args.fotos}] Salva: {nome_arq}")
-                    if fotos_salvas >= args.fotos:
-                        break
-
-                # Condição de estabilização do Waypoint
-                ok_h = (dist_h is not None and dist_h <= 0.18) or (dist_h is None and (time.time() - inicio_waypoint) >= 2.0)
-                ok_alt = (erro_alt <= 0.14)
-                ok_yaw = (erro_yaw <= 12.0)
-
-                agora = time.time()
-                if ok_h and ok_alt and ok_yaw:
-                    if tempo_dentro_tolerancia is None:
-                        tempo_dentro_tolerancia = agora
-                    elif agora - tempo_dentro_tolerancia >= 0.35: # Estável por 350ms
-                        break
-                else:
-                    tempo_dentro_tolerancia = None
-
-                # Timeout de segurança por waypoint (máximo 3.5s para não travar em caso de leve oscilação)
-                if agora - inicio_waypoint >= 3.5:
-                    break
-
-            if fotos_salvas >= args.fotos:
-                break
-
-            # Dispara captura automática do waypoint
+            # Disparo de foto automática baseado no estado
+            disparar_foto_auto = False
             if not args.sem_auto and not em_pausa and node_camera.ultimo_frame is not None:
-                timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                if estado == 'TOPO':
+                    if (graus_girados - ref_yaw_foto) >= passo_yaw_topo:
+                        ref_yaw_foto += passo_yaw_topo
+                        disparar_foto_auto = True
+                elif estado == 'DESCENDO':
+                    if (ref_alt_foto - alt_comando) >= passo_alt_descida:
+                        ref_alt_foto -= passo_alt_descida
+                        disparar_foto_auto = True
+                elif estado == 'BASE':
+                    if (graus_girados - ref_yaw_foto) >= passo_yaw_base:
+                        ref_yaw_foto += passo_yaw_base
+                        disparar_foto_auto = True
+                elif estado == 'SUBINDO':
+                    if (alt_comando - ref_alt_foto) >= passo_alt_subida:
+                        ref_alt_foto += passo_alt_subida
+                        disparar_foto_auto = True
+
+            # Salva a foto se disparada
+            if (disparar_foto_auto or tirar_foto_manual) and node_camera.ultimo_frame is not None:
+                timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
                 nome_arq = f"captura_{contador_foto:03d}_{timestamp_str}.jpg"
                 caminho_foto = os.path.join(pasta_saida, nome_arq)
 
                 cv2.imwrite(caminho_foto, node_camera.ultimo_frame, [cv2.IMWRITE_JPEG_QUALITY, 100])
                 fotos_salvas += 1
                 contador_foto += 1
+                fotos_estagio += 1
 
                 pct = (fotos_salvas / float(args.fotos)) * 100.0
-                print(f"[FOTO {fotos_salvas:3d}/{args.fotos}] ({pct:5.1f}%) Salva: {nome_arq} | Alt: {alt_real:.2f}m | Yaw: {yaw_alvo:3.0f}° | Offset: ({off_norte:+.2f}, {off_leste:+.2f})m")
+                tag = "[MANUAL]" if tirar_foto_manual else f"[{estado}]"
+                print(f"{tag:10s} Foto {fotos_salvas:3d}/{args.fotos} ({pct:5.1f}%) | Alt: {alt_real:.2f}m (Cmd: {alt_comando:.2f}m) | Yaw: {yaw_real_deg:5.1f}° | Ciclo: {ciclo}/{args.ciclos}")
+
+                if fotos_salvas >= args.fotos:
+                    break
+
+            # Transições da Máquina de Estados
+            if estado == 'TOPO' and fotos_estagio >= meta_topo:
+                estado = 'DESCENDO'
+                fotos_estagio = 0
+                ref_alt_foto = alt_comando
+                print(f"\n[+] TOPO CONCLUÍDO ({meta_topo} fotos). Iniciando DESCIDA suave ({args.alt_max:.2f}m -> {args.alt_min:.2f}m)...\n")
+
+            elif estado == 'DESCENDO' and (fotos_estagio >= meta_descida or alt_comando <= args.alt_min + 0.01):
+                alt_comando = args.alt_min
+                estado = 'BASE'
+                fotos_estagio = 0
+                ref_yaw_foto = graus_girados
+                print(f"\n[+] BASE ALCANÇADA ({args.alt_min:.2f}m). Iniciando captura concentrada na BASE ({meta_base} fotos)...\n")
+
+            elif estado == 'BASE' and fotos_estagio >= meta_base:
+                estado = 'SUBINDO'
+                fotos_estagio = 0
+                ref_alt_foto = alt_comando
+                print(f"\n[+] BASE CONCLUÍDA ({meta_base} fotos). Iniciando SUBIDA suave ({args.alt_min:.2f}m -> {args.alt_max:.2f}m)...\n")
+
+            elif estado == 'SUBINDO' and (fotos_estagio >= meta_subida or alt_comando >= args.alt_max - 0.01):
+                alt_comando = args.alt_max
+                ciclo += 1
+                if ciclo <= args.ciclos and fotos_salvas < args.fotos:
+                    estado = 'TOPO'
+                    fotos_estagio = 0
+                    ref_yaw_foto = graus_girados
+                    print(f"\n[+] CICLO {ciclo-1} CONCLUÍDO! Iniciando CICLO {ciclo}/{args.ciclos} no TOPO ({args.alt_max:.2f}m)...\n")
+                else:
+                    estado = 'TOPO'
+                    ref_yaw_foto = graus_girados
 
     except KeyboardInterrupt:
         print("\n[!] Captura interrompida pelo usuário.")
@@ -749,18 +774,9 @@ def main():
         print("=" * 75)
         print(f" Total de Fotos Capturadas : {fotos_salvas}")
         print(f" Pasta de Salvamento       : {pasta_saida}")
-        print("[*] Subindo drone com segurança para 2.0 metros...")
+        print(f"[*] Subindo drone com segurança para {args.alt_max:.2f}m...")
         try:
-            navegar_e_estabilizar(
-                vehicle,
-                alvo_x=ALVO_NORTE_NED,
-                alvo_y=ALVO_LESTE_NED,
-                alt_desejada=2.0,
-                node_camera=node_camera,
-                tol_h=0.5,
-                tol_alt=0.2,
-                timeout_seg=8.0
-            )
+            comandar_posicao_absoluta_local(vehicle, ALVO_NORTE_NED, ALVO_LESTE_NED, -args.alt_max, yaw_rad=0.0)
             enviar_velocidade(vehicle, 0.0, 0.0, 0.0)
         except Exception:
             pass
