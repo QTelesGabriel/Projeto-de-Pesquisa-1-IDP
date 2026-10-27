@@ -38,15 +38,32 @@ class RastreadorFinoYOLO(Node):
         self.erro_yaw_anterior = 0.0
         self.ultimo_tempo = None
         
-        # 3. Geometria Física e Máquina de Estados (Passo 4 e 5)
-        self.altura_gaiola = 0.36 # Altura exata extraída do STL
+        # 3. Geometria Física e Máquina de Estados (4 Etapas)
+        self.altura_gaiola = 0.317 # Altura exata da tampa da gaiola (sem alças, extraída do STL)
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
         # Valores calculados pela ferramenta de calibração visual
+        # offset_pct_x positivo = Direita, offset_pct_y positivo = Cima (Y negativo no pixel)
         self.offset_pct_x = -0.0066
-        self.offset_pct_y = 0.1542
+        self.offset_pct_y = 0.1700
         
-        self.altitude_captura = 0.05 # Altitude RELATIVA que consideramos "Toque" na gaiola (Captura)
+        # Parâmetros das 4 Etapas da Fase 2
+        self.alt_yaw = 1.50                # Etapa 1 -> Etapa 2: Hover a 1.50m para alinhamento de Yaw (subido 10 cm)
+        # Ângulo alvo compensado para a assimetria física do CAD (+93.37° em vez de 90.00°)
+        # Isso garante que a carcaça e a linha da base fiquem perfeitamente ortogonais ao drone
+        self.angulo_alvo = math.radians(93.37)
+        self.margem_erro_yaw_deg = 1.0     # Margem máxima de erro angular no Yaw (máximo 1.0°)
+        self.tempo_yaw_ok_necessario = 2.0 # 2.0s contínuos sustentados <= 1.0° (alterado de 0.5s)
+        self.ultimo_erro_yaw_deg = None    # Memoriza o último erro de Yaw para exibição contínua
+        self.tempo_sem_3_alcas = None      # Temporizador para detectar alça oculta por sombra do drone
+        self.timeout_sombra_alca = 3.0     # 3.0s sem as 3 alças para forçar rotação
+        self.vel_yaw_sombra = 0.25         # Velocidade angular forçada (rad/s) para fugir da sombra
+        self.ultimo_log_sombra = 0.0       # Controle de frequência de logs de alerta
+        self.alt_final = 0.50              # Etapa 3A -> Etapa 3B: Hover a 0.50m para ajuste fino no offset
+        self.margem_erro_cravado = 0.002   # Margem estrita de 2 mm (0.002m) de erro no offset
+        self.tempo_cravado_necessario = 2.0 # 2.0 segundos sustentados continuamente <= 2 mm
+        self.vel_descida_cega = 0.35       # Velocidade de descida rápida (m/s) para anular deriva lateral
+        self.altitude_captura = 0.05       # Altitude RELATIVA de toque/captura
         
         self.erro_final_x = None
         self.erro_final_y = None
@@ -55,9 +72,8 @@ class RastreadorFinoYOLO(Node):
         # Variáveis da Máquina de Estados de Descida
         self.rotacao_concluida = False
         self.tempo_yaw_ok = None
-        self.tempo_alinhamento_ok = None
-        self.tempo_borda_ok = None
         self.tempo_cravado = None
+        self.etapa_atual_nome = "ETAPA 1/4: APROXIMACAO INICIAL"
         
         # Filtro EMA para Bounding Box
         self.ema_x1 = None
@@ -113,23 +129,23 @@ class RastreadorFinoYOLO(Node):
         
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-        # --- PASSO 5: VERIFICAÇÃO DE CAPTURA ---
+        # --- ETAPA 4 (FINAL): VERIFICAÇÃO DE CAPTURA ---
         if altitude_relativa <= self.altitude_captura:
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0) # Desliga os motores e rotação
             self.get_logger().info(f"CAPTURA BEM SUCEDIDA! Altura de toque atingida.")
             
-            # Cálcula o erro absoluto final (RMSE)
+            # Calcula o erro absoluto final (RMSE)
             if self.erro_final_x is not None:
                 rmse = (self.erro_final_x**2 + self.erro_final_y**2)**0.5
                 self.get_logger().info(f"========== RESULTADO PARA O TCC ==========")
-                self.get_logger().info(f"ERRO FINAL (RMSE) NO PONTO DE CORTE: {rmse:.4f} metros")
+                self.get_logger().info(f"ERRO FINAL (RMSE) NO PONTO DE CORTE: {rmse:.4f} metros ({rmse*1000.0:.1f} mm)")
                 self.get_logger().info(f"==========================================")
                 
             raise SystemExit
             
-        # --- PASSO 4: BLIND DROP ATIVO? ---
+        # --- ETAPA 4: DESCIDA CEGA RÁPIDA (ANTI-DERIVA) ---
         if self.iniciou_blind_drop:
-            vel_z = 0.25 # Desce constante e firme
+            vel_z = self.vel_descida_cega # Desce rápido e constante para anular deriva lateral
             enviar_velocidade(self.vehicle, 0.0, 0.0, vel_z, 0.0) # X, Y e Yaw zerados!
             
             # Desliga a câmera (fecha a janela) simulando perda de feed de vídeo
@@ -140,20 +156,23 @@ class RastreadorFinoYOLO(Node):
                 
             return
 
-        # --- PASSO 3: FUNIL VISUAL (Visão Ativa - YOLO 2 Classes) ---
-        resultados = self.yolo.predict(cv_image, verbose=False, conf=0.5)
+        # --- PERCEPÇÃO VISUAL (YOLO 2 Classes) ---
+        # ISOLAMENTO DE IMAGEM: O YOLO recebe um clone intocado (cópia limpa) da câmera.
+        # Nenhuma alteração gráfica do OpenCV contamina a entrada do modelo.
+        img_yolo = cv_image.copy()
+        resultados = self.yolo.predict(img_yolo, verbose=False, conf=0.5)
         
         centro_x, centro_y = None, None
         alcas_pts = []
         erro_angular_deg = None
         yaw_rate = 0.0
         
-        # Desenha a mira (Centro da tela)
-        cv2.line(cv_image, (int(self.cx) - 20, int(self.cy)), (int(self.cx) + 20, int(self.cy)), (255, 255, 255), 2)
-        cv2.line(cv_image, (int(self.cx), int(self.cy) - 20), (int(self.cx), int(self.cy) + 20), (255, 255, 255), 2)
-        
-        img_h, img_w = cv_image.shape[:2]
-        tocar_borda = (altitude_bruta <= 0.75)
+        # 1. Desenha a mira central (Eixo óptico da Câmera / Centro do Drone)
+        cv2.line(cv_image, (int(self.cx) - 25, int(self.cy)), (int(self.cx) + 25, int(self.cy)), (255, 255, 255), 2)
+        cv2.line(cv_image, (int(self.cx), int(self.cy) - 25), (int(self.cx), int(self.cy) + 25), (255, 255, 255), 2)
+        cv2.circle(cv_image, (int(self.cx), int(self.cy)), 4, (255, 255, 255), -1)
+        cv2.putText(cv_image, "MIRA (Centro Camera)", (int(self.cx) + 12, int(self.cy) - 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
         
         boxes = resultados[0].boxes
         if len(boxes) > 0:
@@ -161,7 +180,7 @@ class RastreadorFinoYOLO(Node):
             boxes_armadilha = [b for b in boxes if int(b.cls[0].item()) == 1]
             boxes_alca = [b for b in boxes if int(b.cls[0].item()) == 0]
             
-            # 1. Analisa a Armadilha (Gaiola inteira) e calcula o Alvo Virtual com Offset
+            # 2. Analisa a Armadilha (Gaiola inteira) e calcula o Alvo Virtual com Offset
             if len(boxes_armadilha) > 0:
                 best_armadilha = max(boxes_armadilha, key=lambda b: float(b.conf[0].item()))
                 x1_raw, y1_raw, x2_raw, y2_raw = map(float, best_armadilha.xyxy[0].cpu().numpy())
@@ -182,32 +201,44 @@ class RastreadorFinoYOLO(Node):
                 box_h = y2 - y1
                 box_cx = x1 + box_w / 2.0
                 box_cy = y1 + box_h / 2.0
-                cv2.circle(cv_image, (int(box_cx), int(box_cy)), 4, (255, 255, 0), -1)
+                cv2.circle(cv_image, (int(box_cx), int(box_cy)), 5, (255, 165, 0), -1)
                 
-                # Alvo Virtual com Offset Proporcional
-                # offset_pct_x positivo = Direita, offset_pct_y positivo = Cima (Y negativo no pixel)
+                # Alvo Virtual com Offset Proporcional calibrado
                 alvo_x = box_cx + (box_w * self.offset_pct_x)
                 alvo_y = box_cy - (box_h * self.offset_pct_y)
-                centro_x, centro_y = alvo_x, alvo_y
                 
-                cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 8, (0, 0, 255), -1)
-                cv2.putText(cv_image, "ALVO VIRTUAL", (int(alvo_x)+10, int(alvo_y)), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                # O alinhamento no Alvo Virtual com Offset atua após a trava de Yaw (Etapa 3)
+                if self.rotacao_concluida:
+                    centro_x, centro_y = alvo_x, alvo_y
+                    cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 7, (0, 0, 255), -1)
+                    cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 13, (0, 0, 255), 2)
+                    cv2.putText(cv_image, "ALVO (OFFSET)", (int(alvo_x) + 16, int(alvo_y)), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                else:
+                    # Durante Etapas 1 e 2: mira no centro geométrico da armadilha
+                    centro_x, centro_y = box_cx, box_cy
+                    cv2.putText(cv_image, "CENTRO GAIOLA", (int(box_cx) + 10, int(box_cy)), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 165, 0), 1)
+                    # Desenha prévia discreta do offset
+                    cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 5, (128, 128, 128), -1)
                             
-            # 2. Analisa as Alças para Cálculo de Ângulo (Triângulo Isósceles)
+            # 3. Analisa as Alças para Cálculo de Ângulo (Triângulo Isósceles)
             sorted_alcas = sorted(boxes_alca, key=lambda b: float(b.conf[0].item()), reverse=True)[:3]
             for b in sorted_alcas:
                 bx1, by1, bx2, by2 = map(int, b.xyxy[0].cpu().numpy())
                 pcx = (bx1 + bx2) / 2.0
                 pcy = (by1 + by2) / 2.0
                 alcas_pts.append((pcx, pcy))
-                cv2.rectangle(cv_image, (bx1, by1), (bx2, by2), (0, 220, 255), 1)
-                cv2.circle(cv_image, (int(pcx), int(pcy)), 4, (0, 220, 255), -1)
+                # Só desenha as marcações das alças enquanto o Yaw NÃO estiver travado
+                if not self.rotacao_concluida:
+                    cv2.rectangle(cv_image, (bx1, by1), (bx2, by2), (0, 220, 255), 1)
+                    cv2.circle(cv_image, (int(pcx), int(pcy)), 4, (0, 220, 255), -1)
                 
             agora = time.time()
             
-            # Requisito: O drone SÓ pode rotacionar quando de fato estiver vendo as 3 alças
+            # Aplicação do Filtro de Kalman nas 3 Alças e no Ângulo
             if len(alcas_pts) == 3:
+                self.tempo_sem_3_alcas = None # Todas as 3 alças encontradas com sucesso!
                 pts = [np.array(p, dtype=float) for p in alcas_pts]
                 d01 = float(np.linalg.norm(pts[0] - pts[1]))
                 d12 = float(np.linalg.norm(pts[1] - pts[2]))
@@ -230,22 +261,18 @@ class RastreadorFinoYOLO(Node):
                 mid_raw = (cand_b1 + cand_b2) / 2.0
                 u_raw = apex_raw - mid_raw
                 v_cand = cand_b1 - mid_raw
-                # Produto vetorial 2D
                 cross = u_raw[0] * v_cand[1] - u_raw[1] * v_cand[0]
                 if cross > 0:
                     b1_raw, b2_raw = cand_b1, cand_b2
                 else:
                     b1_raw, b2_raw = cand_b2, cand_b1
                     
-                # Aplica o Filtro de Kalman (FiltroAlvoEKF) nos 3 pontos individualmente
+                # Aplica o Filtro de Kalman (FiltroAlvoEKF) individualmente nos 3 pontos das alças
                 if self.usar_filtro:
-                    # Converte pontos para metros físicos relativos à câmera
                     x_m_apex = (apex_raw[0] - self.cx) * altitude_relativa / self.fx
                     y_m_apex = (apex_raw[1] - self.cy) * altitude_relativa / self.fy
-                    
                     x_m_b1 = (b1_raw[0] - self.cx) * altitude_relativa / self.fx
                     y_m_b1 = (b1_raw[1] - self.cy) * altitude_relativa / self.fy
-                    
                     x_m_b2 = (b2_raw[0] - self.cx) * altitude_relativa / self.fx
                     y_m_b2 = (b2_raw[1] - self.cy) * altitude_relativa / self.fy
                     
@@ -254,14 +281,12 @@ class RastreadorFinoYOLO(Node):
                     f_x_b2, f_y_b2 = self.filtro_p2.atualizar(x_m_b2, y_m_b2, dt)
                     
                     if f_x_apex is not None and f_x_b1 is not None and f_x_b2 is not None:
-                        # Converte de volta para pixel para cálculos e HUD
                         px_apex = (f_x_apex * self.fx / altitude_relativa) + self.cx
                         py_apex = (f_y_apex * self.fy / altitude_relativa) + self.cy
                         px_b1 = (f_x_b1 * self.fx / altitude_relativa) + self.cx
                         py_b1 = (f_y_b1 * self.fy / altitude_relativa) + self.cy
                         px_b2 = (f_x_b2 * self.fx / altitude_relativa) + self.cx
                         py_b2 = (f_y_b2 * self.fy / altitude_relativa) + self.cy
-                        
                         apex_pt = np.array([px_apex, py_apex])
                         b1_pt = np.array([px_b1, py_b1])
                         b2_pt = np.array([px_b2, py_b2])
@@ -270,14 +295,12 @@ class RastreadorFinoYOLO(Node):
                 else:
                     apex_pt, b1_pt, b2_pt = apex_raw, b1_raw, b2_raw
                     
-                # Ponto médio da base do triângulo filtrado
                 mid_base = (b1_pt + b2_pt) / 2.0
-                
-                # Vetor do meio da base apontando para o vértice
                 vec = apex_pt - mid_base
                 dx, dy = float(vec[0]), float(vec[1])
                 angulo_atual_bruto = math.atan2(dy, dx)
                 
+                # Aplica o Filtro de Kalman no Ângulo
                 if self.usar_filtro:
                     angulo_atual = self.filtro_angulo.atualizar(angulo_atual_bruto, dt)
                     if angulo_atual is None:
@@ -285,179 +308,281 @@ class RastreadorFinoYOLO(Node):
                 else:
                     angulo_atual = angulo_atual_bruto
                     
-                # Requisito: Base para cima e vértice para baixo
-                # No OpenCV, apontar para baixo (Y positivo) é +PI/2 radianos (+90 graus)
-                angulo_alvo = math.pi / 2.0
+                # Requisito: Base para cima e vértice para baixo (+93.37° compensando assimetria do CAD)
+                angulo_alvo = self.angulo_alvo
                 erro_angular = (angulo_atual - angulo_alvo + math.pi) % (2.0 * math.pi) - math.pi
                 erro_angular_deg = math.degrees(erro_angular)
                 
-                # Desenho do triângulo isósceles filtrado no HUD
-                # Base em ciano
-                cv2.line(cv_image, (int(b1_pt[0]), int(b1_pt[1])), (int(b2_pt[0]), int(b2_pt[1])), (255, 255, 0), 2)
-                # Lados similares em verde
-                cv2.line(cv_image, (int(apex_pt[0]), int(apex_pt[1])), (int(b1_pt[0]), int(b1_pt[1])), (0, 255, 0), 2)
-                cv2.line(cv_image, (int(apex_pt[0]), int(apex_pt[1])), (int(b2_pt[0]), int(b2_pt[1])), (0, 255, 0), 2)
-                cv2.circle(cv_image, (int(mid_base[0]), int(mid_base[1])), 4, (255, 255, 0), -1)
-                # Vértice em magenta
-                cv2.circle(cv_image, (int(apex_pt[0]), int(apex_pt[1])), 7, (255, 0, 255), -1)
-                cv2.putText(cv_image, "VERTICE", (int(apex_pt[0])+10, int(apex_pt[1])), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 0, 255), 1)
-                # Vetor de orientação (meio da base -> vértice)
-                cv2.arrowedLine(cv_image, (int(mid_base[0]), int(mid_base[1])), 
-                                (int(apex_pt[0]), int(apex_pt[1])), (0, 255, 255), 2, tipLength=0.25)
+                # Desenho do triângulo e dos 3 pontos das alças FILTRADOS pelo Kalman (EKF)
+                if not self.rotacao_concluida:
+                    # Alças filtradas com círculos e anéis EKF
+                    # Vértice em magenta (Ponto Apex filtrado)
+                    cv2.circle(cv_image, (int(apex_pt[0]), int(apex_pt[1])), 8, (255, 0, 255), -1)
+                    cv2.circle(cv_image, (int(apex_pt[0]), int(apex_pt[1])), 13, (255, 0, 255), 2)
+                    cv2.putText(cv_image, "EKF P0", (int(apex_pt[0]) + 15, int(apex_pt[1]) + 4), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 0, 255), 1)
+                    
+                    # Pontos da Base em ciano (Pontos Base 1 e 2 filtrados)
+                    cv2.circle(cv_image, (int(b1_pt[0]), int(b1_pt[1])), 6, (255, 255, 0), -1)
+                    cv2.circle(cv_image, (int(b1_pt[0]), int(b1_pt[1])), 11, (255, 255, 0), 2)
+                    cv2.putText(cv_image, "EKF P1", (int(b1_pt[0]) - 55, int(b1_pt[1]) + 4), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 0), 1)
                                 
-                # Requisito: O ajuste de rotação e alinhamento fino ocorre no Ajuste Final (<= 0.75m)
-                if tocar_borda:
-                    if not self.rotacao_concluida:
-                        # Variação máxima de 2° mantendo por 0.5 segundos contínuos
-                        if abs(erro_angular_deg) <= 2.0:
+                    cv2.circle(cv_image, (int(b2_pt[0]), int(b2_pt[1])), 6, (255, 255, 0), -1)
+                    cv2.circle(cv_image, (int(b2_pt[0]), int(b2_pt[1])), 11, (255, 255, 0), 2)
+                    cv2.putText(cv_image, "EKF P2", (int(b2_pt[0]) + 15, int(b2_pt[1]) + 4), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 0), 1)
+                    
+                    # Linhas do triângulo filtrado
+                    cv2.line(cv_image, (int(b1_pt[0]), int(b1_pt[1])), (int(b2_pt[0]), int(b2_pt[1])), (255, 255, 0), 2)
+                    cv2.line(cv_image, (int(apex_pt[0]), int(apex_pt[1])), (int(b1_pt[0]), int(b1_pt[1])), (0, 255, 0), 2)
+                    cv2.line(cv_image, (int(apex_pt[0]), int(apex_pt[1])), (int(b2_pt[0]), int(b2_pt[1])), (0, 255, 0), 2)
+                    
+                    # Seta de orientação calculada pelo ângulo filtrado
+                    cv2.arrowedLine(cv_image, (int(mid_base[0]), int(mid_base[1])), 
+                                    (int(apex_pt[0]), int(apex_pt[1])), (0, 255, 255), 2, tipLength=0.25)
+                    cv2.putText(cv_image, "ALCAS FILTRADAS (EKF)", (int(mid_base[0]) - 85, int(mid_base[1]) - 14), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.44, (0, 255, 255), 1)
+                                
+                # Controle de Yaw (Ativo estritamente na Etapa 2: altitude_bruta <= 1.40m)
+                if not self.rotacao_concluida:
+                    if altitude_bruta <= self.alt_yaw:
+                        # ETAPA 2: Ajuste e trava de Yaw a 1.40m
+                        if abs(erro_angular_deg) <= self.margem_erro_yaw_deg:
                             if self.tempo_yaw_ok is None:
                                 self.tempo_yaw_ok = agora
-                            elif (agora - self.tempo_yaw_ok) >= 0.5:
+                            elif (agora - self.tempo_yaw_ok) >= self.tempo_yaw_ok_necessario:
                                 self.rotacao_concluida = True
-                                self.get_logger().info(f"[+] AJUSTE FINAL: YAW ALINHADO E TRAVADO! Erro: {erro_angular_deg:.2f}° mantido por 0.5s.")
+                                yaw_rate = 0.0
+                                if self.usar_filtro:
+                                    self.filtro.iniciado = False  # Reinicia o EKF para ancorar suave no Offset
+                                self.get_logger().info(f"[+] ETAPA 2 CONCLUIDA: Yaw travado com erro {erro_angular_deg:+.2f}° (Meta <={self.margem_erro_yaw_deg:.1f}°)! Avancando para Etapa 3 (Descida no Offset).")
                         else:
                             self.tempo_yaw_ok = None
                             
                         derivada_yaw = (erro_angular - self.erro_yaw_anterior) / dt
                         self.erro_yaw_anterior = erro_angular
                         yaw_rate = erro_angular * self.kp_yaw + derivada_yaw * self.kd_yaw
-                        max_yaw = 0.5
+                        max_yaw = 0.4
                         yaw_rate = max(-max_yaw, min(max_yaw, yaw_rate))
                     else:
-                        # Yaw travado permanentemente
+                        # ETAPA 1: Acima de 1.40m o Yaw não gira
                         yaw_rate = 0.0
+                        self.tempo_yaw_ok = None
                 else:
-                    # Durante a descida inicial (altitude > 0.75m), o drone NÃO rotaciona (foca apenas no offset)
+                    # Yaw travado permanentemente após alinhamento
                     yaw_rate = 0.0
-                    self.tempo_yaw_ok = None
             else:
-                # O drone NÃO rotaciona se não estiver vendo as 3 alças
-                yaw_rate = 0.0
+                # Menos de 3 alças encontradas
                 if not self.rotacao_concluida:
                     self.tempo_yaw_ok = None
+                    if altitude_bruta <= self.alt_yaw:
+                        # ETAPA 2: Monitora se alças estão cobertas pela sombra do drone
+                        if self.tempo_sem_3_alcas is None:
+                            self.tempo_sem_3_alcas = agora
+                        tempo_sem_alcas = agora - self.tempo_sem_3_alcas
+                        
+                        if tempo_sem_alcas >= self.timeout_sombra_alca:
+                            # Passou de 3 segundos sem encontrar as 3 alças: FORÇA ROTAÇÃO ANTI-SOMBRA
+                            yaw_rate = self.vel_yaw_sombra
+                            if (agora - self.ultimo_log_sombra) > 2.0:
+                                self.ultimo_log_sombra = agora
+                                self.get_logger().warn(f"[!] DESVIO DE SOMBRA: Apenas {len(alcas_pts)}/3 alcas visiveis ha {tempo_sem_alcas:.1f}s. Forcando rotacao do drone para desviar da sombra!")
+                        else:
+                            yaw_rate = 0.0
+                    else:
+                        yaw_rate = 0.0
+                        self.tempo_sem_3_alcas = None
+                else:
+                    yaw_rate = 0.0
+                    self.tempo_sem_3_alcas = None
+                    
                 if self.usar_filtro:
                     self.filtro_p0.atualizar(None, None, dt)
                     self.filtro_p1.atualizar(None, None, dt)
                     self.filtro_p2.atualizar(None, None, dt)
                     self.filtro_angulo.atualizar(None, dt)
                     
-        # Converte o Alvo Virtual de pixel para metros físicos (PBVS)
+        # Converte o Alvo de pixel para metros físicos (PBVS)
         x_m_bruto, y_m_bruto = None, None
         if centro_x is not None and centro_y is not None:
             x_m_bruto = (centro_x - self.cx) * altitude_relativa / self.fx
             y_m_bruto = (centro_y - self.cy) * altitude_relativa / self.fy
             
-        # Filtro EKF (Lidando com Jitter)
+        # Filtro EKF para o Alvo (Lidando com Jitter)
         if self.usar_filtro:
             erro_x, erro_y = self.filtro.atualizar(x_m_bruto, y_m_bruto, dt)
             if erro_x is not None and erro_y is not None:
                 pixel_x_filtrado = int((erro_x * self.fx / altitude_relativa) + self.cx)
                 pixel_y_filtrado = int((erro_y * self.fy / altitude_relativa) + self.cy)
                 cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 6, (255, 255, 0), -1)
-                cv2.putText(cv_image, "FILTRADO", (pixel_x_filtrado+10, pixel_y_filtrado), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         else:
             erro_x, erro_y = x_m_bruto, y_m_bruto
             
+        agora = time.time()
+        
         if erro_x is not None and erro_y is not None:
             self.erro_final_x = erro_x
             self.erro_final_y = erro_y
             
-            # PD de Translação (X e Y) centralizando no Offset
+            # Derivadas de velocidade translacional
             derivada_x = (erro_x - self.erro_x_anterior) / dt
             derivada_y = (erro_y - self.erro_y_anterior) / dt
             self.erro_x_anterior = erro_x
             self.erro_y_anterior = erro_y
             
-            if tocar_borda:
-                max_vel = 0.02
-                kp_atual = 0.15
+            erro_xy_atual = (erro_x**2 + erro_y**2)**0.5
+            erro_mm = erro_xy_atual * 1000.0
+            
+            # --- MÁQUINA DE ESTADOS DA FASE 2 (4 ETAPAS) ---
+            if not self.rotacao_concluida:
+                # ETAPAS ANTERIORES À TRAVA DE YAW (Centralizado na Armadilha)
+                if altitude_bruta > self.alt_yaw:
+                    # ETAPA 1: Aproximação inicial até 1.40m
+                    vel_z = 0.20
+                    yaw_rate = 0.0 # Yaw travado, não gira ainda
+                    self.tempo_yaw_ok = None
+                    self.tempo_cravado = None
+                    max_vel = 0.4
+                    kp_atual = self.kp
+                    self.etapa_atual_nome = f"ETAPA 1/4: APROXIMACAO INICIAL (Descendo para {self.alt_yaw:.2f}m)"
+                    cor_status = (0, 165, 255) # Laranja
+                else:
+                    # ETAPA 2: Hover a 1.40m para alinhamento e trava de Yaw com Kalman nas alças
+                    vel_z = 0.0 # Hover estável a 1.40m
+                    self.tempo_cravado = None
+                    max_vel = 0.25
+                    kp_atual = self.kp
+                    
+                    if erro_angular_deg is not None:
+                        if self.tempo_yaw_ok is not None:
+                            tempo_yaw_acumulado = agora - self.tempo_yaw_ok
+                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° ({tempo_yaw_acumulado:.1f}s/{self.tempo_yaw_ok_necessario:.1f}s)"
+                            cor_status = (0, 255, 0) # Verde se estiver sustentando dentro da meta
+                        else:
+                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° (Meta <={self.margem_erro_yaw_deg:.1f}°)"
+                            cor_status = (0, 255, 255) # Amarelo
+                    else:
+                        self.tempo_yaw_ok = None
+                        tempo_sem = (agora - self.tempo_sem_3_alcas) if self.tempo_sem_3_alcas is not None else 0.0
+                        if tempo_sem >= self.timeout_sombra_alca:
+                            self.etapa_atual_nome = f"ETAPA 2/4: DESVIO DE SOMBRA! Forcando Rotacao ({len(alcas_pts)}/3 alcas)"
+                            cor_status = (255, 0, 255) # Magenta para indicar desvio de sombra
+                        else:
+                            self.etapa_atual_nome = f"ETAPA 2/4: BUSCANDO 3 ALCAS ({len(alcas_pts)}/3) - {tempo_sem:.1f}s/{self.timeout_sombra_alca:.1f}s"
+                            cor_status = (0, 165, 255) # Laranja
             else:
-                max_vel = 0.5
-                kp_atual = self.kp
+                # ETAPAS APÓS TRAVA DE YAW (Centralizado no Alvo Virtual com Offset)
+                yaw_rate = 0.0 # Yaw permanentemente travado
                 
+                if altitude_bruta > self.alt_final:
+                    # ETAPA 3A: Descida centrada no Offset até 0.50m
+                    vel_z = 0.18
+                    self.tempo_cravado = None
+                    max_vel = 0.35
+                    kp_atual = self.kp
+                    self.etapa_atual_nome = "ETAPA 3/4: DESCENDO NO OFFSET (Ate 0.50m)"
+                    cor_status = (0, 220, 0) # Verde
+                else:
+                    # ETAPA 3B: Ajuste Fino a 0.50m com margem de 3 mm por 1.0 segundo
+                    vel_z = 0.0 # Hover a 0.50m
+                    max_vel = 0.02
+                    kp_atual = 0.15
+                    
+                    if erro_xy_atual <= self.margem_erro_cravado: # <= 2 mm (0.002m)
+                        if self.tempo_cravado is None:
+                            self.tempo_cravado = agora
+                        tempo_acumulado = agora - self.tempo_cravado
+                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO <={self.margem_erro_cravado*1000:.0f}mm ({erro_mm:.1f}mm) - {tempo_acumulado:.1f}s/{self.tempo_cravado_necessario:.1f}s"
+                        cor_status = (0, 255, 0) # Verde brilhante
+                        
+                        if tempo_acumulado >= self.tempo_cravado_necessario:
+                            enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
+                            self.iniciou_blind_drop = True
+                            self.get_logger().info(f"[+] ETAPA 3 CONCLUIDA: Alvo cravado a {erro_mm:.2f} mm por {self.tempo_cravado_necessario:.1f}s! Disparando Etapa 4 (Blind Drop a {self.vel_descida_cega} m/s).")
+                            return
+                    else:
+                        self.tempo_cravado = None
+                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO @ {self.alt_final:.2f}m | Erro: {erro_mm:.1f}mm (Meta <={self.margem_erro_cravado*1000:.1f}mm)"
+                        cor_status = (0, 255, 255) # Amarelo alerta
+                        
             vel_x = (erro_x * kp_atual + derivada_x * self.kd)
             vel_y = (erro_y * kp_atual + derivada_y * self.kd)
             vel_x = max(-max_vel, min(max_vel, vel_x))
             vel_y = max(-max_vel, min(max_vel, vel_y))
             
-            erro_xy_atual = (erro_x**2 + erro_y**2)**0.5
-            agora = time.time()
-            
-            if tocar_borda:
-                # MOMENTO 2: Ajuste Final de Rotação e Alinhamento (<= 0.75m)
-                if self.tempo_borda_ok is None:
-                    self.tempo_borda_ok = agora
-                    
-                tempo_restante = max(0.0, 10.0 - (agora - self.tempo_borda_ok))
-                segundos_arredondados = int(math.ceil(tempo_restante))
-                if not hasattr(self, 'ultimo_seg_impresso') or self.ultimo_seg_impresso != segundos_arredondados:
-                    if segundos_arredondados > 0:
-                        self.get_logger().info(f"[!] AJUSTE FINAL (YAW + OFFSET): {segundos_arredondados}s restantes...")
-                    self.ultimo_seg_impresso = segundos_arredondados
-                    
-                if tempo_restante <= 0.0:
-                    # Só dispara a queda cega se o Yaw já estiver travado E o offset estiver cravado (<0.1cm por 0.5s)
-                    if not self.rotacao_concluida:
-                        self.tempo_cravado = None
-                        if erro_angular_deg is not None:
-                            texto_status = f"AJUSTE FINAL: ALINHANDO YAW (Erro: {erro_angular_deg:.1f}° > 2°)"
-                        else:
-                            texto_status = "AJUSTE FINAL: BUSCANDO 3 ALÇAS P/ YAW"
-                        cor_status = (0, 165, 255)
-                    elif erro_xy_atual <= 0.001:
-                        if self.tempo_cravado is None:
-                            self.tempo_cravado = agora
-                        elif agora - self.tempo_cravado >= 0.5:
-                            enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
-                            self.iniciou_blind_drop = True
-                            self.get_logger().info(f"AJUSTE FINAL CONCLUÍDO (Yaw travado, Erro={erro_xy_atual*100:.2f}cm)! Iniciando Blind Drop.")
-                            return
-                        texto_status = "ESTABILIZANDO PARADA (YAW OK, XY <0.1cm)..."
-                        cor_status = (0, 255, 0)
-                    else:
-                        self.tempo_cravado = None
-                        texto_status = f"AGUARDANDO ALINHAMENTO (<0.1cm) | Atual: {erro_xy_atual*100:.2f}cm"
-                        cor_status = (0, 255, 255)
-                else:
-                    self.tempo_cravado = None
-                    yaw_info = "YAW OK" if self.rotacao_concluida else (f"YAW: {erro_angular_deg:.1f}°" if erro_angular_deg is not None else "SEM 3 ALÇAS")
-                    texto_status = f"AJUSTE FINAL [{yaw_info}] - {tempo_restante:.1f}s"
-                    cor_status = (0, 255, 255)
-                    
-                vel_z = 0.0 # Hover a 0.75m para permitir o ajuste fino
-            else:
-                self.tempo_borda_ok = None
-                self.tempo_cravado = None
-                
-                # Descida normal da Fase 2 centralizando no offset (sem rotação)
-                vel_z = 0.20
-                texto_status = "FASE 2: DESCENDO NO OFFSET (Ajuste Final em 0.75m)..."
-                cor_status = (0, 255, 0)
-                    
             # Envia velocidade translacional e taxa de Yaw para o drone
             enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z, yaw_rate)
         else:
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
-            texto_status = "ALVO PERDIDO (Aguardando)"
+            self.etapa_atual_nome = "ALVO PERDIDO (Aguardando)"
             cor_status = (0, 0, 255)
             self.tempo_yaw_ok = None
+            self.tempo_cravado = None
             
-        cv2.putText(cv_image, f"Alt Rel: {altitude_relativa:.2f}m | {texto_status}", (20, 40), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, cor_status, 2)
+        # --- PAINEL DE STATUS SUPERIOR (HUD) ---
+        overlay = cv_image.copy()
+        cv2.rectangle(overlay, (15, 12), (920, 115), (20, 20, 20), -1)
+        cv2.rectangle(overlay, (15, 12), (920, 115), (80, 80, 80), 1)
+        
+        # --- CAIXA DE LEGENDA VISUAL E ORIENTAÇÃO (CANTO SUPERIOR DIREITO) ---
+        img_w = cv_image.shape[1]
+        leg_w = 440
+        leg_h = 103
+        leg_x1 = max(950, img_w - leg_w - 20)
+        leg_y1 = 12
+        leg_x2 = leg_x1 + leg_w
+        leg_y2 = leg_y1 + leg_h
+        cv2.rectangle(overlay, (leg_x1, leg_y1), (leg_x2, leg_y2), (20, 20, 20), -1)
+        cv2.rectangle(overlay, (leg_x1, leg_y1), (leg_x2, leg_y2), (80, 80, 80), 1)
+        cv2.addWeighted(overlay, 0.75, cv_image, 0.25, 0, cv_image)
+        
+        # Formatação do Status e Erro de Yaw
+        status_yaw_str = "TRAVADO" if self.rotacao_concluida else "ALINHANDO"
+        if erro_angular_deg is not None:
+            self.ultimo_erro_yaw_deg = erro_angular_deg
+            erro_yaw_str = f"{erro_angular_deg:+.1f}°"
+        elif self.rotacao_concluida and self.ultimo_erro_yaw_deg is not None:
+            erro_yaw_str = f"{self.ultimo_erro_yaw_deg:+.1f}° (Travado)"
+        else:
+            erro_yaw_str = "N/A"
+        
+        # Textos do Painel de Status
+        cv2.putText(cv_image, f"Alt Bruta: {altitude_bruta:.2f}m | Alt Rel: {altitude_relativa:.2f}m | Yaw: {status_yaw_str} (Erro: {erro_yaw_str})", 
+                    (28, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        cv2.putText(cv_image, self.etapa_atual_nome, (28, 72), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.68, cor_status, 2)
                     
         if 'erro_xy_atual' in locals():
-            cv2.putText(cv_image, f"Erro Offset: {erro_xy_atual*100:.2f} cm", (20, 70), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.65, cor_status, 2)
+            label_alvo = "Erro Offset" if self.rotacao_concluida else "Erro Centro Gaiola"
+            cor_erro = (0, 255, 0) if (self.rotacao_concluida and erro_xy_atual <= self.margem_erro_cravado) else (0, 255, 255)
+            cv2.putText(cv_image, f"{label_alvo}: {erro_mm:.1f} mm  |  Meta Fina: <= {self.margem_erro_cravado*1000:.1f} mm ({self.tempo_cravado_necessario:.1f}s)", 
+                        (28, 102), cv2.FONT_HERSHEY_SIMPLEX, 0.58, cor_erro, 2)
                         
+        # Textos da Caixa de Legendas (Enxuta e com indicação clara do erro em graus)
+        cv2.putText(cv_image, "=== LEGENDA & ORIENTACAO ===", (leg_x1 + 80, leg_y1 + 25), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1)
+        cv2.putText(cv_image, "[+] Mira Drone   (*) Alvo Offset   [^] Alcas EKF", (leg_x1 + 15, leg_y1 + 53), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 200, 200), 1)
+        
+        # Linha destacada mostrando quantos graus está errado
         if erro_angular_deg is not None:
-            if tocar_borda:
-                status_yaw_str = "TRAVADO" if self.rotacao_concluida else "ALINHANDO"
-            else:
-                status_yaw_str = "AGUARDANDO 0.75m"
-            cv2.putText(cv_image, f"Erro Yaw: {erro_angular_deg:.1f}° [{status_yaw_str}]", (20, 100), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
-                        
+            cor_yaw_leg = (0, 255, 0) if abs(erro_angular_deg) <= self.margem_erro_yaw_deg else (0, 255, 255)
+            tag_yaw = "TRAVADO" if self.rotacao_concluida else f"Meta <= {self.margem_erro_yaw_deg:.1f}°"
+            texto_yaw_leg = f"Erro de Yaw: {erro_angular_deg:+.1f}° ({tag_yaw})"
+        elif self.rotacao_concluida and self.ultimo_erro_yaw_deg is not None:
+            cor_yaw_leg = (0, 255, 0)
+            texto_yaw_leg = f"Erro de Yaw: {self.ultimo_erro_yaw_deg:+.1f}° (TRAVADO)"
+        elif not self.rotacao_concluida and self.tempo_sem_3_alcas is not None and (agora - self.tempo_sem_3_alcas) >= self.timeout_sombra_alca:
+            cor_yaw_leg = (255, 0, 255)
+            texto_yaw_leg = f"Yaw: DESVIANDO SOMBRA ({len(alcas_pts)}/3)"
+        else:
+            cor_yaw_leg = (0, 165, 255)
+            texto_yaw_leg = f"Erro de Yaw: Buscando alcas ({len(alcas_pts)}/3)..."
+            
+        cv2.putText(cv_image, texto_yaw_leg, (leg_x1 + 20, leg_y1 + 85), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, cor_yaw_leg, 2)
+                    
         cv2.imshow(self.nome_janela, cv_image)
         cv2.waitKey(1)
+

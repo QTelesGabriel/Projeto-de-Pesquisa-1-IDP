@@ -30,7 +30,7 @@ ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.m
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/missao
 python3 main.py
 
-Para executar a missão de geração de fotos:
+# Para executar a captura automatizada de fotos da Fase 2:
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/gerar_fotos
-python3 gerar_fotos.py
+python3 capturar_fotos_fase2.py
