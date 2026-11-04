@@ -1,0 +1,14 @@
+path: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/armadilha 2.v1i.yolov11
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 2
+names: ['alca', 'armadilha']
+
+roboflow:
+  workspace: tarefa-viso-computacional
+  project: armadilha-2
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/tarefa-viso-computacional/armadilha-2/dataset/1

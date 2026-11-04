@@ -1,8 +1,8 @@
 task: detect
 mode: train
 model: yolo11n.pt
-data: data.yaml
-epochs: 100
+data: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ferramentas/datasets/YOLOv11n/data.yaml
+epochs: 150
 time: null
 patience: 100
 batch: 8
@@ -14,7 +14,7 @@ device: null
 workers: 8
 project: /home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA
 name: YOLOv11n_Armadilha_TCC
-exist_ok: false
+exist_ok: true
 pretrained: true
 optimizer: auto
 verbose: true

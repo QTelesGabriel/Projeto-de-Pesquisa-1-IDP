@@ -45,6 +45,16 @@ class FiltroAlvoEKF:
         self.tempo_sem_medicao = 0.0
         self.timeout_limite = 4.0  # Segundos (Aumentado para segurar predição por mais tempo sem YOLO)
 
+    def reset(self):
+        """
+        Reseta o estado interno do filtro de Kalman quando o alvo é perdido.
+        Garante que, ao recuperar a visão da armadilha, o filtro reinicie suavemente sem arrasto ou velocidades antigas.
+        """
+        self.iniciado = False
+        self.tempo_sem_medicao = 0.0
+        self.kf.x = np.array([[0.0], [0.0], [0.0], [0.0]])
+        self.kf.P = np.eye(4) * 1000.0
+
     def atualizar(self, z_x, z_y, dt):
         """
         Recebe a nova leitura da YOLO e o tempo desde a última leitura (dt).

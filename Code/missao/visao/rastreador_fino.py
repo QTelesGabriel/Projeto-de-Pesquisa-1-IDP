@@ -19,8 +19,8 @@ class RastreadorFinoYOLO(Node):
         self.vehicle = vehicle
         self.bridge = CvBridge()
         
-        # 1. Carrega o modelo YOLO da Fase 2 (2 Classes: 0: alca, 1: armadilha)
-        caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv11n_Fase2_Armadilha_Alcas', 'weights', 'best.pt')
+        # 1. Carrega o modelo YOLO da Fase 2 (Melhor treinado: YOLOv10n - mAP50-95 de 89.08% - 2 Classes: 0: alca, 1: armadilha)
+        caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv10n_Fase2_Armadilha_Alcas', 'weights', 'best.pt')
         self.get_logger().info(f"Carregando modelo YOLO FASE 2 de: {caminho_modelo}")
         self.yolo = YOLO(caminho_modelo)
         
@@ -39,31 +39,33 @@ class RastreadorFinoYOLO(Node):
         self.ultimo_tempo = None
         
         # 3. Geometria Física e Máquina de Estados (4 Etapas)
-        self.altura_gaiola = 0.317 # Altura exata da tampa da gaiola (sem alças, extraída do STL)
+        self.altura_gaiola = 0.317         # Altura exata da tampa da gaiola (sem alças, extraída do STL)
+        self.altura_camera_offset = 0.320  # Distância dos pés de pouso do drone até a lente da câmera (m)
         
         # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
-        # Valores calculados pela ferramenta de calibração visual
-        # offset_pct_x positivo = Direita, offset_pct_y positivo = Cima (Y negativo no pixel)
-        self.offset_pct_x = -0.0066
-        self.offset_pct_y = 0.1700
+        # Valores calculados analiticamente a partir da geometria CAD/SDF do chassi e do gimbal:
+        # X: Câmera perfeitamente centrada no eixo lateral (desvio < 0.5 mm) -> offset_pct_x = 0.0000
+        # Y: Mount do Gimbal a +0.04216m do centro do drone / Bounding Box de 0.2550m -> offset_pct_y = 0.1653
+        self.offset_pct_x = 0.0000
+        self.offset_pct_y = 0.1653
         
         # Parâmetros das 4 Etapas da Fase 2
         self.alt_yaw = 1.50                # Etapa 1 -> Etapa 2: Hover a 1.50m para alinhamento de Yaw (subido 10 cm)
         # Ângulo alvo compensado para a assimetria física do CAD (+93.37° em vez de 90.00°)
         # Isso garante que a carcaça e a linha da base fiquem perfeitamente ortogonais ao drone
         self.angulo_alvo = math.radians(93.37)
-        self.margem_erro_yaw_deg = 1.0     # Margem máxima de erro angular no Yaw (máximo 1.0°)
-        self.tempo_yaw_ok_necessario = 2.0 # 2.0s contínuos sustentados <= 1.0° (alterado de 0.5s)
+        self.margem_erro_yaw_deg = 1.0     # Margem estrita de erro angular no Yaw (máximo 1.0°)
+        self.tempo_yaw_ok_necessario = 0.3  # 0.30s contínuos sustentados <= 1.0°
         self.ultimo_erro_yaw_deg = None    # Memoriza o último erro de Yaw para exibição contínua
         self.tempo_sem_3_alcas = None      # Temporizador para detectar alça oculta por sombra do drone
         self.timeout_sombra_alca = 3.0     # 3.0s sem as 3 alças para forçar rotação
         self.vel_yaw_sombra = 0.25         # Velocidade angular forçada (rad/s) para fugir da sombra
         self.ultimo_log_sombra = 0.0       # Controle de frequência de logs de alerta
-        self.alt_final = 0.50              # Etapa 3A -> Etapa 3B: Hover a 0.50m para ajuste fino no offset
-        self.margem_erro_cravado = 0.002   # Margem estrita de 2 mm (0.002m) de erro no offset
-        self.tempo_cravado_necessario = 2.0 # 2.0 segundos sustentados continuamente <= 2 mm
-        self.vel_descida_cega = 0.35       # Velocidade de descida rápida (m/s) para anular deriva lateral
-        self.altitude_captura = 0.05       # Altitude RELATIVA de toque/captura
+        self.alt_final = 0.35              # Etapa 3A -> Etapa 3B: Hover a 0.35m para ajuste fino no offset
+        self.margem_erro_cravado = 0.005   # Margem reduzida para 5 mm (0.005m) de erro no offset (ajuste fino rigoroso)
+        self.tempo_cravado_necessario = 1.5 # 1.5 segundos sustentados continuamente <= 5 mm (30 frames contínuos)
+        self.vel_descida_cega = 0.28       # Velocidade de descida rápida/firme (m/s) para anular deriva lateral de efeito solo
+        self.altitude_captura = 0.05       # Altitude bruta (m) dos pés do drone para desarme/toque no solo
         
         self.erro_final_x = None
         self.erro_final_y = None
@@ -73,6 +75,8 @@ class RastreadorFinoYOLO(Node):
         self.rotacao_concluida = False
         self.tempo_yaw_ok = None
         self.tempo_cravado = None
+        self.inicio_hover_etapa3b = None   # Marca início do hover a 0.35m para timeout de segurança
+        self.timeout_etapa3b = 8.0         # Após 8.0s em 3B, aceita tolerância de segurança (15 mm) para nunca travar
         self.etapa_atual_nome = "ETAPA 1/4: APROXIMACAO INICIAL"
         
         # Filtro EMA para Bounding Box
@@ -113,6 +117,45 @@ class RastreadorFinoYOLO(Node):
         self.fy = msg.k[4]
         self.cy = msg.k[5]
 
+    def alcas_sobrepostas(self, box_a, box_b, altitude_relativa):
+        """
+        Verifica se duas caixas de alça correspondem à mesma alça física
+        (por sobreposição de área IoU/IoA ou por proximidade física excessiva).
+        """
+        # 1. Checagem de sobreposição geométrica de caixas (IoU / IoA)
+        ix1 = max(box_a[0], box_b[0])
+        iy1 = max(box_a[1], box_b[1])
+        ix2 = min(box_a[2], box_b[2])
+        iy2 = min(box_a[3], box_b[3])
+        iw = max(0, ix2 - ix1)
+        ih = max(0, iy2 - iy1)
+        inter_area = iw * ih
+        
+        if inter_area > 0:
+            area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+            area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+            union_area = area_a + area_b - inter_area
+            iou = inter_area / union_area if union_area > 0 else 0.0
+            ioa = inter_area / min(area_a, area_b) if min(area_a, area_b) > 0 else 0.0
+            # Alças distintas no CAD nunca se tocam (IoU=0). Qualquer overlap indica duplicação.
+            if iou > 0.05 or ioa > 0.10:
+                return True
+
+        # 2. Checagem de distância física mínima entre centros no plano da armadilha
+        ca_x = (box_a[0] + box_a[2]) / 2.0
+        ca_y = (box_a[1] + box_a[3]) / 2.0
+        cb_x = (box_b[0] + box_b[2]) / 2.0
+        cb_y = (box_b[1] + box_b[3]) / 2.0
+        dist_px = ((ca_x - cb_x)**2 + (ca_y - cb_y)**2)**0.5
+        dist_m = dist_px * max(0.01, altitude_relativa) / self.fx
+        
+        # As alças físicas da gaiola têm separação mínima de 10 a 18 cm entre si.
+        # Se os centros estiverem a menos de 6 cm (0.06m), é a mesma alça duplicada.
+        if dist_m < 0.06:
+            return True
+            
+        return False
+
     def image_callback(self, msg):
         tempo_atual = time.time()
         if self.ultimo_tempo is not None:
@@ -123,29 +166,31 @@ class RastreadorFinoYOLO(Node):
             dt = 0.05
         self.ultimo_tempo = tempo_atual
         
-        # Calcula a altitude relativa exata (distância da lente até o topo da gaiola)
+        # Calcula a distância óptica exata da lente da câmera até o plano superior da gaiola
         altitude_bruta = max(0.0, self.vehicle.location.global_relative_frame.alt)
-        altitude_relativa = max(0.0, altitude_bruta - self.altura_gaiola)
+        # Distância óptica real (Pinhole Z-Depth):
+        # z_camera = altitude_bruta + 0.320m (offset dos pés até a lente); z_alvo = 0.317m
+        altitude_relativa = max(0.005, (altitude_bruta + self.altura_camera_offset) - self.altura_gaiola) # Proteção contra divisão por zero
         
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-        # --- ETAPA 4 (FINAL): VERIFICAÇÃO DE CAPTURA ---
-        if altitude_relativa <= self.altitude_captura:
-            enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0) # Desliga os motores e rotação
-            self.get_logger().info(f"CAPTURA BEM SUCEDIDA! Altura de toque atingida.")
-            
-            # Calcula o erro absoluto final (RMSE)
-            if self.erro_final_x is not None:
-                rmse = (self.erro_final_x**2 + self.erro_final_y**2)**0.5
-                self.get_logger().info(f"========== RESULTADO PARA O TCC ==========")
-                self.get_logger().info(f"ERRO FINAL (RMSE) NO PONTO DE CORTE: {rmse:.4f} metros ({rmse*1000.0:.1f} mm)")
-                self.get_logger().info(f"==========================================")
-                
-            raise SystemExit
-            
-        # --- ETAPA 4: DESCIDA CEGA RÁPIDA (ANTI-DERIVA) ---
+        # --- ETAPA 4: DESCIDA FINAL (BLIND DROP) E VERIFICAÇÃO DE CAPTURA ---
         if self.iniciou_blind_drop:
-            vel_z = self.vel_descida_cega # Desce rápido e constante para anular deriva lateral
+            # A verificação de toque e corte só atua DEPOIS que o Blind Drop foi formalmente disparado na Etapa 3B
+            if altitude_bruta <= self.altitude_captura or altitude_relativa <= self.altitude_captura:
+                enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0) # Desliga os motores e rotação
+                self.get_logger().info(f"CAPTURA BEM SUCEDIDA! Altura de toque atingida.")
+                
+                # Calcula o erro absoluto final (RMSE)
+                if self.erro_final_x is not None:
+                    rmse = (self.erro_final_x**2 + self.erro_final_y**2)**0.5
+                    self.get_logger().info(f"========== RESULTADO PARA O TCC ==========")
+                    self.get_logger().info(f"ERRO FINAL (RMSE) NO PONTO DE CORTE: {rmse:.4f} metros ({rmse*1000.0:.1f} mm)")
+                    self.get_logger().info(f"==========================================")
+                    
+                raise SystemExit
+
+            vel_z = self.vel_descida_cega # Desce suave e constante (0.12 m/s)
             enviar_velocidade(self.vehicle, 0.0, 0.0, vel_z, 0.0) # X, Y e Yaw zerados!
             
             # Desliga a câmera (fecha a janela) simulando perda de feed de vídeo
@@ -222,16 +267,36 @@ class RastreadorFinoYOLO(Node):
                     # Desenha prévia discreta do offset
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 5, (128, 128, 128), -1)
                             
-            # 3. Analisa as Alças para Cálculo de Ângulo (Triângulo Isósceles)
-            sorted_alcas = sorted(boxes_alca, key=lambda b: float(b.conf[0].item()), reverse=True)[:3]
+            # 3. Analisa as Alças e Elimina Detecções Duplicadas / Sobrepostas
+            sorted_alcas = sorted(boxes_alca, key=lambda b: float(b.conf[0].item()), reverse=True)
+            alcas_distintas = []
+            
             for b in sorted_alcas:
-                bx1, by1, bx2, by2 = map(int, b.xyxy[0].cpu().numpy())
-                pcx = (bx1 + bx2) / 2.0
-                pcy = (by1 + by2) / 2.0
+                b_coords = list(map(int, b.xyxy[0].cpu().numpy()))
+                # Verifica se sobrepõe com alguma alça já aceita
+                sobreposicao = False
+                for _, u_coords in alcas_distintas:
+                    if self.alcas_sobrepostas(b_coords, u_coords, altitude_relativa):
+                        sobreposicao = True
+                        break
+                
+                if not sobreposicao:
+                    alcas_distintas.append((b, b_coords))
+                else:
+                    # Alça duplicada detectada sobre a mesma estrutura física
+                    if not self.rotacao_concluida:
+                        cv2.rectangle(cv_image, (b_coords[0], b_coords[1]), (b_coords[2], b_coords[3]), (0, 0, 255), 1)
+                        cv2.putText(cv_image, "DUPLICADA", (b_coords[0], b_coords[1] - 4), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+            
+            # Seleciona apenas as 3 alças estritamente distintas de maior confiança
+            for b, coords in alcas_distintas[:3]:
+                pcx = (coords[0] + coords[2]) / 2.0
+                pcy = (coords[1] + coords[3]) / 2.0
                 alcas_pts.append((pcx, pcy))
                 # Só desenha as marcações das alças enquanto o Yaw NÃO estiver travado
                 if not self.rotacao_concluida:
-                    cv2.rectangle(cv_image, (bx1, by1), (bx2, by2), (0, 220, 255), 1)
+                    cv2.rectangle(cv_image, (coords[0], coords[1]), (coords[2], coords[3]), (0, 220, 255), 1)
                     cv2.circle(cv_image, (int(pcx), int(pcy)), 4, (0, 220, 255), -1)
                 
             agora = time.time()
@@ -413,6 +478,7 @@ class RastreadorFinoYOLO(Node):
         if self.usar_filtro:
             erro_x, erro_y = self.filtro.atualizar(x_m_bruto, y_m_bruto, dt)
             if erro_x is not None and erro_y is not None:
+                # Projeta de volta para visualização na imagem
                 pixel_x_filtrado = int((erro_x * self.fx / altitude_relativa) + self.cx)
                 pixel_y_filtrado = int((erro_y * self.fy / altitude_relativa) + self.cy)
                 cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 6, (255, 255, 0), -1)
@@ -457,7 +523,7 @@ class RastreadorFinoYOLO(Node):
                     if erro_angular_deg is not None:
                         if self.tempo_yaw_ok is not None:
                             tempo_yaw_acumulado = agora - self.tempo_yaw_ok
-                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° ({tempo_yaw_acumulado:.1f}s/{self.tempo_yaw_ok_necessario:.1f}s)"
+                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° ({tempo_yaw_acumulado:.2f}s/{self.tempo_yaw_ok_necessario:.2f}s)"
                             cor_status = (0, 255, 0) # Verde se estiver sustentando dentro da meta
                         else:
                             self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° (Meta <={self.margem_erro_yaw_deg:.1f}°)"
@@ -476,34 +542,50 @@ class RastreadorFinoYOLO(Node):
                 yaw_rate = 0.0 # Yaw permanentemente travado
                 
                 if altitude_bruta > self.alt_final:
-                    # ETAPA 3A: Descida centrada no Offset até 0.50m
-                    vel_z = 0.18
+                    # ETAPA 3A: Descida centrada no Offset até alt_final (0.35m)
+                    dist_descida = altitude_bruta - self.alt_final
+                    # Desacelera suavemente nos últimos 25cm para amortecer a inércia e não quicar/ultrapassar
+                    fator_frenagem = min(1.0, max(0.25, dist_descida / 0.25))
+                    vel_z = 0.18 * fator_frenagem
                     self.tempo_cravado = None
+                    self.inicio_hover_etapa3b = None
                     max_vel = 0.35
                     kp_atual = self.kp
-                    self.etapa_atual_nome = "ETAPA 3/4: DESCENDO NO OFFSET (Ate 0.50m)"
+                    self.etapa_atual_nome = f"ETAPA 3/4: DESCENDO NO OFFSET (Ate {self.alt_final:.2f}m)"
                     cor_status = (0, 220, 0) # Verde
                 else:
-                    # ETAPA 3B: Ajuste Fino a 0.50m com margem de 3 mm por 1.0 segundo
-                    vel_z = 0.0 # Hover a 0.50m
-                    max_vel = 0.02
-                    kp_atual = 0.15
+                    # ETAPA 3B: Ajuste Fino a 0.35m com margem estrita <= 8 mm por 1.5s
+                    vel_z = 0.0 # Hover a 0.35m
+                    max_vel = 0.06 # Permite pequenas correções milimétricas sem ficar preso na deadband
+                    kp_atual = 0.25 # Ganho proporcional responsivo para distâncias milimétricas
                     
-                    if erro_xy_atual <= self.margem_erro_cravado: # <= 2 mm (0.002m)
+                    if self.inicio_hover_etapa3b is None:
+                        self.inicio_hover_etapa3b = agora
+                    tempo_em_hover = agora - self.inicio_hover_etapa3b
+
+                    # Critério 1: Alinhamento cravado estrito (<= 8 mm por 1.5s)
+                    # Critério 2: Timeout de segurança (após 8s em hover, aceita <= 15 mm para nunca travar)
+                    atingiu_cravado = (erro_xy_atual <= self.margem_erro_cravado)
+                    atingiu_fallback = (tempo_em_hover >= self.timeout_etapa3b and erro_xy_atual <= 0.015)
+                    
+                    if atingiu_cravado or atingiu_fallback:
                         if self.tempo_cravado is None:
                             self.tempo_cravado = agora
                         tempo_acumulado = agora - self.tempo_cravado
-                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO <={self.margem_erro_cravado*1000:.0f}mm ({erro_mm:.1f}mm) - {tempo_acumulado:.1f}s/{self.tempo_cravado_necessario:.1f}s"
+                        meta_label = f"<={self.margem_erro_cravado*1000:.0f}mm" if atingiu_cravado else "<=15mm (Seguranca)"
+                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO {meta_label} ({erro_mm:.1f}mm) - {tempo_acumulado:.1f}s/{self.tempo_cravado_necessario:.1f}s"
                         cor_status = (0, 255, 0) # Verde brilhante
                         
-                        if tempo_acumulado >= self.tempo_cravado_necessario:
+                        tempo_req = 0.5 if atingiu_fallback else self.tempo_cravado_necessario
+                        if tempo_acumulado >= tempo_req:
                             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
                             self.iniciou_blind_drop = True
-                            self.get_logger().info(f"[+] ETAPA 3 CONCLUIDA: Alvo cravado a {erro_mm:.2f} mm por {self.tempo_cravado_necessario:.1f}s! Disparando Etapa 4 (Blind Drop a {self.vel_descida_cega} m/s).")
+                            modo_str = "FALLBACK DE SEGURANCA" if atingiu_fallback else "PRECISAO CRAVADA"
+                            self.get_logger().info(f"[+] ETAPA 3 CONCLUIDA [{modo_str}]: Alvo a {erro_mm:.2f} mm! Disparando Etapa 4 (Blind Drop a {self.vel_descida_cega} m/s).")
                             return
                     else:
                         self.tempo_cravado = None
-                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO @ {self.alt_final:.2f}m | Erro: {erro_mm:.1f}mm (Meta <={self.margem_erro_cravado*1000:.1f}mm)"
+                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO @ {self.alt_final:.2f}m | Erro: {erro_mm:.1f}mm (Meta <={self.margem_erro_cravado*1000:.0f}mm)"
                         cor_status = (0, 255, 255) # Amarelo alerta
                         
             vel_x = (erro_x * kp_atual + derivada_x * self.kd)
