@@ -51,13 +51,6 @@ Z.~Q. Zhao, P.~Zheng, S.~T. Xu, and X.~Wu, ``Object detection with deep
   learning: A review,'' \emph{IEEE Transactions on Neural Networks and Learning
   Systems}, vol.~30, no.~11, pp. 3212--3232, 11 2019.
 
-\bibitem{fagundes2025}
-L.~A. Fagundes-Junior, C.~M. Soria, R.~F. Vassallo, and A.~S. Brand{\~a}o,
-  ``Visual control and mapping for uav-based platform inspection,'' in
-  \emph{Proceedings of the 2025 International Conference on Unmanned Aircraft
-  Systems (ICUAS)}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2025, pp.
-  542--548.
-
 \bibitem{amjoud2023}
 A.~B. Amjoud and M.~Amrouch, ``Object detection using deep learning, cnns and
   vision transformers: A review,'' \emph{IEEE Access}, vol.~11, pp.
@@ -87,11 +80,32 @@ B.~Thuilot, P.~Martinet, L.~Cordesses, and J.~Gallice, ``Position based visual
   of the 2002 IEEE International Conference on Robotics and Automation
   (ICRA)}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2002.
 
+\bibitem{fagundes2025}
+L.~A. Fagundes-Junior, C.~M. Soria, R.~F. Vassallo, and A.~S. Brand{\~a}o,
+  ``Visual control and mapping for uav-based platform inspection,'' in
+  \emph{Proceedings of the 2025 International Conference on Unmanned Aircraft
+  Systems (ICUAS)}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2025, pp.
+  542--548.
+
 \bibitem{jiang2021}
 M.~Jiang, ``Application of fuzzy pid control in uav control system,'' in
   \emph{Proceedings of the 3rd International Conference on Inventive Research
   in Computing Applications (ICIRCA 2021)}.\hskip 1em plus 0.5em minus
   0.4em\relax IEEE, 9 2021, pp. 197--200.
+
+\bibitem{bonyan2018}
+H.~Bonyan~Khamseh, F.~Janabi-Sharifi, and A.~Abdessameud, ``Aerial
+  manipulation—a literature survey,'' \emph{Robotics and Autonomous Systems},
+  vol. 107, pp. 221--235, 9 2018.
+
+\bibitem{meng2020}
+X.~Meng, Y.~He, and J.~Han, ``Survey on aerial manipulator: System, modeling,
+  and control,'' \emph{Robotica}, vol.~38, no.~7, pp. 1288--1317, 7 2020.
+
+\bibitem{adriansyah2017}
+A.~Adriansyah, B.~Sulle, and A.~Minarso, ``Design of ahrs for quadrotor control
+  using digital motion processor,'' \emph{Journal of Telecommunication,
+  Electronic and Computer Engineering}, vol.~9, no. 1-5, pp. 77--81, 2017.
 
 \bibitem{sciortino2018}
 G.~Sciortino \emph{et~al.}, ``Ros/gazebo-based simulation of quadcopter
@@ -99,25 +113,20 @@ G.~Sciortino \emph{et~al.}, ``Ros/gazebo-based simulation of quadcopter
   and Industry, 4th International Forum}.\hskip 1em plus 0.5em minus
   0.4em\relax Palermo, Italy: IEEE, 9 2018.
 
-\bibitem{meng2020}
-X.~Meng, Y.~He, and J.~Han, ``Survey on aerial manipulator: System, modeling,
-  and control,'' \emph{Robotica}, vol.~38, no.~7, pp. 1288--1317, 7 2020.
+\bibitem{stickmanphysics2025}
+{Stickman Physics}, ``Drone physics: Pitch, roll, and yaw dynamics,''
+  \url{https://stickmanphysics.com}, 2025, acessado em: 05 nov. 2026.
 
-\bibitem{bonyan2018}
-H.~Bonyan~Khamseh, F.~Janabi-Sharifi, and A.~Abdessameud, ``Aerial
-  manipulation—a literature survey,'' \emph{Robotics and Autonomous Systems},
-  vol. 107, pp. 221--235, 9 2018.
+\bibitem{ardupilot_octaquad_x}
+{ArduPilot Development Team}, ``Connect {ESCs} and motors: {Octo Quad} frame
+  layout,''
+  \url{https://ardupilot.org/copter/docs/connect-escs-and-motors.html}, 2026,
+  acessado em: 05 nov. 2026.
 
 \bibitem{zhang2021}
 G.~Zhang, G.~Tong, and P.~Chen, ``Robust adaptive control of uav,'' in
   \emph{Proceedings of the 33rd Chinese Control and Decision Conference
   (CCDC)}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2021, pp. 5181--5184.
-
-\bibitem{ladig2021}
-R.~Ladig, H.~Paul, R.~Miyazaki, and K.~Shimonomura, ``Aerial manipulation using
-  multirotor uav: A review from the aspect of operating space and force,''
-  \emph{Journal of Robotics and Mechatronics}, vol.~33, no.~2, pp. 196--204,
-  2021.
 
 \bibitem{terven2023}
 J.~Terven, D.~M. C{\'o}rdova-Esparza, and J.~A. Romero-Gonz{\'a}lez, ``A
@@ -143,6 +152,11 @@ J.~Redmon, S.~Divvala, R.~Girshick, and A.~Farhadi, ``You only look once:
   Conference on Computer Vision and Pattern Recognition (CVPR)}.\hskip 1em plus
   0.5em minus 0.4em\relax IEEE, 6 2016, pp. 779--788.
 
+\bibitem{yolov8_ultralytics}
+G.~Jocher, A.~Chaurasia, and J.~Qiu, ``{Ultralytics YOLOv8},''
+  \url{https://github.com/ultralytics/ultralytics}, 2023, acessado em: 06 nov.
+  2026.
+
 \bibitem{wang2025_hsv}
 Z.~Wang, F.~Meng, G.~Wang, X.~Li, and S.~Zhang, ``Research on classification of
   chinese herbal medicine pieces based on fusion of yolov8n and hsv,'' in
@@ -150,12 +164,37 @@ Z.~Wang, F.~Meng, G.~Wang, X.~Li, and S.~Zhang, ``Research on classification of
   Artificial Intelligence and Information Engineering (RAIIE)}.\hskip 1em plus
   0.5em minus 0.4em\relax IEEE, 2025, pp. 72--77.
 
+\bibitem{wang2024_yolov10}
+A.~Wang, H.~Chen, L.~Liu, K.~Chen, Z.~Lin, J.~Han, and G.~Ding, ``{YOLOv10}:
+  Real-time end-to-end object detection,'' \emph{arXiv preprint
+  arXiv:2405.14458}, 2024.
+
+\bibitem{yolo11_ultralytics}
+G.~Jocher and J.~Qiu, ``{Ultralytics YOLO11},''
+  \url{https://github.com/ultralytics/ultralytics}, 2024, acessado em: 06 nov.
+  2026.
+
 \bibitem{zhexebay2025}
 D.~M. Zhexebay, A.~A. Skabylov, D.~A. Turlykozhayeva, A.~Bolysbay, U.~K.
   Turmaganbet, T.~Namazbayev, and M.~Tao, ``Real-time small object detection
   with yolov8n/8s and yolov11n/11s models in complex natural landscapes,''
   \emph{Physical Sciences and Technology}, vol.~12, no. 1-2, pp. 142--153, 6
   2025.
+
+\bibitem{yolo26_ultralytics}
+G.~Jocher and J.~Qiu, ``{Ultralytics YOLO26},''
+  \url{https://github.com/ultralytics/ultralytics}, 2026, acessado em: 06 nov.
+  2026.
+
+\bibitem{padilla2021}
+R.~Padilla, W.~L. Passos, T.~L.~B. Dias, S.~L. Netto, and E.~A.~B. da~Silva,
+  ``A comparative analysis of object detection metrics with a companion
+  open-source toolkit,'' \emph{Electronics}, vol.~10, no.~3, p. 279, 2021.
+
+\bibitem{ultralytics_metrics}
+{Ultralytics}, ``{YOLO Performance Metrics and Model Evaluation},''
+  \url{https://docs.ultralytics.com/guides/yolo-performance-metrics/}, 2024,
+  acessado em: 06 nov. 2026.
 
 \bibitem{tcc_mariahelena}
 M.~H. Franco, ``Análise comparativa de desempenho entre o filtro de kalman
@@ -213,6 +252,12 @@ A.~H.~A. Hafez, E.~Cervera, and C.~V. Jawahar, ``Stable hybrid visual servo
 A.~Keipour, G.~A.~S. Pereira, R.~Bonatti, R.~Garg, P.~Rastogi, G.~Dubey, and
   S.~Scherer, ``Visual servoing approach to autonomous uav landing on a moving
   vehicle,'' \emph{Sensors}, vol.~22, no.~17, p. 6549, 9 2022.
+
+\bibitem{ladig2021}
+R.~Ladig, H.~Paul, R.~Miyazaki, and K.~Shimonomura, ``Aerial manipulation using
+  multirotor uav: A review from the aspect of operating space and force,''
+  \emph{Journal of Robotics and Mechatronics}, vol.~33, no.~2, pp. 196--204,
+  2021.
 
 \bibitem{thomas2014}
 J.~Thomas, G.~Loianno, K.~Sreenath, and V.~Kumar, ``Toward image based visual

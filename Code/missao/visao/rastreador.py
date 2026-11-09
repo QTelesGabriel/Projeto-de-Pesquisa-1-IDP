@@ -37,6 +37,11 @@ class RastreadorYOLO(Node):
         self.limite_fuga = 0.6  # 60% do centro da tela (Retângulo externo / histerese)
         self.velocidade_descida = 1.5  # m/s
         
+        # Métricas de Validação Científica (Teste 3: Histerese e Retenção no FOV)
+        self.max_afastamento_fov_pct = 0.0   # Maior afastamento do centro até a borda (0 a 100%)
+        self.saiu_fisicamente_fov = False    # True apenas se a armadilha cruzar a borda física (> 100%)
+        self.bloqueios_histerese = 0         # Quantas vezes a descida pausou para recentralizar
+        
         # 3. Configurações de Perda de Alvo e Varredura de Busca (Fase 1)
         self.tempo_inicio_sem_alvo = None
         self.tempo_espera_parado = 2.5       # Segundos aguardando parado sem se mexer antes de iniciar busca ativa
@@ -189,12 +194,20 @@ class RastreadorYOLO(Node):
                 erro_pixel_norm_x = (erro_x * fx / altitude) / (largura_img / 2.0)
                 erro_pixel_norm_y = (erro_y * fy / altitude) / (altura_img / 2.0)
                 
+                # Métricas do Teste 3: Monitora o afastamento contínuo em relação à borda física (100%)
+                afastamento_pct = max(abs(erro_pixel_norm_x), abs(erro_pixel_norm_y)) * 100.0
+                if afastamento_pct > self.max_afastamento_fov_pct:
+                    self.max_afastamento_fov_pct = afastamento_pct
+                if afastamento_pct >= 100.0:
+                    self.saiu_fisicamente_fov = True
+                
                 erro_norm_fuga = max(abs(erro_pixel_norm_x) / self.limite_fuga, abs(erro_pixel_norm_y) / self.limite_fuga)
                 erro_norm_segura = max(abs(erro_pixel_norm_x) / self.zona_segura, abs(erro_pixel_norm_y) / self.zona_segura)
                 
                 if self.descendo:
                     if erro_norm_fuga > 1.0: # Saiu do limite de fuga ótico
                         self.descendo = False
+                        self.bloqueios_histerese += 1
                 else:
                     if erro_norm_segura < 1.0: # Entrou totalmente na zona segura ótica
                         self.descendo = True

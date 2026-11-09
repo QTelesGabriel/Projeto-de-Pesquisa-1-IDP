@@ -1,4 +1,4 @@
-This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
+This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: IEEEtran.bst
@@ -15,45 +15,45 @@ Warning--entry type for "tcc_mariahelena" isn't style-file defined
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 
 Done.
-You've used 39 entries,
+You've used 48 entries,
             4087 wiz_defined-function locations,
-            1055 strings with 15909 characters,
-and the built_in function-call counts, 32324 in all, are:
-= -- 2587
-> -- 806
-< -- 279
-+ -- 452
-- -- 152
-* -- 1573
-:= -- 4642
-add.period$ -- 90
-call.type$ -- 39
-change.case$ -- 39
-chr.to.int$ -- 636
-cite$ -- 39
-duplicate$ -- 2335
-empty$ -- 2599
-format.name$ -- 174
-if$ -- 7592
+            1093 strings with 17241 characters,
+and the built_in function-call counts, 37020 in all, are:
+= -- 2987
+> -- 918
+< -- 291
++ -- 506
+- -- 177
+* -- 1771
+:= -- 5435
+add.period$ -- 108
+call.type$ -- 48
+change.case$ -- 54
+chr.to.int$ -- 654
+cite$ -- 48
+duplicate$ -- 2714
+empty$ -- 2991
+format.name$ -- 205
+if$ -- 8661
 int.to.chr$ -- 0
-int.to.str$ -- 39
-missing$ -- 409
-newline$ -- 140
-num.names$ -- 40
-pop$ -- 935
+int.to.str$ -- 48
+missing$ -- 494
+newline$ -- 167
+num.names$ -- 49
+pop$ -- 1145
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 2
-skip$ -- 2457
+skip$ -- 2828
 stack$ -- 0
-substring$ -- 1597
-swap$ -- 1976
-text.length$ -- 67
+substring$ -- 1666
+swap$ -- 2236
+text.length$ -- 73
 text.prefix$ -- 0
 top$ -- 5
-type$ -- 39
+type$ -- 48
 warning$ -- 0
-while$ -- 141
-width$ -- 41
-write$ -- 401
+while$ -- 155
+width$ -- 50
+write$ -- 485
 (There was 1 warning)
