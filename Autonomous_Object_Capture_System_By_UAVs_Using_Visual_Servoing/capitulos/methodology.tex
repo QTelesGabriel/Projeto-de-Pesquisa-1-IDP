@@ -1,17 +1,273 @@
-A metodologia descreve, de forma clara e detalhada, os procedimentos adotados para o desenvolvimento da pesquisa. É nesta seção que se explica como o estudo foi conduzido, permitindo que outros pesquisadores possam replicar ou compreender os passos realizados.
+Neste capítulo, apresentam-se os procedimentos metodológicos, os modelos matemáticos, as ferramentas computacionais e os critérios experimentais adotados para o desenvolvimento e a validação do sistema autônomo de captura de objetos por VANTs utilizando servovisão. A metodologia foi estruturada de modo a assegurar a reprodutibilidade do projeto, descrevendo detalhadamente a integração entre os módulos de percepção visual, filtragem estocástica de estados, reconstrução geométrica tridimensional, controle cinemático em cascata e o ambiente de simulação física em malha fechada.
 
-Devem ser apresentados os seguintes elementos, quando aplicável:
+\subsecao{Visão Geral e Classificação da Pesquisa}
 
-\begin{itemize}
-    \item \textbf{Tipo de pesquisa}: definir se é qualitativa, quantitativa ou quali-quantitativa, além de classificar como exploratória, descritiva, explicativa, estudo de caso, pesquisa de campo, bibliográfica, documental, entre outras.
-    
-    \item \textbf{Procedimentos metodológicos}: descrever como foi realizado o levantamento de dados, incluindo instrumentos (questionários, entrevistas, observações, análises documentais, softwares, entre outros) e etapas do processo.
-    
-    \item \textbf{População e amostra}: identificar o universo da pesquisa, bem como os critérios de seleção da amostra, se houver.
-    
-    \item \textbf{Análise dos dados}: indicar quais métodos, técnicas estatísticas ou ferramentas foram utilizados para o tratamento e análise dos dados coletados.
-    
-    \item \textbf{Materiais e métodos}: em pesquisas aplicadas ou experimentais, especificar os materiais, equipamentos, ferramentas e procedimentos técnicos utilizados.
-\end{itemize}
+Sob a perspectiva metodológica formal, este trabalho classifica-se como uma pesquisa aplicada, orientada pela necessidade de solucionar um problema técnico e operacional concreto, voltado ao recolhimento e ao transporte autônomo de armadilhas inteligentes para monitoramento de vetores biológicos no âmbito do projeto VTS. A abordagem adotada é quantitativa, fundamentada na coleta e na análise de dados numéricos mensuráveis, tais como taxas de precisão de detecção, métricas geométricas de sobreposição de caixas, tempos de ciclo computacional em milissegundos, taxas de amostragem em quadros por segundo e erros residuais de alinhamento métrico e angular durante as manobras de aproximação.
 
-A metodologia deve ser apresentada de forma objetiva, precisa e suficientemente detalhada, garantindo a confiabilidade e a possibilidade de reprodução do estudo.
+Quanto aos seus objetivos, a pesquisa possui natureza experimental e explicativa. O caráter experimental decorre da manipulação sistemática de variáveis de controle, parâmetros de filtragem e arquiteturas de redes neurais artificiais sob condições controladas de ensaio, permitindo avaliar a resposta do sistema diante de distúrbios introduzidos deliberadamente. O caráter explicativo manifesta-se no estabelecimento de relações de causa e efeito entre os fatores críticos de voo (como oscilações estruturais da fuselagem, variações de iluminação solar e atrasos de transporte no fluxo de imagens) e a estabilidade cinemática necessária para o acoplamento físico com a estrutura da armadilha.
+
+Como procedimento técnico, o estudo fundamenta-se na modelagem matemática e na validação experimental por meio de simulação computacional no paradigma \textit{Software-in-the-Loop} (SITL). Essa abordagem permite executar o firmware real do piloto automático acoplado a um motor de física tridimensional de alta fidelidade, submetendo a aeronave a modelos aerodinâmicos e inerciais equivalentes aos de uma operação em campo, sem os riscos de integridade física e os custos associados a testes preliminares com protótipos reais.
+
+O desenvolvimento da pesquisa foi conduzido ao longo de seis etapas metodológicas consecutivas.
+\begin{enumerate}
+    \item \textbf{Modelagem da plataforma e do cenário virtual,} compreendendo a configuração física do VANT multirrotor no simulador, a definição do mecanismo de captura ventral, a parametrização do suporte estabilizado (\textit{gimbal}) com a câmera óptica em visada vertical e a inserção da armadilha não cooperativa no solo;
+    
+    \item \textbf{Construção do dataset e treinamento visual,} envolvendo a geração de um conjunto de imagens sintéticas capturadas em diferentes altitudes de voo e condições de iluminação, seguido pelo treinamento supervisionado e pela avaliação comparativa de quatro arquiteturas compactas da família YOLO (v8n, v10n, v11n e v26n);
+    
+    \item \textbf{Implementação da filtragem estocástica,} com o desenvolvimento de um Filtro de Kalman Estendido (EKF) para atenuar ruídos de alta frequência nas caixas delimitadoras, estimar estados dinâmicos e prover estimativas preditivas contínuas durante lapsos transitórios de visibilidade;
+    
+    \item \textbf{Reconstrução geométrica tridimensional,} aplicando a projeção inversa do modelo analítico de câmera \textit{Pinhole} para converter os desvios visuais em metros reais no referencial da aeronave, com compensação do deslocamento físico da lente e extração do erro de guinada (\textit{Yaw});
+    
+    \item \textbf{Projeto do controle cinemático e segurança de voo,} formulando controladores Proporcionais-Derivativos (PD) para o guiamento translacional e angular em malha externa, associados a uma envoltória de histerese visual para garantir a permanência contínua do alvo no campo de visão;
+    
+    \item \textbf{Integração em malha fechada e ensaios experimentais,} conectando os módulos via protocolo de telemetria MAVLink e executando baterias de missões simuladas para validação dos índices de convergência e sucesso no acoplamento terminal.
+\end{enumerate}
+
+Para operacionalizar essas etapas e coordenar a missão autônoma de descida e captura, o sistema foi estruturado em uma arquitetura em malha fechada organizada em três camadas funcionais hierárquicas, detalhada no diagrama da Figura~\ref{fig:arquitetura_geral_sistema}.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Arquitetura geral em malha fechada e fluxo operacional em duas fases do sistema}
+    \label{fig:arquitetura_geral_sistema}
+
+    \vspace{0.2cm}
+
+    \begin{tikzpicture}[
+        scale=0.80, transform shape,
+        >=Stealth,
+        box_perc/.style={draw=blue!75!black, fill=blue!6, thick, rounded corners=4pt, align=center, font=\scriptsize, minimum height=1.30cm},
+        box_fase1/.style={draw=teal!80!black, fill=teal!7, thick, rounded corners=4pt, align=left, font=\scriptsize, text width=6.2cm, inner sep=7pt},
+        box_fase2/.style={draw=purple!80!black, fill=purple!7, thick, rounded corners=4pt, align=left, font=\scriptsize, text width=6.2cm, inner sep=7pt},
+        box_ctrl/.style={draw=orange!85!black, fill=orange!8, thick, rounded corners=4pt, align=center, font=\scriptsize, minimum height=1.30cm},
+        box_act/.style={draw=red!75!black, fill=red!6, thick, rounded corners=4pt, align=center, font=\scriptsize, minimum height=1.30cm},
+        box_sim/.style={draw=teal!75!black, fill=teal!6, thick, rounded corners=4pt, align=center, font=\scriptsize, minimum height=1.30cm},
+        line/.style={draw=black!85, thick, ->},
+        feedline/.style={draw=blue!80!black, thick, dashed, ->}
+    ]
+
+        % =========================================================================
+        % NÍVEL 1: PERCEPÇÃO VISUAL E RECONSTRUÇÃO 3D (y = 10.0)
+        % =========================================================================
+        \node[box_perc, text width=2.6cm] (cam) at (1.15, 10.0) {\textbf{Câmera Nadir}\\Aquisição Óptica\\Gimbal Estabilizado};
+        \node[box_perc, text width=3.2cm] (yolo) at (5.65, 10.0) {\textbf{Detecção YOLO}\\Localização do Alvo\\Caixa Delimitadora $(u,v)$};
+        \node[box_perc, text width=2.7cm] (ekf) at (10.15, 10.0) {\textbf{Filtro EKF}\\Atenuação de Ruído\\Predição de Estados};
+        \node[box_perc, text width=2.7cm] (pinhole) at (14.55, 10.0) {\textbf{Pinhole 3D}\\Projeção Inversa\\Erro Métrico $(\Delta X, \Delta Y)$};
+
+        % Conexões horizontais do Nível 1 com gaps amplos (>= 1,5 cm) e rótulos bem destacados acima da linha
+        \draw[line] (cam) -- node[midway, above=6pt, font=\tiny, align=center] {Quadros\\(20 FPS)} (yolo);
+        \draw[line] (yolo) -- node[midway, above=6pt, font=\tiny] {Pixel $(u,v)$} (ekf);
+        \draw[line] (ekf) -- node[midway, above=6pt, font=\tiny] {Filtrado $(\hat{u},\hat{v})$} (pinhole);
+
+        % =========================================================================
+        % NÍVEL 2: DECISÃO E CONTROLE OPERACIONAL EM DUAS FASES (y = 6.2)
+        % =========================================================================
+        \node[box_fase1] (fase1) at (4.0, 6.2) {
+            \textbf{FASE 1: Funil Ótico ($Z > 2,0\text{ m}$)}\\
+            $\bullet$ Modelo YOLO26n (Detecção global da gaiola)\\
+            $\bullet$ Histerese visual (Zonas de 40\% e 60\% do FOV)\\
+            $\bullet$ Frenagem progressiva ($6\text{ m} \to 2\text{ m}$)
+        };
+
+        \node[box_fase2] (fase2) at (11.6, 6.2) {
+            \textbf{FASE 2: Precisão Terminal ($Z \le 2,0\text{ m}$)}\\
+            $\bullet$ Modelo YOLOv10n (Detecção fina das 3 alças)\\
+            $\bullet$ Alinhamento de Yaw (Erro $\le 1,0^\circ$ com EKF)\\
+            $\bullet$ Offset $\le 5\text{ mm}$ e Descida Cega ($0,28\text{ m/s}$)
+        };
+
+        % Corredor horizontal limpo de ramificação do Pinhole 3D
+        \coordinate (split_pinhole) at (14.5, 8.1);
+        \draw[thick] (pinhole.south) -- (split_pinhole);
+        \draw[line] (split_pinhole) -| node[pos=0.35, above=6pt, font=\tiny] {Altitude $Z \le 2,0\text{ m}$} (fase2.north);
+        \draw[line] (split_pinhole) -- node[pos=0.72, above=6pt, font=\tiny] {Altitude $Z > 2,0\text{ m}$} (4.0, 8.1) -- (fase1.north);
+
+        % =========================================================================
+        % NÍVEL 3: CONTROLADOR CINEMÁTICO PD EM CASCATA (y = 3.6)
+        % =========================================================================
+        \node[box_ctrl, text width=13.8cm] (pd) at (7.8, 3.6) {
+            \textbf{Controlador Cinemático PD em Cascata e Gerador de Trajetória}\\
+            Cálculo das velocidades translacionais $(v_x, v_y, v_z)$ e taxa de guinada \mbox{($r = \dot{\psi}$)}
+        };
+
+        % Conexões verticais com rótulos posicionados ao lado das setas
+        \draw[line] (fase1.south) -- node[left=6pt, font=\tiny, align=right] {Velocidade $v_z$\\e histerese} (fase1.south |- pd.north);
+        \draw[line] (fase2.south) -- node[right=6pt, font=\tiny, align=left] {Offset e comando\\de Yaw} (fase2.south |- pd.north);
+
+        % =========================================================================
+        % NÍVEL 4: ATUAÇÃO, PILOTO AUTOMÁTICO E SIMULAÇÃO FÍSICA (y = 1.0)
+        % =========================================================================
+        \node[box_act, text width=3.2cm] (mavlink) at (2.4, 1.0) {\textbf{Ponte MAVLink}\\Envio de Setpoints\\Comandos locais NED};
+        \node[box_act, text width=4.2cm] (ardupilot) at (7.8, 1.0) {\textbf{ArduPilot SITL (400 Hz)}\\Malha Fechada de Atitude\\Controle de Motores (PWM)};
+        \node[box_sim, text width=3.4cm] (gazebo) at (13.2, 1.0) {\textbf{Simulador Gazebo}\\Física do Multirrotor\\Câmera e Alvo no Solo};
+
+        % Conexão vertical para a Ponte MAVLink
+        \draw[line] (mavlink.north |- pd.south) -- node[right=6pt, font=\tiny, align=left] {Setpoints\\$(v_x,v_y,v_z,r)$} (mavlink.north);
+
+        % Conexões horizontais do Nível 4
+        \draw[line] (mavlink) -- node[midway, above=6pt, font=\tiny, align=center] {Comandos\\MAVLink} (ardupilot);
+        \draw[line] (ardupilot) -- node[midway, above=6pt, font=\tiny, align=center] {Sinais PWM} (gazebo);
+
+        % =========================================================================
+        % MALHAS DE REALIMENTAÇÃO EXTERNAS (PERÍMETRO)
+        % =========================================================================
+        % 1. Telemetria de altitude Z
+        \draw[feedline] (gazebo.east) -- ++(1.5, 0) |- node[pos=0.40, right=6pt, font=\tiny, align=left] {Telemetria\\Altitude $Z$} (pinhole.east);
+
+        % 2. Fluxo de vídeo virtual
+        \draw[feedline] (gazebo.south) -- ++(0, -0.85) -- node[midway, below=6pt, font=\tiny] {Fluxo de vídeo da cena virtual no Gazebo (20 FPS)} (-0.6, -0.5) |- (cam.west);
+
+    \end{tikzpicture}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+A arquitetura ilustrada na Figura~\ref{fig:arquitetura_geral_sistema} estabelece uma estrutura hierárquica multi-taxa (\textit{multi-rate}) operando em três frequências de processamento coordenadas. A camada superior de software opera a 20 Hz no computador de bordo auxiliar por meio do ROS 2, centralizando a inteligência visual com os modelos YOLO, a filtragem estocástica com o Filtro de Kalman Estendido e a geração de trajetórias translacionais. A camada intermediária roda a 400 Hz no piloto automático ArduPilot em arquitetura SITL, encarregada da malha fechada rápida de estabilização inercial de atitude e da modulação por largura de pulso (PWM) enviada aos atuadores. Por fim, a camada inferior de simulação no Gazebo Sim processa as equações dinâmicas da física em passo de 1 milissegundo (1000 Hz), viabilizando a integração numérica estável das forças aerodinâmicas e das reações de contato mecânico.
+
+No fluxo de percepção, a câmera montada no suporte estabilizado com orientação nadir envia imagens brutas ao nó de visão. A rede neural YOLO processa cada quadro para localizar o alvo e extrair as coordenadas da caixa delimitadora no plano da imagem. Para atenuar as oscilações de alta frequência (\textit{jitter}) decorrentes de ruídos da inferência e da vibração da aeronave, essas coordenadas são encaminhadas ao Filtro de Kalman Estendido (EKF), que estima a velocidade relativa do alvo e sustenta predições consistentes por até 4,0 segundos caso ocorra alguma oclusão transitória por sombras ou perda momentânea de visada.
+
+Em seguida, o modelo analítico Pinhole inverso combina as coordenadas filtradas com a leitura de altitude fornecida pela telemetria do piloto automático para calcular a distância métrica horizontal $(\Delta X, \Delta Y)$ entre o centro do drone e o alvo. Essa informação métrica alimenta a estratégia operacional de guiamento, a qual é estruturada em duas fases distintas com base na altitude da aeronave, empregando modelos especializados da família YOLO em cada regime de voo.
+
+\begin{enumerate}
+    \item \textbf{Fase 1 (Abordagem Ampla e Descida em Funil Ótico, executada acima de 2,0 m):} Nessa primeira fase, operada pelo nó de rastreamento inicial, adota-se o modelo \textbf{YOLO26n}, treinado para o reconhecimento da geometria macroscópica da armadilha como uma classe única. Esse modelo foi selecionado por sua capacidade de manter estabilidade contínua na caixa delimitadora e elevada taxa de detecção a médias e altas altitudes, orientando a aproximação e o afunilamento descendente. Para evitar que a aeronave perca o alvo durante manobras bruscas, aplica-se uma envoltória de histerese visual com dois limites concêntricos: uma zona segura interna correspondente a 40\% do campo de visão e um limite de fuga externo fixado em 60\% do enquadramento. A velocidade vertical de descida é modulada continuamente entre 0,0 e 1,5 m/s com base no alinhamento central, pausando automaticamente a descida se o alvo atingir o limite de fuga e retomando-a quando o erro for reabsorvido. Entre as altitudes de 6,0 m e 2,0 m, o sistema introduz uma curva de frenagem progressiva para dissipar a inércia descendente. Ao atingir com precisão a marca de 2,0 metros, o nó da Fase 1 encerra sua execução e transfere o controle para o nó de precisão terminal.
+    
+    \item \textbf{Fase 2 (Alinhamento Fino, Compensação de Offset e Acoplamento, executada abaixo de 2,0 m):} Abaixo de 2,0 metros, a aproximação exige resolução geométrica subcentimétrica e identificação de subcomponentes específicos. O sistema encerra o primeiro detector e inicializa um segundo nó de visão baseado no modelo \textbf{YOLOv10n}, treinado com segmentação em duas classes distintas para distinguir individualmente a carcaça da gaiola e as três alças triangulares superiores da tampa. Essa discriminação fina fornece as referências espaciais necessárias para o alinhamento angular e a descida de contato (a fundamentação experimental detalhada, os parâmetros de treinamento e as métricas comparativas que orientaram a escolha desses dois modelos específicos são aprofundados na Seção~3.3). A operação da Fase 2 é regida por uma máquina de estados finitos estruturada em quatro etapas consecutivas:
+    \begin{itemize}
+        \item \textit{Etapa 1 (Aproximação Inicial):} o VANT desce suavemente de 2,0 m para 1,50 m para estabilizar a visada sobre o topo da estrutura;
+        \item \textit{Etapa 2 (Alinhamento Angular de Guinada):} a aeronave mantém voo pairado (\textit{hover}) a 1,50 m e efetua rotação sobre o próprio eixo até igualar seu ângulo de guinada (\textit{Yaw}) à assimetria das alças da armadilha, exigindo erro angular menor ou igual a $1,0^\circ$ sustentado continuamente, utilizando o filtro EKF angular;
+        \item \textit{Etapa 3 (Descida Intermediária e Ajuste Fino de Offset):} o drone desce até 0,35 m de altitude para alinhar o mecanismo mecânico de captura com a alça de travamento. O algoritmo compensa analiticamente o deslocamento físico (\textit{offset}) de 42,16 mm existente entre a lente da câmera no gimbal e o eixo central do dispositivo de engate, exigindo permanência contínua com erro horizontal inferior a 5 mm por 1,5 segundo ininterrupto;
+        \item \textit{Etapa 4 (Descida Cega Terminal):} nos últimos 30 centímetros, o sistema executa uma descida vertical firme a 0,28 m/s para anular perturbações aerodinâmicas causadas pelo efeito solo, consumando o acoplamento físico na armadilha e desarmando automaticamente os motores ao atingir a altitude de toque de 0,05 m.
+    \end{itemize}
+\end{enumerate}
+
+Os erros métricos e angulares computados em cada fase alimentam controladores Proporcionais-Derivativos (PD) em cascata, cujos ganhos foram ajustados para prover correções suaves sem sobre-sinais (\textit{overshoot}). As velocidades de controle resultantes são convertidas em mensagens padronizadas do protocolo MAVLink (\textit{SET\_POSITION\_TARGET\_LOCAL\_NED}) e enviadas ao ArduPilot, fechando o laço autônomo de captura no simulador Gazebo.
+
+A configuração tridimensional desse ambiente simulado pode ser visualizada na Figura~\ref{fig:cenario_simulacao_gazebo}, que ilustra a disposição espacial inicial do VANT em altitude de busca sobre o terreno e a localização da armadilha de vetores biológicos posicionada estaticamente no solo. A partir dessa cena virtual, a câmera óptica acoplada ao gimbal gera o fluxo contínuo de quadros que alimenta a camada de percepção em malha fechada.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Visão geral do ambiente de simulação no Gazebo apresentando o VANT em altitude de busca e o alvo no solo}
+    \label{fig:cenario_simulacao_gazebo}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/cenario_simulacao_gazebo.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+\subsecao{Ambiente de Simulação e Modelagem da Plataforma Aérea}
+
+A validação de estratégias de servovisão aplicadas à manipulação e captura aérea requer um ambiente computacional capaz de reproduzir com fidelidade a dinâmica do veículo, o comportamento dos atuadores, a resposta inercial de sensores e as condições de iluminação e contato mecânico. Para atender a esses requisitos sem expor equipamentos físicos a danos durante o desenvolvimento das leis de controle, implementou-se um ecossistema de simulação tridimensional baseado no simulador Gazebo Sim, integrado ao piloto automático ArduPilot em arquitetura \textit{Software-in-the-Loop} (SITL).
+
+O cenário virtual foi estruturado no arquivo de mundo da simulação, no qual se configurou o motor de física com passo de integração temporal fixado em 1 milissegundo, correspondendo a uma frequência de cálculo dinâmico de 1000 Hz. Essa taxa de amostragem elevada é mandatória para garantir a convergência numérica do integrador do motor de física ODE, prevenindo divergências e oscilações espúrias no cômputo das forças aerodinâmicas não lineares atuantes em cada pá e nas forças normais e de atrito geradas pelo contato físico entre o gancho e a armadilha. Essa dinâmica rápida de 1000 Hz opera em conjunto perfeitamente sincronizado (\textit{lockstep}) com a malha inercial de 400 Hz do firmware ArduPilot e com a malha visual de 20 Hz do ROS 2, constituindo a hierarquia multi-taxa do sistema. O fator de tempo real foi travado em 1,0, assegurando determinismo temporal absoluto durante as baterias de ensaios.
+
+O ambiente gráfico adota o motor de renderização física OGRE 2.x, viabilizando iluminação realista por sombreamento bidirecional. O mundo inclui uma fonte de luz solar direcional com projeção dinâmica de sombras ativada, orientada pelo vetor de incidência solar $(-0,5, 0,1, -0,9)$. Essa parametrização deliberada introduz variações expressivas de contraste e oclusões parciais causadas pela sombra projetada pela fuselagem do próprio drone sobre a armadilha durante a fase final de aproximação, submetendo os algoritmos de visão computacional a perturbações ópticas representativas de cenários operacionais reais. A superfície do terreno foi modelada com uma camada de grama texturizada em alta resolução, incorporando mapas de difusão, normais e rugosidade para evitar um plano de fundo monocromático idealizado e reproduzir o ruído visual característico de vegetação rasteira.
+
+Para a plataforma aérea, adotou-se uma configuração de multirrotor coaxial em arquitetura OctaQuad X8, composta por quatro braços estruturais dispostos em geometria em cruz, cada um sustentando um par de motores contra-rotativos (um superior e um inferior). Essa escolha fundamenta-se em três necessidades técnicas do projeto. Primeiramente, a disposição coaxial provê redundância mecânica e elevada capacidade de tração vertical sem ampliar a envergadura diagonal da aeronave, resultando em um chassi compacto que minimiza o risco de colisões dos rotores com galhos ou estruturas durante descidas em baixa altitude. Em segundo lugar, o arranjo de oito rotores gera ampla margem de empuxo para compensar com folga o acréscimo de carga útil decorrente do mecanismo ventral de captura, dos sensores embarcados e do peso da própria armadilha recolhida. Por fim, a distribuição simétrica dos pares contra-rotativos desacopla a geração de sustentação do momento de guinada, propiciando autoridade de controle angular firme e desacoplada mesmo sob as fortes perturbações de recirculação de ar geradas pelo efeito solo nas proximidades imediatas da superfície.
+
+O modelo inercial do VANT totaliza uma massa de decolagem de 6,700 kg, dividida entre 6,300 kg atribuídos à estrutura central da fuselagem com baterias, eletrônica de bordo e mecanismo de engate, e 0,400 kg distribuídos entre os oito conjuntos rotativos de propulsão (0,050 kg por rotor). Os momentos principais de inércia foram calculados analiticamente no ambiente CAD por meio da integração numérica volumétrica das densidades reais dos materiais aplicados em cada componente da montagem tridimensional, como fibra de carbono nos tubos dos braços e placas centrais, ligas de alumínio e cobre nos motores elétricos, células de lítio-polímero na bateria 12S e polímeros termoplásticos nas peças estruturais impressas. Esse cômputo determinou os valores $I_{xx} = 0,903322\text{ kg}\cdot\text{m}^2$, $I_{yy} = 0,903322\text{ kg}\cdot\text{m}^2$ e $I_{zz} = 1,569346\text{ kg}\cdot\text{m}^2$ em relação ao centro de massa, com produtos de inércia nulos em virtude da simetria ortogonal da montagem.
+
+O sistema motopropulsor foi calibrado a partir do ajuste de curvas polinomiais de mínimos quadrados sobre dados empíricos de bancada dinamométrica disponibilizados pelo fabricante T-Motor para o motor sem escovas MN6007 II KV160, alimentado por bateria LiPo 12S sob tensão nominal de 44,4 V e hélices de fibra de carbono modelo P22x6.6. A relação aerodinâmica entre a velocidade angular do rotor ($\omega$, em radianos por segundo) e a força de empuxo gerada ($T$, em Newtons) foi modelada pela Equação~\eqref{eq:curva_empuxo_motor}, enquanto o torque resistente de arrasto ($Q$, em Newtons-metro) obedece à Equação~\eqref{eq:curva_torque_motor}.
+
+\begin{equation}
+    T = c_t \cdot \omega^2 = 1,88928 \times 10^{-4} \cdot \omega^2
+    \label{eq:curva_empuxo_motor}
+\end{equation}
+
+\begin{equation}
+    Q = c_q \cdot \omega^2 = 4,48871 \times 10^{-6} \cdot \omega^2
+    \label{eq:curva_torque_motor}
+\end{equation}
+
+Os coeficientes $c_t$ e $c_q$ obtidos na regressão reproduzem o comportamento real da bancada com erro residual inferior a 1,5\%, atingindo velocidade de rotação máxima de 5456 RPM (571,35 rad/s) sob aceleração plena de 100\%, o que equivale a um torque limite por eixo de 1,49 N$\cdot$m. As forças dinâmicas atuantes em cada uma das pás das hélices foram individualizadas no simulador por meio de elementos de sustentação e arrasto (\textit{LiftDrag}), parametrizados com coeficiente angular de sustentação $C_{L\alpha} = 4,25$, coeficiente de arrasto parasita $C_{D0} = 0,56097$, área alar equivalente de $0,0037982\text{ m}^2$ e densidade do ar padrão de $1,2041\text{ kg/m}^3$.
+
+A estabilização angular das imagens adquiridas é garantida por um suporte motorizado de três eixos (\textit{gimbal}) modelado com base nas especificações físicas e dinâmicas do dispositivo comercial SIYI A8 mini. O conjunto possui massa de 0,095 kg distribuída entre os elos mecânicos de rotação. O elo de guinada (\textit{yaw}) permite excursão angular entre $-160^\circ$ e $+160^\circ$, o elo de rolagem (\textit{roll}) atua na faixa de $-30^\circ$ a $+30^\circ$ e o elo de arfagem (\textit{pitch}) desloca-se entre $-135^\circ$ e $+45^\circ$. No âmbito da missão de captura, o controle do gimbal é acionado por mensagens MAVLink padronizadas com a sinalização de travamento inercial ativada para os eixos de rolagem e arfagem. Essa configuração mantém a orientação da câmera continuamente travada no horizonte terrestre com inclinação de $-90^\circ$ (visada nadir ortogonal ao solo), absorvendo as inclinações naturais que a aeronave executa para acelerar horizontalmente. Por outro lado, o eixo de guinada do gimbal é mantido alinhado ao corpo do drone, assegurando que as leituras angulares observadas no plano da imagem correspondam diretamente à rotação física da fuselagem em relação ao alvo no solo.
+
+A câmera virtual acoplada ao estágio inferior do gimbal opera na resolução Full HD de $1920 \times 1080$ pixels em padrão cromático R8G8B8, com frequência de amostragem limitada a 20 FPS para compatibilidade com o ciclo de processamento da rede neural. O campo de visão horizontal (\textit{Horizontal FOV}) foi estabelecido em 1,4137 radianos (aproximadamente $81,0^\circ$), o que determina uma distância focal teórica $f_x = f_y = 1124,0$ pixels e centro óptico principal em $c_x = 960,0$ pixels e $c_y = 540,0$ pixels. O modelo de lente incorpora ainda coeficientes de distorção radial $k_1 = -0,05$ e $k_2 = 0,01$ para reproduzir as aberrações geométricas típicas de lentes grande-angulares compactas.
+
+Sob o chassi central da aeronave, foi posicionado o mecanismo de engate mecânico ventral, composto por um gancho rígido de acoplamento passivo desenvolvido para travar mecanicamente na alça da armadilha. Esse dispositivo foi posicionado no ponto correspondente ao centro de gravidade (CG) do multirrotor para evitar a geração de momentos fletores ou desequilíbrios estáticos na atitude da aeronave no instante do contato e após o içamento da massa adicional do alvo.
+
+Entretanto, em razão da geometria construtiva do chassi e da fixação física do gimbal, a lente da câmera óptica encontra-se deslocada espacialmente em relação ao centro do engate mecânico. A coordenada de montagem do ponto focal da câmera no referencial do corpo da aeronave é dada pelo vetor de posição $\mathbf{p}_{\text{cam}} = (0,00057\text{ m}, +0,04216\text{ m}, -0,04551\text{ m})$. Enquanto o desvio lateral no eixo $X$ é inferior a 0,6 mm e pode ser desprezado, o deslocamento longitudinal no eixo $Y$ introduz um \textit{offset} estrutural constante de 42,16 mm à frente do centro do engate. Se o sistema de servovisão buscasse centralizar o alvo no ponto focal da câmera ($u = c_x, v = c_y$), o gancho físico ficaria posicionado mais de 4 centímetros atrás do ponto ótimo de contato, resultando em falha mecânica de engate ou colisão da fuselagem contra a tampa da armadilha. Esse arranjo espacial e a indicação do vetor de deslocamento são detalhados na Figura~\ref{fig:modelo_drone_offset}.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Representação tridimensional do VANT OctaQuad X8 com mecanismo de captura ventral e indicação do deslocamento geométrico (\textit{offset}) de 42,16 mm entre a câmera e o dispositivo de engate}
+    \label{fig:modelo_drone_offset}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/modelo_drone_offset.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+Para sanar essa discrepância geométrica sem exigir alterações estruturais no chassi, desenvolveu-se uma compensação cinemática analítica no algoritmo de servovisão da Fase 2. Como a tampa da armadilha possui dimensão frontal padronizada de $0,2550\text{ m}$, a relação entre o deslocamento físico da câmera e a extensão do alvo no espaço métrico equivale a uma razão fixa dada pela Equação~\eqref{eq:razao_offset_y}.
+
+\begin{equation}
+    \eta_y = \frac{\Delta Y_{\text{offset}}}{L_{\text{alvo}}} = \frac{0,04216\text{ m}}{0,2550\text{ m}} \approx 0,1653
+    \label{eq:razao_offset_y}
+\end{equation}
+
+Dessa forma, o ponto de convergência visual do controlador no plano da imagem não é alinhado com o centro geométrico da caixa delimitadora predita pela rede neural, mas sim deslocado em $+16,53\%$ ao longo do eixo vertical de pixels proporcionalmente à altura da caixa. Essa correção analítica garante que, quando o erro de rastreamento visual converge para zero, o mecanismo físico de engate situado sob o CG do drone encontra-se rigorosamente perpendicular e alinhado à alça de captura.
+
+O objeto-alvo não cooperativo modelado no ambiente virtual corresponde à armadilha inteligente de captura de vetores biológicos desenvolvida no âmbito do projeto VTS. A armadilha foi importada para o simulador como uma entidade dinâmica não estática, permitindo avaliar interações físicas reais de contato, atrito estático e forças de arraste mecânico durante o acoplamento do gancho. A estrutura possui massa de 4,81162 kg, momentos principais de inércia $I_{xx} = 0,294868\text{ kg}\cdot\text{m}^2$, $I_{yy} = 0,150069\text{ kg}\cdot\text{m}^2$ e $I_{zz} = 0,258855\text{ kg}\cdot\text{m}^2$, e coeficiente de atrito superficial com o solo $\mu = 1,0$ sob o motor de física ODE.
+
+As dimensões externas da armadilha compreendem uma base quadrada de $0,2550\text{ m} \times 0,2550\text{ m}$ (footprint de 255 mm de lado) e uma altura de $0,317\text{ m}$ (317 mm) medida a partir do nível do solo até o plano superior da tampa. Sobre a tampa plástica, encontram-se três alças metálicas triangulares salientes destinadas ao içamento e travamento do dispositivo. A disposição geométrica dessas três alças não é simétrica em relação aos eixos cartesianos da gaiola, apresentando uma inclinação angular de rotação de $+93,37^\circ$ em relação à linha de referência longitudinal da base, conforme ilustrado na Figura~\ref{fig:modelo_armadilha_vts}.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Geometria da armadilha de monitoramento de vetores biológicos com dimensões estruturais e disposição angular assimétrica das três alças triangulares de captura}
+    \label{fig:modelo_armadilha_vts}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/modelo_armadilha_vts.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+A presença dessa assimetria geométrica no topo da armadilha impõe um requisito estrito ao sistema autônomo de navegação. A aeronave não pode efetuar a descida terminal orientada em qualquer ângulo arbitrário, pois a geometria da abertura do gancho ventral exige entrada com alinhamento angular rigoroso para consumar o travamento na alça. Por esse motivo, o controlador de voo na Fase 2 é programado para identificar a orientação relativa das alças a 1,50 m de altitude, computar a diferença angular em relação ao alvo nominal de $+93,37^\circ$ e girar a fuselagem sobre o eixo de guinada até que o erro residual seja contido dentro do limiar de tolerância de $1,0^\circ$. Apenas após a convergência conjunta desse alinhamento angular e da compensação longitudinal de 42,16 mm é que o sistema é autorizado a iniciar a descida de acoplamento final.
+
+A geometria desse acoplamento terminal e as tolerâncias físicas envolvidas na aproximação são sintetizadas na Figura~\ref{fig:acoplamento_mecanico_lateral}. Nessa vista lateral, evidencia-se a relação entre a distância vertical dos pés do trem de pouso da aeronave até a lente da câmera (0,320 m), a cota superior da armadilha até a base da tampa (0,317 m) e a trajetória de descida do gancho ventral até a alça. Essa configuração confere uma folga vertical estrita no instante do toque, exigindo que o algoritmo execute a descida cega final a 0,28 m/s de forma rigorosamente vertical e nivelada, neutralizando perturbações aerodinâmicas de efeito solo e consumando o travamento mecânico antes do desarme automático dos motores na cota de 0,05 m.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Visão lateral esquemática do acoplamento mecânico terminal entre o gancho ventral do VANT e a alça da armadilha, ilustrando a tolerância vertical dos pés de pouso e o alinhamento de engate}
+    \label{fig:acoplamento_mecanico_lateral}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/acoplamento_mecanico_lateral.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}

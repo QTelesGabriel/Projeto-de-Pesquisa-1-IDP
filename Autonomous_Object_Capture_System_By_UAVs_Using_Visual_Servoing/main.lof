@@ -3,14 +3,20 @@
 \contentsline {figure}{\numberline {2}{\ignorespaces Disposição motopropulsora e sentidos de rotação das hélices na configuração coaxial Octaquad X}}{9}{figure.caption.6}%
 \contentsline {figure}{\numberline {3}{\ignorespaces Diagrama em blocos da arquitetura de hardware e malha inercial de baixo nível do VANT}}{11}{figure.caption.7}%
 \contentsline {figure}{\numberline {4}{\ignorespaces Arquitetura conceitual da família YOLO, ilustrando a divisão da imagem em grade espacial e a regressão direta das caixas delimitadoras}}{13}{figure.caption.9}%
-\contentsline {figure}{\numberline {5}{\ignorespaces Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}}{17}{figure.caption.10}%
-\contentsline {figure}{\numberline {6}{\ignorespaces Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}}{19}{figure.caption.11}%
-\contentsline {figure}{\numberline {7}{\ignorespaces Qualitative comparison between the classical Image-Based Visual Servoing (IBVS) and Position-Based Visual Servoing (PBVS) schemes}}{22}{figure.caption.13}%
-\contentsline {figure}{\numberline {8}{\ignorespaces Geometric representation of perspective projection based on the Pinhole camera model, illustrating the relationship between focal length and the conversion of a point in space onto the two-dimensional image plane}}{23}{figure.caption.14}%
-\contentsline {figure}{\numberline {9}{\ignorespaces Aerial manipulation using attached grippers}}{25}{figure.caption.16}%
-\contentsline {figure}{\numberline {10}{\ignorespaces UAV equipped with an articulated robotic arm}}{25}{figure.caption.17}%
-\contentsline {figure}{\numberline {11}{\ignorespaces Cable-suspended aerial manipulation system}}{26}{figure.caption.18}%
-\contentsline {figure}{\numberline {12}{\ignorespaces Rigid-tool aerial manipulation system mounted on the UAV frame}}{27}{figure.caption.19}%
-\contentsline {figure}{\numberline {13}{\ignorespaces Classification of operational spaces in aerial manipulation systems}}{28}{figure.caption.20}%
-\contentsline {figure}{\numberline {14}{\ignorespaces Comparison between Kalman Filter estimation and object detection output for the width and height of the bounding box}}{32}{figure.caption.24}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}}{16}{figure.caption.10}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}}{18}{figure.caption.11}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Exemplo de suporte mecânico estabilizado (\textit {gimbal}) motorizado de três eixos acoplado a uma câmera}}{20}{figure.caption.13}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Comparação qualitativa entre os esquemas clássicos de Servovisão Baseada em Imagem (IBVS) e Servovisão Baseada em Posição (PBVS)}}{21}{figure.caption.14}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Representação geométrica da projeção em perspectiva baseada no modelo de câmera \textit {Pinhole}, ilustrando a conversão de um ponto no espaço para o plano bidimensional da imagem}}{22}{figure.caption.15}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Classificação dos espaços operacionais e zonas de contato em sistemas de manipulação aérea}}{24}{figure.caption.17}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Exemplo de sistema de manipulação e captura aérea acoplado diretamente sob a fuselagem de um multirrotor}}{25}{figure.caption.18}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Sequência de captura dinâmica e empoleiramento (\textit {perching}) sobre alvo cilíndrico por manobra descendente rápida (\textit {swooping})}}{27}{figure.caption.21}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Sequência temporal da aproximação e captura aérea dinâmica em voo livre utilizando garra macia complacente}}{28}{figure.caption.22}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Comparação entre a estimativa do Filtro de Kalman e a saída direta da detecção de objetos para largura e altura da caixa delimitadora}}{31}{figure.caption.24}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Comparação experimental do erro de rastreamento no plano da imagem entre controlador PID convencional e PID Neural (PID-ANN) sob perturbação de massa de 50\%}}{36}{figure.caption.26}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Arquitetura geral em malha fechada e fluxo operacional em duas fases do sistema}}{42}{figure.caption.30}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Visão geral do ambiente de simulação no Gazebo apresentando o VANT em altitude de busca e o alvo no solo}}{44}{figure.caption.31}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Representação tridimensional do VANT OctaQuad X8 com mecanismo de captura ventral e indicação do deslocamento geométrico (\textit {offset}) de 42,16 mm entre a câmera e o dispositivo de engate}}{47}{figure.caption.33}%
+\contentsline {figure}{\numberline {19}{\ignorespaces Geometria da armadilha de monitoramento de vetores biológicos com dimensões estruturais e disposição angular assimétrica das três alças triangulares de captura}}{48}{figure.caption.34}%
+\contentsline {figure}{\numberline {20}{\ignorespaces Visão lateral esquemática do acoplamento mecânico terminal entre o gancho ventral do VANT e a alça da armadilha, ilustrando a tolerância vertical dos pés de pouso e o alinhamento de engate}}{49}{figure.caption.35}%
 \contentsfinish 

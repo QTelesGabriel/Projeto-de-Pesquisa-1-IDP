@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="armadilha_alvo">
+    <static>false</static>
+    <link name="link">
+      <inertial>
+        <mass>4.81162</mass>
+        <inertia>
+          <ixx>0.294868</ixx><iyy>0.150069</iyy><izz>0.258855</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <visual name="base_visual">
+        <geometry>
+          <mesh>
+            <uri>model://armadilha/meshes/armadilha-final.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.015 0.015 0.015 1</ambient>
+          <diffuse>0.02 0.02 0.02 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+      <collision name="base_collision">
+        <geometry>
+          <mesh>
+            <uri>model://armadilha/meshes/armadilha-final.stl</uri>
+            <scale>0.001 0.001 0.001</scale>
+          </mesh>
+        </geometry>
+        <surface>
+          <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>

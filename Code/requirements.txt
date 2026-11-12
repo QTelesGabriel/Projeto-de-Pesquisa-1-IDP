@@ -1,0 +1,22 @@
+# Dependências Python do Projeto de Pesquisa - IDP
+# Drone Coaxial + ArduPilot SITL + Gazebo Harmonic + YOLO
+
+# Visão Computacional e IA
+ultralytics>=8.3.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+filterpy>=1.4.5
+scipy>=1.10.0
+Pillow>=10.0.0
+PyYAML>=6.0
+
+# Comunicação ArduPilot e Telemetria
+pymavlink>=2.4.40
+MAVProxy>=1.8.69
+dronekit>=2.9.2
+pexpect>=4.9.0
+
+# Dependências exigidas pelo build do ArduPilot SITL
+empy==3.3.4
+future>=1.0.0

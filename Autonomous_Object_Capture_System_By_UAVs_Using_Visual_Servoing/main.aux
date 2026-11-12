@@ -2,7 +2,7 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand*\HyPL@Entry[1]{}
 \bibstyle{IEEEtran}
-\providecommand\babel@aux[2]{}
+\providecommand \babel@aux [2]{\global \let \babel@toc \@gobbletwo }
 \@nameuse{bbl@beforestart}
 \HyPL@Entry{0<</S/r>>}
 \babel@aux{english}{}
@@ -75,7 +75,6 @@
 \citation{redmon2016}
 \citation{yolov8_ultralytics,terven2023}
 \citation{afifah2025}
-\citation{terven2023}
 \citation{yolov8_ultralytics,afifah2025}
 \citation{afifah2025,wang2025_hsv}
 \citation{wang2024_yolov10}
@@ -84,44 +83,41 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Arquitetura conceitual da família YOLO, ilustrando a divisão da imagem em grade espacial e a regressão direta das caixas delimitadoras}}{13}{figure.caption.9}\protected@file@percent }
 \newlabel{fig:yolo_architecture}{{4}{13}{Arquitetura conceitual da família YOLO, ilustrando a divisão da imagem em grade espacial e a regressão direta das caixas delimitadoras}{figure.caption.9}{}}
 \citation{yolo11_ultralytics}
-\citation{yolo11_ultralytics}
 \citation{yolo11_ultralytics,zhexebay2025}
 \citation{yolo11_ultralytics,zhexebay2025}
 \citation{yolo26_ultralytics}
 \citation{padilla2021,ultralytics_metrics}
 \citation{padilla2021}
+\newlabel{eq:iou}{{1}{14}{}{equation.1}{}}
 \citation{padilla2021}
 \citation{padilla2021,ultralytics_metrics}
-\newlabel{eq:iou}{{1}{15}{}{equation.0.1}{}}
-\newlabel{eq:precision}{{2}{15}{}{equation.0.2}{}}
-\newlabel{eq:recall}{{3}{15}{}{equation.0.3}{}}
-\newlabel{eq:f1_score}{{4}{15}{}{equation.0.4}{}}
-\newlabel{eq:ap}{{5}{15}{}{equation.0.5}{}}
-\newlabel{eq:map}{{6}{15}{}{equation.0.6}{}}
 \citation{ultralytics_metrics}
 \citation{ultralytics_metrics}
+\newlabel{eq:precision}{{2}{15}{}{equation.2}{}}
+\newlabel{eq:recall}{{3}{15}{}{equation.3}{}}
+\newlabel{eq:f1_score}{{4}{15}{}{equation.4}{}}
+\newlabel{eq:ap}{{5}{15}{}{equation.5}{}}
+\newlabel{eq:map}{{6}{15}{}{equation.6}{}}
 \citation{zhexebay2025}
 \citation{zhexebay2025}
 \citation{zhexebay2025}
 \citation{barisic2019}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}}{16}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:yolo_detection_example}{{5}{16}{Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}{figure.caption.10}{}}
 \citation{tcc_mariahelena,kalman_beginners,kordic2010}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}}{17}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:yolo_detection_example}{{5}{17}{Exemplo prático de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}{figure.caption.10}{}}
 \citation{kalman_beginners,tcc_mariahelena}
+\newlabel{eq:state_transition}{{7}{17}{}{equation.7}{}}
+\newlabel{eq:observation_model}{{8}{17}{}{equation.8}{}}
+\newlabel{eq:ekf_state_prediction}{{9}{17}{}{equation.9}{}}
 \citation{kalman_beginners}
 \citation{kalman_beginners}
 \citation{kalman_beginners}
-\newlabel{eq:state_transition}{{7}{18}{}{equation.0.7}{}}
-\newlabel{eq:observation_model}{{8}{18}{}{equation.0.8}{}}
-\newlabel{eq:ekf_state_prediction}{{9}{18}{}{equation.0.9}{}}
-\newlabel{eq:ekf_cov_prediction}{{10}{18}{}{equation.0.10}{}}
+\newlabel{eq:ekf_cov_prediction}{{10}{18}{}{equation.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}}{18}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:ekf_flowchart}{{6}{18}{Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}{figure.caption.11}{}}
+\newlabel{eq:kalman_gain}{{11}{18}{}{equation.11}{}}
 \citation{kalman_beginners}
 \citation{barisic2019,vidal2007}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}}{19}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:ekf_flowchart}{{6}{19}{Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}{figure.caption.11}{}}
-\newlabel{eq:kalman_gain}{{11}{19}{}{equation.0.11}{}}
-\newlabel{eq:state_update}{{12}{19}{}{equation.0.12}{}}
-\newlabel{eq:covariance_update}{{13}{19}{}{equation.0.13}{}}
 \citation{thuilot2002}
 \citation{shang2016,lopezfranco2017}
 \citation{lopezfranco2017,pramono2025}
@@ -129,85 +125,109 @@
 \citation{lopezfranco2017,luo2020}
 \citation{hutchinson1996,chaumette2016,thuilot2002,hafez2013}
 \citation{pramono2025}
-\citation{hafez2013,pramono2025,chaumette2016}
 \citation{thuilot2002}
 \citation{hafez2013}
 \citation{keipour2022}
-\citation{keipour2022}
-\citation{keipour2022}
 \citation{hafez2013,pramono2025}
-\@writefile{toc}{\contentsline {subsubsection}{2.1.3Visual Servoing}{20}{section*.12}\protected@file@percent }
+\newlabel{eq:state_update}{{12}{19}{}{equation.12}{}}
+\newlabel{eq:covariance_update}{{13}{19}{}{equation.13}{}}
+\@writefile{toc}{\contentsline {subsubsection}{2.1.3Servovisão (\textit  {Visual Servoing})}{19}{section*.12}\protected@file@percent }
 \citation{thuilot2002,hafez2013}
 \citation{pramono2025,fagundes2025,chaumette2016}
 \citation{pramono2025,hafez2013}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Exemplo de suporte mecânico estabilizado (\textit  {gimbal}) motorizado de três eixos acoplado a uma câmera}}{20}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:gimbal_camera}{{7}{20}{Exemplo de suporte mecânico estabilizado (\textit {gimbal}) motorizado de três eixos acoplado a uma câmera}{figure.caption.13}{}}
+\citation{hafez2013}
 \citation{lopezfranco2017,fagundes2025,pramono2025}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Qualitative comparison between the classical Image-Based Visual Servoing (IBVS) and Position-Based Visual Servoing (PBVS) schemes}}{22}{figure.caption.13}\protected@file@percent }
-\newlabel{fig:ibvs_pbvs_comparison}{{7}{22}{Qualitative comparison between the classical Image-Based Visual Servoing (IBVS) and Position-Based Visual Servoing (PBVS) schemes}{figure.caption.13}{}}
+\citation{fagundes2025}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Comparação qualitativa entre os esquemas clássicos de Servovisão Baseada em Imagem (IBVS) e Servovisão Baseada em Posição (PBVS)}}{21}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:ibvs_pbvs_comparison}{{8}{21}{Comparação qualitativa entre os esquemas clássicos de Servovisão Baseada em Imagem (IBVS) e Servovisão Baseada em Posição (PBVS)}{figure.caption.14}{}}
+\citation{pramono2025}
 \citation{keipour2022}
-\citation{fagundes2025,keipour2022}
-\citation{fagundes2025,sciortino2018}
+\citation{fagundes2025}
+\citation{hafez2013,pramono2025}
+\citation{hafez2013}
 \citation{lopezfranco2017}
 \citation{shang2016,sciortino2018}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Representação geométrica da projeção em perspectiva baseada no modelo de câmera \textit  {Pinhole}, ilustrando a conversão de um ponto no espaço para o plano bidimensional da imagem}}{22}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:pinhole_camera_model}{{9}{22}{Representação geométrica da projeção em perspectiva baseada no modelo de câmera \textit {Pinhole}, ilustrando a conversão de um ponto no espaço para o plano bidimensional da imagem}{figure.caption.15}{}}
+\citation{sciortino2018}
+\citation{shang2016,carvajal2024}
 \citation{shang2016,sciortino2018}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Geometric representation of perspective projection based on the Pinhole camera model, illustrating the relationship between focal length and the conversion of a point in space onto the two-dimensional image plane}}{23}{figure.caption.14}\protected@file@percent }
-\newlabel{fig:pinhole_camera_model}{{8}{23}{Geometric representation of perspective projection based on the Pinhole camera model, illustrating the relationship between focal length and the conversion of a point in space onto the two-dimensional image plane}{figure.caption.14}{}}
-\citation{bonyan2018,meng2020}
-\citation{bonyan2018}
-\citation{meng2020}
-\citation{meng2020,ladig2021}
-\@writefile{toc}{\contentsline {subsubsection}{2.1.4Aerial Capture and Manipulation Systems}{24}{section*.15}\protected@file@percent }
-\citation{bonyan2018}
-\citation{meng2020}
+\citation{bonyan2018,meng2020,abuzayed2020}
+\citation{bonyan2018,cocuzza2021}
+\citation{bonyan2018,ladig2021}
+\citation{meng2020,bonyan2018}
 \citation{ladig2021}
-\citation{ladig2021}
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Aerial manipulation using attached grippers}}{25}{figure.caption.16}\protected@file@percent }
-\newlabel{fig:attached_grippers}{{9}{25}{Aerial manipulation using attached grippers}{figure.caption.16}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces UAV equipped with an articulated robotic arm}}{25}{figure.caption.17}\protected@file@percent }
-\newlabel{fig:articulated_robotic_arm}{{10}{25}{UAV equipped with an articulated robotic arm}{figure.caption.17}{}}
-\citation{bonyan2018}
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Cable-suspended aerial manipulation system}}{26}{figure.caption.18}\protected@file@percent }
-\newlabel{fig:cable_suspended_manipulation}{{11}{26}{Cable-suspended aerial manipulation system}{figure.caption.18}{}}
-\citation{ladig2021}
+\@writefile{toc}{\contentsline {subsubsection}{2.1.4Sistemas de Captura e Manipulação Aérea}{23}{section*.16}\protected@file@percent }
 \citation{ladig2021}
 \citation{ladig2021}
 \citation{ladig2021,meng2020}
 \citation{ladig2021}
-\citation{meng2020}
-\citation{meng2020}
-\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Rigid-tool aerial manipulation system mounted on the UAV frame}}{27}{figure.caption.19}\protected@file@percent }
-\newlabel{fig:rigid_tool_manipulation}{{12}{27}{Rigid-tool aerial manipulation system mounted on the UAV frame}{figure.caption.19}{}}
+\citation{ladig2021}
+\citation{ladig2021,meng2020}
+\citation{meng2020,ubellacker2024}
+\citation{bauer2023,ubellacker2024}
+\citation{thomas2014,meng2020}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Classificação dos espaços operacionais e zonas de contato em sistemas de manipulação aérea}}{24}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:interaction_zones}{{10}{24}{Classificação dos espaços operacionais e zonas de contato em sistemas de manipulação aérea}{figure.caption.17}{}}
+\citation{ubellacker2024}
+\citation{ladig2021,bonyan2018}
+\citation{ladig2021,thomas2014}
+\citation{meng2020,ubellacker2024}
+\citation{bauer2023,ubellacker2024}
+\citation{thomas2014,ubellacker2024}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Exemplo de sistema de manipulação e captura aérea acoplado diretamente sob a fuselagem de um multirrotor}}{25}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:attached_grippers}{{11}{25}{Exemplo de sistema de manipulação e captura aérea acoplado diretamente sob a fuselagem de um multirrotor}{figure.caption.18}{}}
 \citation{thomas2014}
 \citation{thomas2014}
-\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Classification of operational spaces in aerial manipulation systems}}{28}{figure.caption.20}\protected@file@percent }
-\newlabel{fig:interaction_zones}{{13}{28}{Classification of operational spaces in aerial manipulation systems}{figure.caption.20}{}}
-\@writefile{toc}{\contentsline {subsection}{2.2 Related Works}{28}{section*.21}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{2.2.1Autonomous Object Capture by UAVs}{28}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{2.2 Trabalhos Relacionados}{26}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{2.2.1Captura Autônoma de Objetos por VANTs}{26}{section*.20}\protected@file@percent }
+\citation{bauer2023}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Sequência de captura dinâmica e empoleiramento (\textit  {perching}) sobre alvo cilíndrico por manobra descendente rápida (\textit  {swooping})}}{27}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:thomas_swooping_grasp}{{12}{27}{Sequência de captura dinâmica e empoleiramento (\textit {perching}) sobre alvo cilíndrico por manobra descendente rápida (\textit {swooping})}{figure.caption.21}{}}
+\citation{bauer2023}
+\citation{ubellacker2024}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Sequência temporal da aproximação e captura aérea dinâmica em voo livre utilizando garra macia complacente}}{28}{figure.caption.22}\protected@file@percent }
+\newlabel{fig:bauer_aerial_grasping}{{13}{28}{Sequência temporal da aproximação e captura aérea dinâmica em voo livre utilizando garra macia complacente}{figure.caption.22}{}}
+\citation{luo2020}
+\citation{barisic2019}
+\citation{barisic2019}
+\@writefile{toc}{\contentsline {subsubsection}{2.2.2Detecção e Rastreamento de Alvos em VANTs}{30}{section*.23}\protected@file@percent }
+\citation{vidal2007}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Comparação entre a estimativa do Filtro de Kalman e a saída direta da detecção de objetos para largura e altura da caixa delimitadora}}{31}{figure.caption.24}\protected@file@percent }
+\newlabel{fig:kalman_barisic_results}{{14}{31}{Comparação entre a estimativa do Filtro de Kalman e a saída direta da detecção de objetos para largura e altura da caixa delimitadora}{figure.caption.24}{}}
+\citation{shen2023}
+\citation{remotesensing2024}
+\citation{pramono2025}
+\@writefile{toc}{\contentsline {subsubsection}{2.2.3Servovisão Aplicada a VANTs}{33}{section*.25}\protected@file@percent }
+\citation{shang2016}
+\citation{carvajal2024}
+\citation{lopezfranco2017}
+\citation{lopezfranco2017}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Comparação experimental do erro de rastreamento no plano da imagem entre controlador PID convencional e PID Neural (PID-ANN) sob perturbação de massa de 50\%}}{36}{figure.caption.26}\protected@file@percent }
+\newlabel{fig:lopezfranco_pid_comparison}{{15}{36}{Comparação experimental do erro de rastreamento no plano da imagem entre controlador PID convencional e PID Neural (PID-ANN) sob perturbação de massa de 50\%}{figure.caption.26}{}}
+\@writefile{toc}{\contentsline {subsubsection}{2.2.4Análise Comparativa dos Trabalhos Relacionados}{36}{section*.27}\protected@file@percent }
+\citation{thomas2014}
 \citation{bauer2023}
 \citation{ubellacker2024}
 \citation{luo2020}
 \citation{barisic2019}
-\@writefile{toc}{\contentsline {subsubsection}{2.2.2Object Detection and Tracking in UAVs}{30}{section*.23}\protected@file@percent }
-\citation{barisic2019}
-\citation{barisic2019}
 \citation{vidal2007}
-\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Comparison between Kalman Filter estimation and object detection output for the width and height of the bounding box}}{32}{figure.caption.24}\protected@file@percent }
-\newlabel{fig:kalman_barisic_results}{{14}{32}{Comparison between Kalman Filter estimation and object detection output for the width and height of the bounding box}{figure.caption.24}{}}
 \citation{shen2023}
 \citation{remotesensing2024}
 \citation{pramono2025}
-\@writefile{toc}{\contentsline {subsubsection}{2.2.3Visual Servoing Applied to UAVs}{34}{section*.25}\protected@file@percent }
 \citation{shang2016}
 \citation{carvajal2024}
 \citation{lopezfranco2017}
 \gdef \LT@i {\LT@entry 
-    {1}{49.52718pt}\LT@entry 
+    {1}{58.62706pt}\LT@entry 
     {1}{80.84071pt}\LT@entry 
     {1}{71.73389pt}\LT@entry 
     {1}{62.62706pt}\LT@entry 
     {1}{99.04742pt}\LT@entry 
     {1}{85.9406pt}}
-\@writefile{toc}{\contentsline {subsubsection}{2.2.4Comparative Analysis of Related Works}{37}{section*.26}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparative Analysis of Related Works}}{37}{table.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Análise Comparativa dos Trabalhos Relacionados}}{37}{table.1}\protected@file@percent }
 \newlabel{tab:correlatos}{{1}{37}{}{table.1}{}}
 \citation{thomas2014}
 \citation{bauer2023}
@@ -221,10 +241,25 @@
 \citation{pramono2025}
 \citation{carvajal2024}
 \citation{shang2016}
-\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{42}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Results and Discussion}{44}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{46}{section*.29}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{47}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{41}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{3.1 Visão Geral e Classificação da Pesquisa}{41}{section*.29}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Arquitetura geral em malha fechada e fluxo operacional em duas fases do sistema}}{42}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:arquitetura_geral_sistema}{{16}{42}{Arquitetura geral em malha fechada e fluxo operacional em duas fases do sistema}{figure.caption.30}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Visão geral do ambiente de simulação no Gazebo apresentando o VANT em altitude de busca e o alvo no solo}}{44}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:cenario_simulacao_gazebo}{{17}{44}{Visão geral do ambiente de simulação no Gazebo apresentando o VANT em altitude de busca e o alvo no solo}{figure.caption.31}{}}
+\@writefile{toc}{\contentsline {subsection}{3.2 Ambiente de Simulação e Modelagem da Plataforma Aérea}{44}{section*.32}\protected@file@percent }
+\newlabel{eq:curva_empuxo_motor}{{14}{46}{}{equation.14}{}}
+\newlabel{eq:curva_torque_motor}{{15}{46}{}{equation.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces Representação tridimensional do VANT OctaQuad X8 com mecanismo de captura ventral e indicação do deslocamento geométrico (\textit  {offset}) de 42,16 mm entre a câmera e o dispositivo de engate}}{47}{figure.caption.33}\protected@file@percent }
+\newlabel{fig:modelo_drone_offset}{{18}{47}{Representação tridimensional do VANT OctaQuad X8 com mecanismo de captura ventral e indicação do deslocamento geométrico (\textit {offset}) de 42,16 mm entre a câmera e o dispositivo de engate}{figure.caption.33}{}}
+\newlabel{eq:razao_offset_y}{{16}{47}{}{equation.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces Geometria da armadilha de monitoramento de vetores biológicos com dimensões estruturais e disposição angular assimétrica das três alças triangulares de captura}}{48}{figure.caption.34}\protected@file@percent }
+\newlabel{fig:modelo_armadilha_vts}{{19}{48}{Geometria da armadilha de monitoramento de vetores biológicos com dimensões estruturais e disposição angular assimétrica das três alças triangulares de captura}{figure.caption.34}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces Visão lateral esquemática do acoplamento mecânico terminal entre o gancho ventral do VANT e a alça da armadilha, ilustrando a tolerância vertical dos pés de pouso e o alinhamento de engate}}{49}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:acoplamento_mecanico_lateral}{{20}{49}{Visão lateral esquemática do acoplamento mecânico terminal entre o gancho ventral do VANT e a alça da armadilha, ilustrando a tolerância vertical dos pés de pouso e o alinhamento de engate}{figure.caption.35}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results and Discussion}{51}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{53}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{54}{section*.38}\protected@file@percent }
 \bibdata{referencias}
 \bibcite{carvajal2024}{1}
 \bibcite{abuzayed2020}{2}
@@ -274,10 +309,10 @@
 \bibcite{ubellacker2024}{46}
 \bibcite{shen2023}{47}
 \bibcite{remotesensing2024}{48}
-\@writefile{toc}{\contentsline {section}{Appendices}{52}{section*.31}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{Appendix \MakeUppercase    []{a} - Título do apêndice A}{53}{section*.32}\protected@file@percent }
-\newlabel{ap:meuapendice}{{\MakeUppercase    []{a}}{53}{}{section*.32}{}}
-\@writefile{toc}{\contentsline {section}{Annexes}{54}{section*.33}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\MakeUppercase    []{a}\hspace  {1em} Título do Anexo A}{55}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Appendices}{59}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Appendix \MakeUppercase    []{a} - Título do apêndice A}{60}{section*.40}\protected@file@percent }
+\newlabel{ap:meuapendice}{{\MakeUppercase    []{a}}{60}{}{section*.40}{}}
+\@writefile{toc}{\contentsline {section}{Annexes}{61}{section*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\MakeUppercase    []{a}\hspace  {1em} Título do Anexo A}{62}{section*.42}\protected@file@percent }
 \ttl@finishall
-\gdef \@abspage@last{67}
+\gdef \@abspage@last{74}

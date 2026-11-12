@@ -10,10 +10,10 @@ venv/
 .venv/
 env/
 ENV/
+Code/venv/
 venv-ardupilot/
 
 # Python packaging
-build/
 dist/
 .eggs/
 *.egg-info/
@@ -78,6 +78,13 @@ terrain/
 mav.parm
 
 # =========================
+# ArduPilot & Build Trees (Instalados via setup.sh)
+# =========================
+Code/ardupilot/
+Code/ardupilot_gazebo/
+backup_local/
+
+# =========================
 # YOLO / Ultralytics
 # =========================
 runs/
@@ -99,16 +106,12 @@ photos/
 frames/
 
 # =========================
-# Model weights
+# Model weights (Default ignore, exceptions below)
 # =========================
 *.pt
 *.onnx
 *.engine
 *.torchscript
-
-# EXCEPTION:
-# Keep your final trained model if desired
-#!best.pt
 
 # =========================
 # Temporary files
@@ -143,7 +146,7 @@ torch_compile_debug/
 *.gz
 
 # =========================
-# Imagens
+# Imagens & Planilhas (Default ignore, exceptions below)
 # =========================
 *.jpg
 *.jpeg
@@ -152,10 +155,23 @@ torch_compile_debug/
 *.gif
 *.tiff
 *.webp
-
-# =========================
-# Dados e Planilhas
-# =========================
 *.csv
 *.xlsx
 *.xls
+
+# ==============================================================================
+# EXCEÇÕES: SALVAR TUDO DO PROJETO (MODELOS, MÉTRICAS, DATASETS E SIMULAÇÃO)
+# ==============================================================================
+!Code/modelos_IA/**
+!Code/ferramentas/datasets/**
+!Code/ferramentas/yolo_dataset/**
+!Code/ferramentas/yolo_label/**
+!Code/ferramentas/tirar_foto/**
+!Code/ferramentas/novas_fotos_para_rotular/**
+!armadilha*/**
+!Testes/Validacao_Visual_Definitiva/**
+!Code/simulacao_gazebo/**
+!Code/missao/*.csv
+!Code/missao/**/*.csv
+!Testes/**/*.csv
+!*relatorio*.csv
