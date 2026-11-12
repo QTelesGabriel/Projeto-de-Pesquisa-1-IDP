@@ -271,3 +271,481 @@ A geometria desse acoplamento terminal e as tolerâncias físicas envolvidas na 
         \footnotesize Fonte: elaboração própria.
     \end{flushleft}
 \end{figure}
+
+\subsecao{Construção dos Datasets Sintéticos e Treinamento dos Detectores Visuais}
+
+A confiabilidade de um sistema de servovisão depende diretamente da capacidade do modelo neural em localizar o alvo de interesse com estabilidade temporal e elevada resolução espacial. Em operações aéreas com VANTs, a coleta de imagens em campo enfrenta severos entraves logísticos, incluindo o risco de colisões em manobras de baixa altitude e a dificuldade de padronizar variações controladas de iluminação solar. Para solucionar esses desafios, optou-se pela geração de datasets sintéticos de alta fidelidade diretamente no ambiente Gazebo Sim, aproveitando a integração em malha fechada com o piloto automático ArduPilot para programar missões autônomas de aquisição fotogramétrica. Para assegurar a máxima acurácia geométrica dos contornos e eliminar falsos positivos ou caixas frouxas comumente geradas por scripts de projeção automática 3D, todas as imagens geradas foram inspecionadas e rotuladas manualmente pelo próprio autor, definindo rigorosamente as caixas delimitadoras de cada classe.
+
+Em alinhamento com a estratégia operacional em duas etapas, foram construídos dois conjuntos de dados independentes e complementares, estruturados segundo os requisitos ópticos de cada fase de aproximação.
+
+O dataset da Fase 1 foi projetado para sustentar a descida em funil ótico em altitudes intermediárias e elevadas, compreendidas entre 2,0 m e 20,0 m, tendo como objetivo a detecção da geometria macroscópica da armadilha em uma classe única denominada \textit{armadilha}. A aquisição dessas imagens foi executada por meio de um algoritmo de varredura sistemática em grade retangular. O drone executou trajetórias em ziguezague acima do alvo em dez patamares discretos de altitude, variando de 2,0 m a 20,0 m com incrementos sucessivos de 2,0 m. A cada patamar de altitude, a amplitude do deslocamento horizontal da aeronave em relação ao centro da armadilha foi escalonada dinamicamente com base no campo de visão da câmera nadir, garantindo a presença do alvo em diferentes regiões da imagem, desde o centro óptico até as bordas periféricas. O procedimento forneceu um total de 1.258 imagens sintéticas, distribuídas em 944 imagens para treinamento (75\%) e 314 imagens para validação (25\%).
+
+O dataset da Fase 2 foi desenvolvido para viabilizar o alinhamento angular e a aproximação de contato em altitudes inferiores a 2,0 m, faixa na qual a aeronave precisa discriminar subcomponentes estruturais para guiar o engate mecânico. Esse conjunto adota duas classes de detecção, distinguindo individualmente as três alças triangulares de içamento (classe \textit{alca}) e a tampa da estrutura (classe \textit{armadilha}). Para registrar a geometria das alças em altitudes próximas e sob fortes variações de perspectiva, implementou-se uma rotina de voo em espiral cilíndrica. O VANT percorreu trajetórias circulares contínuas de raio fixado em 0,15 m ao redor do eixo vertical da armadilha, alternando translações descendentes e ascendentes entre 2,0 m e 0,20 m de altitude. Durante essa missão de amostragem, o drone manteve sua atitude de guinada (\textit{Yaw}) fixa no espaço, transladando ao redor do alvo sem rotacionar sobre o próprio eixo vertical. O dataset da Fase 2 totalizou 546 imagens, subdivididas em 384 amostras para treino (70,3\%), 107 para validação (19,6\%) e 55 para teste independente (10,1\%). Exemplos representativos das imagens geradas para ambos os regimes operacionais são apresentados na Figura~\ref{fig:amostras_dataset_fases}.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Amostras representativas dos datasets sintéticos gerados no Gazebo Sim, ilustrando a captura macroscópica em grade para a Fase 1 e a aproximação helicoidal em baixa altitude com sombras projetadas para a Fase 2}
+    \label{fig:amostras_dataset_fases}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/amostras_dataset_fases.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+O treinamento dos modelos foi conduzido no framework Ultralytics, utilizando imagens redimensionadas para a resolução padronizada de $640 \times 640$ pixels e tamanho de lote (\textit{batch size}) igual a 8. Para o detector da Fase 1, o treinamento estendeu-se por 150 épocas, regime no qual as curvas de perda alcançaram estabilização assintótica em virtude da classe única. Na Fase 2, devido à complexidade acrescida da segmentação simultânea de três pequenas alças contíguas sob a interferência de sombras dinâmicas, o processo de aprendizado foi conduzido ao longo de 300 épocas. Em ambos os regimes, adotou-se o otimizador AdamW com decaimento cossenoidal da taxa de aprendizado e critério de parada antecipada (\textit{early stopping}) configurado com paciência de 100 épocas.
+
+Como a aeronave manteve orientação de guinada fixa durante a captura das fotos em voo no simulador, a amostragem bruta refletia um alinhamento angular preferencial da carcaça. Para mitigar esse viés geométrico e conceder aos detectores invariância rotacional irrestrita em $360^\circ$, introduziu-se na etapa de aumentação de dados (\textit{data augmentation}) o parâmetro de rotação aleatória total (\textit{degrees} igual a 180). Essa configuração submete as imagens a rotações uniformes no intervalo de $[-180^\circ, +180^\circ]$ a cada lote de aprendizado, capacitando as redes neurais a reconhecerem a estrutura e as alças sob qualquer ângulo azimutal de aproximação real do drone. O pipeline de aumentação incluiu ainda variações de escala, translações, perturbações cromáticas de brilho e contraste no espaço HSV e composição por mosaicos (\textit{mosaic}), sendo esta última desativada nas últimas 10 épocas (\textit{close mosaic}) para assegurar a convergência fina dos gradientes.
+
+Com o objetivo de selecionar as arquiteturas neurais que oferecem o melhor compromisso entre precisão geométrica e custo computacional de inferência a bordo, foram submetidas ao mesmo protocolo quatro redes compactas contemporâneas da família YOLO, a saber, v8n, v10n, v11n e v26n. Os resultados comparativos obtidos no conjunto de validação da Fase 1 são sintetizados na Tabela~\ref{tab:comparativo_yolo_fase1}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \captionsetup{justification=centering}
+    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1 (150 épocas)}
+    \label{tab:comparativo_yolo_fase1}
+    \vspace{0.2cm}
+    \begin{tabular}{lccccc}
+        \hline
+        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Tempo de Treino} \\
+        \hline
+        YOLOv8n  & 100,00\% & 99,92\% & 99,50\% & 68,86\% & 2 h 15 min \\
+        YOLOv10n & 97,62\%  & 98,23\% & 99,31\% & 70,42\% & 2 h 46 min \\
+        YOLOv11n & 99,20\%  & 99,49\% & 99,48\% & 71,73\% & 2 h 32 min \\
+        \textbf{YOLO26n} & \textbf{98,41\%} & \textbf{98,71\%} & \textbf{99,34\%} & \textbf{74,59\%} & \textbf{2 h 50 min} \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}
+
+Os dados da Tabela~\ref{tab:comparativo_yolo_fase1} revelam que todas as arquiteturas alcançaram índices praticamente saturados sob o limiar tradicional $mAP@50$, com Precisão e Recall superiores a 98\% e taxa básica acima de 99\%. Contudo, para aplicações de servovisão e controle cinemático em malha fechada, a métrica $mAP@50$ isolada é insuficiente e pode conduzir a escolhas inadequadas. O limiar de IoU igual a 0,50 exige apenas 50\% de sobreposição entre a caixa predita e o alvo real, tolerando caixas delimitadoras frouxas ou com margens oscilantes. Em um sistema de guiamento aéreo, o centroide $(u,v)$ da caixa delimitadora é projetado inversamente pelo modelo analítico da câmera para calcular os erros métricos $(\Delta X, \Delta Y)$ e gerar setpoints de velocidade para o piloto automático. Flutuações de poucos pixels na estimativa das bordas geram ruído de alta frequência (\textit{jitter}) nos comandos translacionais, induzindo oscilações na trajetória da aeronave.
+
+Por essa razão, o critério determinante para a seleção do detector foi o índice $mAP@50\text{--}95$, que integra a acurácia de sobreposição em dez patamares sucessivos de IoU (de 0,50 a 0,95 com incremento de 0,05), penalizando severamente caixas imprecisas. Sob essa métrica geométrica rigorosa, a variante \textbf{YOLO26n} superou com folga todos os demais concorrentes, alcançando 74,59\% (vantagem expressiva de 5,73 pontos percentuais sobre o YOLOv8n, 4,17 pontos sobre o YOLOv10n e 2,86 pontos sobre o YOLOv11n). Essa aderência estrita das bordas na faixa de 2,0 m a 20,0 m de altitude garante um centroide óptico geometricamente estável, viabilizando o afunilamento descendente com mínima dispersão de velocidade.
+
+Por outro lado, o cenário operacional da Fase 2 impõe um nível superior de desafio visual, exigindo a identificação simultânea das três alças triangulares de engate na presença de sombras projetadas pela fuselagem do drone e reflexos na superfície plástica da tampa. O comparativo das quatro redes treinadas para a Fase 2 é detalhado na Tabela~\ref{tab:comparativo_yolo_fase2}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \captionsetup{justification=centering}
+    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (300 épocas)}
+    \label{tab:comparativo_yolo_fase2}
+    \vspace{0.2cm}
+    \begin{tabular}{lccccc}
+        \hline
+        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Tempo de Treino} \\
+        \hline
+        YOLOv8n  & 99,64\% & 100,00\% & 99,50\% & 82,26\% & 1 h 10 min \\
+        \textbf{YOLOv10n} & \textbf{96,85\%} & \textbf{98,32\%} & \textbf{99,34\%} & \textbf{88,02\%} & \textbf{2 h 30 min} \\
+        YOLOv11n & 99,20\% & 99,53\%  & 99,50\% & 87,79\% & 1 h 16 min \\
+        YOLO26n  & 99,30\% & 99,21\%  & 99,47\% & 87,27\% & 2 h 01 min \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}
+
+Todos os modelos completaram integralmente as 300 épocas previstas no regime da Fase 2, sem interrupção precoce por parada antecipada. A variação observada nos tempos totais de processamento explica-se pela própria formulação matemática de cada arquitetura neural. Os modelos YOLOv8n e YOLOv11n baseiam-se em cabeçotes de predição desacoplados padrão com alocação simples de rótulos por meio do algoritmo \textit{Task-Aligned Assigner}, demandando apenas de 14 a 15 segundos por época no conjunto de 48 lotes. Em contrapartida, o modelo YOLOv10n incorpora a estratégia de \textit{Dual Label Assignment}, concebida para viabilizar inferência em tempo real livre de supressão não máxima. Durante o treinamento, essa abordagem impõe o cálculo simultâneo de perdas e emparelhamentos para dois cabeçotes concorrentes (um supervisionado de um-para-muitos e outro otimizado de um-para-um), acompanhado de mecanismos de atenção parcial (\textit{Partial Self-Attention}). Essa carga matemática duplicada eleva o tempo de processamento para aproximadamente 30 segundos por época, justificando com clareza o ciclo total de 2 horas e 30 minutos sem indicar falhas de convergência. De modo similar, o YOLO26n adota blocos de agregação mais profundos no extrator de características, estabilizando sua taxa em 24 segundos por época (2 horas e 01 minuto).
+
+Conforme detalhado na Tabela~\ref{tab:comparativo_yolo_fase2}, embora o YOLOv8n apresente métricas nominais ligeiramente superiores sob $mAP@50$ e o YOLOv11n empate tecnicamente no Recall, o modelo YOLOv10n alcançou o melhor índice geral no critério estrito de sobreposição ($mAP@50\text{--}95$ de 88,02\%, superando o YOLOv8n em 5,76 pontos percentuais).
+
+Além da precisão geométrica superior, a escolha do YOLOv10n em detrimento do YOLOv11n e do YOLOv8n fundamenta-se em um diferencial arquitetural determinante para a fase terminal, o mecanismo de \textit{Dual Label Assignment}, que elimina a necessidade do algoritmo de Supressão Não Máxima (NMS) na inferência. Na Fase 2, as três alças de engate encontram-se dispostas a poucos centímetros de distância mútua. Em detectores clássicos dependentes de NMS (como o v8n e o v11n), quando duas alças vizinhas projetam caixas delimitadoras parcialmente sobrepostas no plano da imagem sob visadas oblíquas da câmera, o pós-processamento de NMS frequentemente descarta uma das alças por interpretar a sobreposição como uma predição duplicada. Esse descarte indevido ocasiona o desaparecimento intermitente de alças entre quadros consecutivos, corrompendo o cálculo do ângulo de guinada (\textit{Yaw}) e induzindo oscilações erráticas. O YOLOv10n treina um cabeçote otimizado para correspondência um-para-um direta, garantindo que as três alças sejam continuamente discriminadas sem omissões e reduzindo a latência computacional a bordo ao suprimir a etapa de NMS.
+
+O comportamento qualitativo dos modelos selecionados pode ser visualizado na Figura~\ref{fig:predicoes_validacao_yolo}, que ilustra predições reais obtidas no lote de validação, e na Figura~\ref{fig:curvas_treinamento_yolo}, que demonstra a estabilidade da convergência das funções de perda ao longo das épocas de treinamento.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Exemplos de inferência e caixas delimitadoras preditas no conjunto de validação pelos detectores selecionados, apresentando o YOLO26n na Fase 1 com classe única e o YOLOv10n na Fase 2 com discriminação individual das três alças}
+    \label{fig:predicoes_validacao_yolo}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/predicoes_validacao_yolo.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Curvas de aprendizado dos modelos selecionados ao longo das épocas, apresentando a evolução das perdas de regressão de caixa (\textit{Box Loss}) e classificação (\textit{Cls Loss}) e a progressão dos índices $mAP$}
+    \label{fig:curvas_treinamento_yolo}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.85\linewidth]{figuras/curvas_treinamento_yolo.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+\subsecao{Implementação da Filtragem Estocástica de Estados (EKF)}
+
+A realimentação sensorial baseada em visão monocular introduz desafios dinâmicos relacionados à discretização espacial em pixels, às variações de contraste na cena e às vibrações mecânicas transmitidas pela estrutura do multirrotor. Embora as caixas delimitadoras estimadas pelos modelos YOLO convirjam com elevada precisão estática, as coordenadas instantâneas do centroide óptico sofrem com pequenas oscilações de alta frequência (\textit{jitter}) de um quadro para o outro. Caso essas coordenadas brutas fossem injetadas diretamente na malha de controle, os motores da aeronave receberiam comandos de velocidade erráticos e vibratórios. Além disso, a câmera fornece apenas informações de posição relativa, de modo que a extração de velocidades por diferenciação numérica simples amplificaria severamente o ruído visual.
+
+Para superar esses entraves de engenharia sem sobrecarregar o processamento a bordo, implementou-se um nó de filtragem estocástica baseado no Filtro de Kalman Estendido (EKF), cujas bases matemáticas gerais foram fundamentadas na Seção~2.3. No escopo prático deste trabalho, o estimador foi projetado e parametrizado para cumprir três funções operacionais:
+\begin{enumerate}
+    \item Suavizar as coordenadas do alvo, atenuando as flutuações de alta frequência da inferência neural;
+    \item Reconstruir dinamicamente as velocidades relativas translacionais e angulares da aeronave em relação à armadilha, viabilizando o controle cinemático derivativo em malha fechada sem ruídos de derivação;
+    \item Sustentar a continuidade da aproximação por propagação cinemática pura (\textit{dead reckoning}) durante eventos transitórios de oclusão visual, tais como sombras projetadas pela própria fuselagem do drone sobre o alvo em baixa altitude.
+\end{enumerate}
+
+Na arquitetura de software desenvolvida no ROS 2, essa estratégia foi especializada em dois estimadores independentes e complementares acoplados ao fluxo de controle.
+
+O primeiro módulo, denominado \textit{FiltroAlvoEKF}, é encarregado do rastreamento translacional no plano cartesiano horizontal. O estimador opera sobre um vetor de estados quadridimensional composto pelas posições métricas horizontais da armadilha em relação ao centro óptico da câmera ($x$ e $y$, em metros) e pelas respectivas taxas de variação translacional ($v_x$ e $v_y$, em metros por segundo). A execução do filtro é sincronizada com a taxa de chegada dos quadros da câmera a 20 Hz ($\Delta t = 0,05\text{ s}$). 
+
+A sintonia prática do \textit{FiltroAlvoEKF} foi estabelecida por meio da calibração empírica de suas matrizes de covariância. O ruído de medição foi ajustado para $\mathbf{R} = \text{diag}(0,5; 0,5)\text{ m}^2$, valor que informa ao algoritmo que as leituras provenientes da rede neural possuem incerteza intrínseca, instruindo o filtro a não seguir bruscamente os tremores momentâneos da caixa delimitadora. Em contrapartida, a matriz de ruído de processo foi configurada como $\mathbf{Q} = \text{diag}(0,01; 0,01; 0,1; 0,1)$, modelando a inércia física da aeronave e impedindo variações instantâneas impossíveis na posição, ao mesmo tempo em que confere flexibilidade necessária para que o filtro acompanhe as acelerações reais induzidas pelo piloto automático. A incerteza inicial foi fixada em $\mathbf{P}_0 = 1000 \cdot \mathbf{I}_4$, permitindo que o estimador convirja velozmente logo no primeiro quadro válido recebido.
+
+O segundo módulo, denominado \textit{FiltroAnguloEKF}, é dedicado exclusivamente ao alinhamento angular de guinada (\textit{Yaw}) na Fase 2, cuja convergência estrita com erro inferior a $1,0^\circ$ é pré-requisito para o acoplamento do gancho ventral. Esse estimador rastreia um vetor de estados bidimensional composto pelo ângulo de orientação da armadilha ($\theta$, em radianos) e por sua velocidade angular ($\omega$, em radianos por segundo).
+
+No domínio angular, surge uma particularidade geométrica crítica: a descontinuidade periódica de salto na fronteira entre $+\pi$ e $-\pi$ radianos ($+180^\circ$ e $-180^\circ$). Em implementações convencionais, se o drone cruzar essa fronteira angular, uma subtração linear simples geraria um erro artificial de aproximadamente $360^\circ$, fazendo com que o controlador disparasse uma rotação violenta e desestabilizadora sobre o eixo de guinada. Para solucionar esse problema, o \textit{FiltroAnguloEKF} incorpora uma função de correção angular circular não linear baseada no arco mais curto do círculo trigonométrico, calculada por $\text{atan2}(\sin(\Delta \theta), \cos(\Delta \theta))$. Essa formulação assegura que a inovação angular permaneça continuamente contida no intervalo $[-\pi, \pi]$, garantindo rotações suaves e sem descontinuidades. Os ruídos desse módulo foram calibrados com $R_\theta = 0,5\text{ rad}^2$, $\mathbf{Q}_\theta = \text{diag}(0,01; 0,1)$ e $\mathbf{P}_{0,\theta} = 1000 \cdot \mathbf{I}_2$.
+
+Outro mecanismo essencial introduzido no desenvolvimento do estimador foi o tratamento de oclusões temporárias. Na fase final de aproximação (altitudes inferiores a 1,50 m), o multirrotor interpõe-se diretamente entre a iluminação solar e a armadilha, gerando sombras escuras sobre a tampa plástica que podem ocultar momentaneamente a visada das três alças. Quando o nó detector não identifica o alvo em determinado instante de amostragem, o EKF suspende a etapa de atualização e entra em regime de predição cinemática pura. Nesse modo, o sistema continua gerando estimativas de posição para os controladores com base nas velocidades previamente estabelecidas, permitindo que o drone continue descendo de forma suave e nivelada.
+
+Para assegurar a integridade da missão, definiu-se um temporizador de segurança com limite de tolerância fixado em 4,0 segundos consecutivos de ausência de sinal visual (correspondendo a 80 passos de controle ininterruptos a 20 Hz). Caso a armadilha reapareça dentro desse intervalo, o filtro assimila as novas medições suavemente, reabsorvendo a incerteza acumulada sem causar solavancos na aeronave. Se a interrupção ultrapassar os 4,0 segundos, o algoritmo aciona automaticamente uma rotina de segurança (\textit{reset}), zerando os estados internos do filtro e forçando a aeronave a congelar a aproximação, permanecendo em voo pairado seguro até nova intervenção.
+
+A atuação prática desses estimadores no fluxo de controle é ilustrada na Figura~\ref{fig:visao_drone_filtro_ekf}, que apresenta a interface gráfica de visão computacional gerada em tempo real pelo nó de software da missão. Na imagem da esquerda (Fase 1), observa-se a envoltória de histerese visual com as zonas segura e de fuga, a caixa delimitadora estimada pela rede neural e a comparação entre o centroide bruto ruidoso e o centroide filtrado pelo EKF. Na imagem da direita (Fase 2), visualizam-se a discriminação individualizada das três alças triangulares rastreadas pelo estimador estocástico (pontos P0, P1 e P2), a mira central da câmera óptica e o retículo do ponto de acoplamento com a compensação mecânica do \textit{offset} longitudinal.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Visualização em tempo real da interface de visão computacional do sistema nas duas fases operacionais, apresentando a atenuação de ruído pelo centroide EKF na Fase 1 e o rastreamento das alças com alinhamento de offset na Fase 2}
+    \label{fig:visao_drone_filtro_ekf}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=\linewidth]{figuras/visao_drone_filtro_ekf.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+\subsecao{Reconstrução Geométrica 3D e Controle Cinemático}
+
+A extração de coordenadas pelo sistema de percepção opera originalmente no domínio discreto bidimensional do plano da imagem, expresso em pixels $(u, v)$. No entanto, a navegação autônoma em malha fechada exige grandezas físicas e métricas mensuráveis no espaço tridimensional para orientar os atuadores da aeronave. Para viabilizar a transição do espaço óptico para o espaço cartesiano métrico (PBVS, do inglês \textit{Position-Based Visual Servoing}), empregou-se a formulação inversa do modelo analítico de câmera \textit{Pinhole}.
+
+Considerando as coordenadas filtradas do centroide óptico do alvo $(\tilde{u}, \tilde{v})$, o centro óptico da lente $(c_x, c_y)$ e as distâncias focais equivalentes $(f_x, f_y)$ expressas em pixels, o desvio métrico horizontal $(x_m, y_m)$ entre a linha de visada da câmera e o alvo no solo é obtido por meio da Equação~\eqref{eq:pinhole_inverso}
+\begin{equation}
+x_m = \frac{(\tilde{u} - c_x) \cdot Z}{f_x}, \quad y_m = \frac{(\tilde{v} - c_y) \cdot Z}{f_y}
+\label{eq:pinhole_inverso}
+\end{equation}
+onde $Z$ representa a profundidade óptica vertical efetiva ao longo do eixo óptico da câmera.
+
+Os parâmetros intrínsecos da câmera são consumidos dinamicamente pelo nó de controle através do tópico padrão \texttt{/camera/camera\_info} do ecossistema ROS 2, estruturados na matriz de calibração $\mathbf{K}$ expressa na Equação~\eqref{eq:matriz_intrinseca_k}
+\begin{equation}
+\mathbf{K} = \begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1124,0 & 0 & 960,0 \\ 0 & 1124,0 & 540,0 \\ 0 & 0 & 1 \end{bmatrix}
+\label{eq:matriz_intrinseca_k}
+\end{equation}
+parametrizada para a resolução Full HD nativa de $1920 \times 1080$ pixels com razão de aspecto $16:9$.
+
+A determinação da profundidade óptica vertical $Z$ foi especializada para cada regime operacional de voo. Na Fase 1 (afunilamento em média altitude entre 20,0 m e 2,0 m), a cota vertical da armadilha no solo é desprezível diante da altitude da aeronave, adotando-se $Z = Z_{\text{alt}}$, onde $Z_{\text{alt}}$ corresponde à altitude barométrica relativa em relação ao ponto de decolagem estimada pelo filtro inercial do ArduPilot. Em contrapartida, na Fase 2 (aproximação terminal milimétrica abaixo de 2,0 m), as cotas físicas dos componentes do sistema tornam-se fatores determinantes para evitar erros de escala. Nessa fase, a profundidade óptica real da lente da câmera até o plano superior da tampa da armadilha é calculada com correção geométrica pela Equação~\eqref{eq:profundidade_relativa_fase2}
+\begin{equation}
+Z_{\text{rel}} = \max\left(0,005; (Z_{\text{alt}} + h_{\text{camera}}) - h_{\text{alvo}}\right)
+\label{eq:profundidade_relativa_fase2}
+\end{equation}
+na qual $h_{\text{camera}} = 0,320\text{ m}$ é a distância vertical medida entre a base dos pés de pouso do trem de aterrissagem e o plano focal da lente da câmera, e $h_{\text{alvo}} = 0,317\text{ m}$ é a altura da carcaça da armadilha até a base da tampa superior extraída diretamente dos modelos tridimensionais em CAD. O limiar inferior de 0,005 m atua como barreira numérica de segurança contra divisões por zero durante o instante do pouso.
+
+O suporte estabilizador (\textit{gimbal}) de três eixos mantém a câmera permanentemente orientada na vertical para o solo (visada nadir pura). Para neutralizar os movimentos angulares da aeronave e desacoplar o controle de translação do controle de guinada, o \textit{gimbal} foi configurado com orientação azimutal fixa em $-90,0^\circ$ em relação à proa do multirrotor, posicionando a linha de visada alinhada transversalmente à asa esquerda da fuselagem. Em consequência dessa montagem geométrica, estabeleceu-se um mapeamento estrito entre os eixos da imagem e o referencial inercial do corpo do drone (\texttt{MAV\_FRAME\_BODY\_NED})
+\begin{enumerate}
+    \item O eixo horizontal da imagem ($X_{\text{img}}$, associado ao erro $x_m$ de \eqref{eq:pinhole_inverso}) governa diretamente o movimento de avanço e recuo no eixo longitudinal da aeronave (Frente/Trás, velocidade $v_x$);
+    \item O eixo vertical da imagem ($Y_{\text{img}}$, associado ao erro $y_m$ de \eqref{eq:pinhole_inverso}) governa o deslocamento no eixo transversal da aeronave (Direita/Esquerda, velocidade $v_y$);
+    \item O eixo de profundidade ($Z_{\text{img}}$) governa a velocidade vertical descendente ou ascendente ($v_z$), com convenção positiva para descida no padrão NED.
+\end{enumerate}
+
+Para prevenir a perda do alvo durante o afunilamento em alta velocidade na Fase 1, implementou-se uma envoltória de segurança baseada em histerese visual de duas zonas concêntricas proporcionais ao campo de visão útil da tela. A zona interna define a Região Segura, abrangendo 40\% da meia-largura e meia-altura da imagem ($S_{\text{safe}} = 0,40$). A zona externa delimita o Limite de Fuga, configurado em 60\% da meia-tela ($S_{\text{escape}} = 0,60$). Os desvios ópticos normalizados e os índices adimensionais de avaliação de histerese são expressos nas Equações~\eqref{eq:erros_normalizados_fov} e \eqref{eq:indices_histerese}
+\begin{equation}
+e_{u,\text{norm}} = \frac{x_m \cdot f_x / Z}{W / 2}, \quad e_{v,\text{norm}} = \frac{y_m \cdot f_y / Z}{H / 2}
+\label{eq:erros_normalizados_fov}
+\end{equation}
+\begin{equation}
+E_{\text{fuga}} = \max\left(\frac{|e_{u,\text{norm}}|}{S_{\text{escape}}}, \frac{|e_{v,\text{norm}}|}{S_{\text{escape}}}\right), \quad E_{\text{seguro}} = \max\left(\frac{|e_{u,\text{norm}}|}{S_{\text{safe}}}, \frac{|e_{v,\text{norm}}|}{S_{\text{safe}}}\right)
+\label{eq:indices_histerese}
+\end{equation}
+sendo $W = 1920$ px e $H = 1080$ px as dimensões da resolução de vídeo.
+
+A dinâmica de histerese condiciona o comando vertical de descida. Caso o multirrotor esteja em fase de descida ativa e o índice $E_{\text{fuga}}$ ultrapasse 1,0 (indicando que o alvo cruzou a fronteira de 60\% do campo de visão), a velocidade vertical é instantaneamente zerada ($v_z = 0,0\text{ m/s}$), congelando a altitude da aeronave e priorizando a correção horizontal no plano cartesiano. A descida só é reativada quando o alvo converge e reingressa na zona segura ($E_{\text{seguro}} < 1,0$). Enquanto a descida permanece ativa, a velocidade vertical é modulada em função do grau de centralização e da altitude, calculadas conforme as Equações~\eqref{eq:modulacao_vz} e \eqref{eq:fator_frenagem}
+\begin{equation}
+v_{z,\text{base}} = v_{z,\text{nom}} \cdot \max\left(0,20; 1,0 - E_{\text{fuga}}\right)
+\label{eq:modulacao_vz}
+\end{equation}
+\begin{equation}
+f_{\text{frenagem}} = \max\left(0,10; \min\left(1,0; \frac{Z_{\text{alt}} - 2,0}{6,0 - 2,0}\right)\right), \quad v_z = v_{z,\text{base}} \cdot f_{\text{frenagem}}
+\label{eq:fator_frenagem}
+\end{equation}
+onde $v_{z,\text{nom}} = 1,50\text{ m/s}$. Essa desaceleração contínua entre 6,0 m e 2,0 m dissipa o momento inercial descendente, assegurando que o multirrotor atinja a cota de 2,0 m com velocidade vertical suave para a transição à Fase 2.
+
+A dinâmica operacional dessa estratégia é esquematizada na Figura~\ref{fig:envoltoria_histerese_funil}, que sintetiza o comportamento do funil óptico descendente da Fase 1. No plano da imagem, visualizam-se as duas fronteiras concêntricas de histerese centradas no retículo óptico da câmera: a Zona Segura interna (delimitada pela região a 40\% da meia-tela) e o Limite de Fuga externo (representado pelo contorno a 60\%). Quando a projeção do centroide da armadilha permanece no interior da zona segura, o controlador autoriza o avanço vertical descendente, aplicando a rampa linear de desaceleração entre 6,0 m e 2,0 m para atenuar o momento inercial. Caso perturbações externas desloquem o alvo para além do limite de 60\%, a velocidade de descida $v_z$ é instantaneamente cortada, mantendo o multirrotor em voo pairado horizontal até que as forças de correção translacional restabeleçam o alinhamento dentro da margem de 40\%.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Diagrama esquemático da envoltória de histerese visual dual-zone e do funil descendente no plano óptico, ilustrando as fronteiras da Zona Segura (40\%), Limite de Fuga (60\%) e a modulação da velocidade de descida com rampa de frenagem}
+    \label{fig:envoltoria_histerese_funil}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=0.85\linewidth]{figuras/envoltoria_histerese_funil.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+Na Fase 2, o acoplamento do gancho ventral na estrutura da armadilha impõe a necessidade de um alinhamento angular estrito. A tampa superior da armadilha contém três alças triangulares dispostas de forma assimétrica. A detecção simultânea das alças pelo modelo YOLOv10n é submetida a um filtro de desduplicação espacial para eliminar reflexos falsos, descartando predições que apresentem sobreposição de área com $\text{IoU} > 0,05$ ou $\text{IoA} > 0,10$, bem como caixas cujos centros estejam separados por distância métrica inferior a 0,06 m no plano da gaiola.
+
+Com a consolidação das três alças distintas ($P_0, P_1, P_2$), determina-se o vértice principal da estrutura (ponto \textit{Apex}). Pela geometria isósceles da disposição das alças, o vértice é identificado analiticamente como o ponto que minimiza a diferença de comprimento entre os dois lados adjacentes do triângulo, conforme formulado na Equação~\eqref{eq:identificacao_apex}
+\begin{equation}
+P_{\text{apex}} = \arg\min_{i \in \{0, 1, 2\}} |d_{i, (i+1)\%3} - d_{i, (i+2)\%3}|
+\label{eq:identificacao_apex}
+\end{equation}
+sendo $d_{j, k}$ a distância euclidiana entre os pontos das alças $j$ e $k$ no plano métrico tridimensional suavizado pelo EKF. Os dois pontos remanescentes constituem a base do triângulo, os quais são ordenados em $P_{\text{base}, 1}$ (à esquerda) e $P_{\text{base}, 2}$ (à direita) através do produto vetorial com o eixo principal. O ponto médio da base $P_{\text{mid}} = (P_{\text{base}, 1} + P_{\text{base}, 2}) / 2$ estabelece o vetor direcional $\mathbf{u}_{\text{alvo}} = P_{\text{apex}} - P_{\text{mid}} = [\Delta x_{\text{alca}}, \Delta y_{\text{alca}}]^T$. A orientação angular instantânea de guinada da armadilha é calculada através da Equação~\eqref{eq:angulo_atual_yaw}
+\begin{equation}
+\theta_{\text{atual}} = \text{atan2}(\Delta y_{\text{alca}}, \Delta x_{\text{alca}})
+\label{eq:angulo_atual_yaw}
+\end{equation}
+a qual alimenta o estimador estocástico \textit{FiltroAnguloEKF}.
+
+O ângulo alvo nominal foi calibrado no desenvolvimento para $\theta_{\text{alvo}} = +93,37^\circ$ ($1,6296\text{ rad}$), compensando a assimetria construtiva das furações no CAD para que a linha da base das alças permaneça estritamente paralela ao mecanismo do gancho. O erro angular em malha fechada é processado pelo arco mais curto de acordo com a Equação~\eqref{eq:erro_angular_curto}
+\begin{equation}
+e_{\psi} = (\theta_{\text{filtrado}} - \theta_{\text{alvo}} + \pi) \pmod{2\pi} - \pi
+\label{eq:erro_angular_curto}
+\end{equation}
+estabelecendo como critério estrito de convergência a sustentação de $|e_{\psi}| \le 1,0^\circ$ por no mínimo 0,30 segundos ininterruptos em voo pairado a 1,50 m de altitude. Se a fuselagem projetar sombras sobre a armadilha a ponto de ocultar uma das três alças por mais de 3,0 segundos, uma rotina de segurança força uma taxa de guinada suave de $\omega = 0,25\text{ rad/s}$ para desviar a aeronave do próprio cone de sombra e recuperar a visada completa.
+
+Outro fator geométrico crucial resolvido na metodologia é a compensação do \textit{offset} longitudinal do gancho ventral de captura. O gancho está montado no eixo de simetria lateral do drone ($X_{\text{offset}} = 0,0000$), porém posicionado a $42,16\text{ mm}$ ($0,04216\text{ m}$) atrás do eixo óptico da câmera no sentido longitudinal da fuselagem. Caso o drone descesse centrando a imagem na lente, o gancho colidiria com a borda externa da tampa sem consumar o engate. Para compensar esse deslocamento, relacionou-se a distância mecânica com a dimensão nominal da tampa da gaiola ($0,2550\text{ m}$), obtendo a fração proporcional dada pela Equação~\eqref{eq:razao_offset_longitudinal}
+\begin{equation}
+\text{offset}_{\%y} = \frac{0,04216\text{ m}}{0,2550\text{ m}} \approx 0,1653 \quad (16,53\%)
+\label{eq:razao_offset_longitudinal}
+\end{equation}
+Uma vez concluída a trava de guinada na cota de 1,50 m, o alvo do controlador deixa de ser o centroide óptico da armadilha e passa a ser o Ponto de Captura Virtual com \textit{offset}, definido na Equação~\eqref{eq:alvo_virtual_offset}
+\begin{equation}
+u_{\text{alvo}} = u_{\text{gaiola}}, \quad v_{\text{alvo}} = v_{\text{gaiola}} - (h_{\text{box}} \cdot 0,1653)
+\label{eq:alvo_virtual_offset}
+\end{equation}
+onde $h_{\text{box}}$ é a altura da caixa delimitadora da armadilha suavizada por um filtro de média móvel exponencial (EMA) com fator $\alpha = 0,50$.
+
+A integração geométrica entre a orientação angular e o deslocamento físico do gancho é esquematizada na Figura~\ref{fig:geometria_alcas_offset}. Em vista superior da tampa da armadilha, observa-se a configuração triangular isósceles estabelecida pelas três alças de içamento ($P_0, P_1, P_2$). O algoritmo isola o vértice $P_{\text{apex}}$ a partir da simetria dos lados adjacentes e calcula o ponto médio $P_{\text{mid}}$ da linha de base formada por $P_{\text{base}, 1}$ e $P_{\text{base}, 2}$, traçando o vetor direcional $\mathbf{u}_{\text{alvo}}$ que define a orientação angular instantânea da carcaça. O diagrama evidencia a convergência do eixo de guinada em relação à meta calibrada de $+93,37^\circ$, garantindo que a base das alças fique perfeitamente ortogonal à trajetória de engate. Em seguida, ilustra-se a aplicação da Equação~\eqref{eq:alvo_virtual_offset}, que projeta o Ponto de Captura Virtual recuado em $42,16\text{ mm}$ ($16,53\%$ da altura da caixa) em relação ao centroide geométrico da armadilha, fazendo com que o gancho ventral coincida precisamente com o anel de travamento da alça durante o pouso.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Diagrama esquemático da geometria das alças na Fase 2 e compensação do offset longitudinal do gancho, apresentando a identificação do vértice Apex, a linha de base com o ângulo de guinada calibrado a $+93,37^\circ$ e o deslocamento de $+42,16\text{ mm}$ até o Ponto de Captura Virtual}
+    \label{fig:geometria_alcas_offset}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=0.85\linewidth]{figuras/geometria_alcas_offset.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+A ação de controle cinemático é gerada por controladores proporcional-derivativos (PD) desacoplados operando a 20 Hz, os quais calculam setpoints de velocidade linear e angular enviados ao piloto automático via MAVLink, modelados pelas Equações~\eqref{eq:controle_pd_vx}, \eqref{eq:controle_pd_vy} e \eqref{eq:controle_pd_yaw}
+\begin{equation}
+v_x = \text{sat}\left(K_p \cdot e_x + K_d \cdot \frac{e_x - e_{x,\text{ant}}}{\Delta t}, v_{\max}\right)
+\label{eq:controle_pd_vx}
+\end{equation}
+\begin{equation}
+v_y = \text{sat}\left(K_p \cdot e_y + K_d \cdot \frac{e_y - e_{y,\text{ant}}}{\Delta t}, v_{\max}\right)
+\label{eq:controle_pd_vy}
+\end{equation}
+\begin{equation}
+\omega = \text{sat}\left(K_{p,\psi} \cdot e_{\psi} + K_{d,\psi} \cdot \frac{e_{\psi} - e_{\psi,\text{ant}}}{\Delta t}, \omega_{\max}\right)
+\label{eq:controle_pd_yaw}
+\end{equation}
+sendo $e_x$ e $e_y$ os erros métricos filtrados pelo EKF expressos em metros, $e_{\psi}$ o erro angular em radianos e $\text{sat}(u, u_{\max})$ a função de saturação simétrica no intervalo $[-u_{\max}, u_{\max}]$.
+
+Os ganhos e saturações foram sintonizados de acordo com as exigências dinâmicas de cada regime operacional:
+\begin{enumerate}
+    \item Na Fase 1, prioriza-se a velocidade de convergência com $K_p = 0,40$, $K_d = 0,01$ e limite de saturação $v_{\max} = 1,50\text{ m/s}$. O termo derivativo atua como amortecedor fino de latência visual;
+    \item Na Fase 2 (Etapas 1, 2 e 3A), a aproximação requer maior suavidade, empregando $K_p = 0,15$, $K_d = 0,05$ e $v_{\max} = 0,40\text{ m/s}$, enquanto a malha de guinada utiliza $K_{p,\psi} = 0,40$, $K_{d,\psi} = 0,10$ e $\omega_{\max} = 0,40\text{ rad/s}$;
+    \item Na Fase 2 (Etapa 3B - Ajuste Fino), a aeronave paira a 0,35 m de altitude com ganho proporcional aumentado para $K_p = 0,25$ e saturação restrita a $v_{\max} = 0,06\text{ m/s}$ (zona morta milimétrica), exigindo que o erro radial no plano horizontal seja contido em no máximo 5 mm ($0,005\text{ m}$) por 1,50 segundos contínuos (30 quadros ininterruptos a 20 Hz). Para prevenir travamentos indefinidos diante de rajadas de vento, estabeleceu-se um temporizador de contingência que aceita tolerância de 15 mm caso o hover se estenda por mais de 8,0 segundos;
+    \item Na Fase 2 (Etapa 4 - Descida Cega Terminal / \textit{Blind Drop}), confirmada a ancoragem milimétrica a 0,35 m, os comandos laterais e angulares são travados em zero ($v_x = v_y = \omega = 0,0$) e o drone executa uma descida vertical firme a $v_z = 0,28\text{ m/s}$ até a cota de captura de 0,05 m. Essa descida cega de curta duração anula o efeito perturbador de recirculação aerodinâmica de solo e garante que o gancho penetre e trave no anel da alça antes do corte imediato dos motores.
+\end{enumerate}
+
+\subsecao{Arquitetura de Máquina de Estados e Sequenciamento da Missão}
+
+A execução de uma missão de captura autônoma com acoplamento mecânico milimétrico exige a integração harmônica entre sistemas de telemetria, algoritmos de inteligência visual e rotinas de controle de voo em tempo real. A transição entre os diferentes regimes operacionais (desde a navegação global por satélite até o alinhamento óptico micrométrico) impõe um desafio de sincronização temporal e determinismo lógico. Para governar o comportamento do sistema sem intervenção humana, implementou-se uma arquitetura hierárquica baseada em Máquina de Estados Finitos (FSM, do inglês \textit{Finite State Machine}).
+
+A máquina de estados atua como o supervisor de missão de nível superior, gerenciando a inicialização de nós ROS 2, a comutação de modelos de redes neurais na memória da GPU, o envio de mensagens de controle ao piloto automático ArduPilot via protocolo MAVLink e o tratamento de contingências diante de falhas de percepção ou perturbações externas.
+
+A estrutura lógica e o sequenciamento operacional da missão são esquematizados na Figura~\ref{fig:maquina_estados_missao}. O diagrama sintetiza os sete estados da máquina de decisão, as condições de transição balizadas por critérios analíticos espaciais e temporais, os laços de controle atuantes e as rotinas de segurança projetadas para mitigar eventuais anomalias de voo.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Diagrama esquemático da máquina de estados finitos hierárquica e fluxo sequencial da missão autônoma, apresentando os sete estados operacionais, critérios analíticos de transição, laços de controle em malha fechada e rotinas de salvaguarda temporal}
+    \label{fig:maquina_estados_missao}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=0.85\linewidth]{figuras/maquina_estados_missao.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+O sequenciamento operacional é decomposto em sete estados determinísticos:
+
+\textbf{Estado 0 (Configuração de Pré-Voo e Travamento Paramétrico):} A missão é inicializada com o estabelecimento da comunicação de telemetria UDP pelo endereço local \texttt{udp:127.0.0.1:14550}, monitorando o sinal de batimento cardíaco (\textit{heartbeat}) do MAVLink com tempo limite de 15 segundos. O script supervisor aguarda de forma bloqueante a inicialização dos sensores embarcados, exigindo que a variável \texttt{is\_armable} seja validada como verdadeira pelo ArduPilot, confirmando a calibração dos giroscópios, acelerômetros e a aquisição do sinal de satélites GNSS.
+
+Em seguida, o supervisor envia mensagens de configuração direta de parâmetros ao piloto automático via comando \texttt{PARAM\_SET}. Especificamente, estabelece-se o parâmetro \texttt{WP\_YAW\_BEHAVIOR = 0}. Esse comando desativa a rotação automática do nariz do multirrotor na direção dos pontos de rota (\textit{waypoints}), impondo uma trava absoluta de guinada que mantém a orientação azimutal da fuselagem inalterada durante manobras de translado. Simultaneamente, o mecanismo de três eixos do \textit{gimbal} é posicionado através da mensagem \texttt{MAV\_CMD\_DO\_GIMBAL\_MANAGER\_PITCHYAW}, inclinando a câmera para $\theta_{\text{pitch}} = -90,0^\circ$ (visada nadir ortogonal ao solo) e ajustando a guinada do suporte em $\psi_{\text{gimbal}} = -90,0^\circ$ em relação à proa do drone (orientando o sensor para a asa esquerda). As bandeiras de estabilização \texttt{ROLL\_LOCK} e \texttt{PITCH\_LOCK} são acionadas para absorver os movimentos de inclinação do chassi, aplicando-se uma pausa de 0,25 segundos para permitir que os controladores do simulador consolidem a nova atitude.
+
+\textbf{Estado 1 (Decolagem Autônoma e Subida Estocástica):} O controlador de missão comuta o modo de voo do veículo para guiado autônomo (\texttt{GUIDED}) e comanda o arme eletrônico dos motores (\texttt{vehicle.armed = True}). Confirmada a rotação dos propulsores, dispara-se o procedimento de decolagem vertical automática (\texttt{simple\_takeoff}). Para validar a robustez estatística em simulação estocástica de Monte Carlo, a altitude inicial de cruzeiro $Z_{\text{inicial}}$ não é pré-definida em valor fixo, sendo sorteada uniformemente no intervalo contínuo entre 16,0 m e 20,0 m ($Z_{\text{inicial}} \sim \mathcal{U}(16,0; 20,0)\text{ m}$), simulando a dispersão de aproximação de aeronaves reais em campo. A aeronave ascende em malha fechada até atender ao critério formal expresso na Equação~\eqref{eq:criterio_decolagem}
+\begin{equation}
+Z_{\text{alt}} \ge 0,95 \cdot Z_{\text{inicial}}
+\label{eq:criterio_decolagem}
+\end{equation}
+onde $Z_{\text{alt}}$ representa a altitude barométrica em relação ao solo. Ao atingir 95\% da altitude estabelecida, a aeronave estabiliza a sustentação vertical e conclui a fase de decolagem.
+
+\textbf{Estado 2 (Navegação Global e Injeção de Dispersão Estocástica de GPS):} Em aplicações reais de campo, as coordenadas iniciais do alvo são fornecidas por receptores civis de GNSS, sujeitos a incertezas métricas decorrentes de interferências eletromagnéticas, erros orbitais e refração atmosférica. Para emular essa condição operacional, inseriu-se uma perturbação radial estocástica ao redor das coordenadas teóricas da armadilha no simulador ($X_0 = 50,0\text{ m}, Y_0 = 0,0\text{ m}$). O erro de posicionamento é delimitado por um raio estocástico $r_{\text{erro}} \sim \mathcal{U}(1,0; 4,5)\text{ m}$ e um ângulo azimutal $\theta_{\text{erro}} \sim \mathcal{U}(0, 2\pi)$ radianos. A margem radial máxima de 4,5 m assegura que, mesmo sob o pior erro posicional do GPS civil, o objeto permaneça contido no campo de visão útil da câmera nadir na altitude de 16,0 m a 20,0 m.
+
+As coordenadas no padrão ENU (\textit{East-North-Up}) do Gazebo são convertidas para o sistema inercial local NED (\textit{North-East-Down}) do ArduPilot, resultando nas coordenadas $N_{\text{alvo}} = Y_0 + r_{\text{erro}} \sin\theta_{\text{erro}}$ e $E_{\text{alvo}} = X_0 + r_{\text{erro}} \cos\theta_{\text{erro}}$. O comando de navegação é despachado via mensagem \texttt{set\_position\_target\_local\_ned} no referencial \texttt{MAV\_FRAME\_LOCAL\_NED}. O deslocamento translacional é acompanhado dinamicamente até que a distância euclidiana residual no plano horizontal satisfaça a Equação~\eqref{eq:distancia_residual_gps}
+\begin{equation}
+d_{\text{GPS}} = \sqrt{(N_{\text{drone}} - N_{\text{alvo}})^2 + (E_{\text{drone}} - E_{\text{alvo}})^2} \le 1,20\text{ m}
+\label{eq:distancia_residual_gps}
+\end{equation}
+estabelecendo como condição de chegada a contenção do erro residual a um raio de 1,20 m, sob limite temporal de segurança de 25,0 segundos.
+
+Ao atingir a vizinhança do ponto GPS, a máquina de estados introduz uma perturbação angular forçada para testar a independência do sistema em relação à proa de aproximação. Através da mensagem \texttt{MAV\_CMD\_CONDITION\_YAW}, o piloto automático gira a aeronave para uma orientação azimutal aleatória $\psi_{\text{inicial}} \sim \mathcal{U}(0,0^\circ; 360,0^\circ)$. Em seguida, o veículo cumpre uma pausa de 5,0 segundos em voo pairado para amortecer eventuais oscilações inerciais residuais antes de transferir a autoridade para a camada de visão computacional.
+
+\textbf{Estado 3 (Servovisão Macro - Fase 1 / RastreadorYOLO):} Com a estabilização na cota de cruzeiro, o nó \texttt{RastreadorYOLO} é iniciado no ambiente ROS 2, assumindo o controle direto dos motores a uma taxa de 20 Hz por meio de setpoints de velocidade no referencial de corpo \texttt{MAV\_FRAME\_BODY\_NED}. O modelo de inteligência artificial YOLO26n processa as imagens da câmera nadir para detectar a carcaça da armadilha e fornecer observações ao filtro estocástico EKF tridimensional.
+
+A dinâmica interna desse estado opera com duas submáquinas concorrentes:
+\begin{enumerate}
+    \item Submáquina de descida condicionada pela histerese visual, que modula a velocidade vertical descendente $v_z$ e freia o avanço vertical caso o alvo cruze o Limite de Fuga de 60\% da meia-tela, retomando a descida somente quando a correção horizontal reconduz o alvo para a Zona Segura de 40\%;
+    \item Submáquina de contingência e varredura ativa de busca tridimensional, engatilhada caso o detector sofra oclusão ou perda transitória do alvo. A aeronave permanece em voo pairado estacionário por 2,5 segundos para filtrar falsos negativos momentâneos decorrentes de cintilações ou reflexos ópticos. Persistindo a ausência da detecção, o sistema aciona um ciclo espacial paramétrico de varredura tridimensional de 18,0 segundos de duração com velocidades de $0,50\text{ m/s}$ no plano horizontal e $0,40\text{ m/s}$ no eixo vertical. A dinâmica geométrica dessa manobra de contingência é esquematizada na Figura~\ref{fig:varredura_busca_3d}, que ilustra o cone de visão nadir da câmera projetado sobre o plano do solo e o percurso espacial executado pelo multirrotor. A varredura é decomposta em três subetapas cíclicas: oscilação transversal no eixo Y (esquerda e direita entre 0 e 6,0 s), oscilação longitudinal no eixo X (avanço e recuo entre 6,0 e 12,0 s) e excursão vertical no eixo Z (entre 12,0 e 18,0 s), onde a aeronave desce cautelosamente respeitando o piso de segurança de 3,0 m ou sobe em direção ao teto de 22,0 m para expandir volumetricamente a área de cobertura visual da lente até a reaquisição do objeto.
+\end{enumerate}
+
+O critério de conclusão e desacoplamento da Fase 1 é determinado exclusivamente pela altitude vertical da aeronave, conforme formulado na Equação~\eqref{eq:condicao_transicao_fase1}
+\begin{equation}
+Z_{\text{alt}} \le 2,00\text{ m}
+\label{eq:condicao_transicao_fase1}
+\end{equation}
+Ao alcançar a cota de 2,00 m, o nó zera todas as velocidades lineares ($v_x = v_y = v_z = 0,0\text{ m/s}$), consolida as métricas estatísticas de retenção de campo de visão e quantidade de bloqueios de histerese e dispara uma exceção do tipo \texttt{SystemExit}, finalizando o ciclo do nó.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Diagrama esquemático da trajetória de varredura paramétrica tridimensional da busca ativa em contingência de perda do alvo, apresentando a espera de estabilização, as oscilações transversais e longitudinais e a expansão volumétrica do cone óptico da câmera nadir}
+    \label{fig:varredura_busca_3d}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=0.85\linewidth]{figuras/varredura_busca_3d.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}
+
+\textbf{Estado 4 (Comutação Intermediária de Nós ROS 2):} A transição entre os regimes macro e micro demanda uma substituição na camada de percepção visual. No script principal de controle, o tratador de exceção captura o encerramento do primeiro nó e aciona a rotina \texttt{destroy\_node()}, que destrói formalmente o nó \texttt{RastreadorYOLO}, fecha as janelas de exibição do OpenCV e descarrega o modelo YOLO26n da memória da GPU.
+
+Em sequência imediata, instancia-se dinamicamente o nó de alta precisão \texttt{RastreadorFinoYOLO}, carregando os pesos da rede neural YOLOv10n especializada na identificação das alças triangulares. Essa comutação estruturada previne a concorrência indevida de memória computacional em sistemas embarcados, garantindo que toda a capacidade de processamento seja alocada para as deduções geométricas da etapa terminal. O executor do ROS 2 é reiniciado por meio de uma nova chamada bloqueante a \texttt{rclpy.spin(rastreador\_fino\_node)}.
+
+\textbf{Estado 5 (Servovisão Micro e Alinhamento Terminal - Fase 2 / RastreadorFinoYOLO):} O nó de alta fidelidade assume a autoridade em malha fechada executando quatro etapas sequenciais rigorosamente ordenadas:
+\begin{enumerate}
+    \item Na Etapa 1 (Aproximação Inicial), a aeronave executa uma descida centrada de 2,00 m até a cota de 1,50 m, mantendo a mira posicionada no centro geométrico da carcaça através de controlador PD com amortecimento suave ($K_p = 0,15, v_{\max} = 0,40\text{ m/s}$);
+    \item Na Etapa 2 (Alinhamento e Trava de Guinada / \textit{Yaw Lock}), a aeronave paira a 1,50 m de altitude. O algoritmo detecta as três alças triangulares ($P_0, P_1, P_2$), resolve geometricamente o ponto \textit{Apex} e a linha de base oposta e calcula o erro angular instantâneo em relação ao valor calibrado de $+93,37^\circ$. A atitude de guinada é corrigida pelo controlador PD angular com filtragem pelo \textit{FiltroAnguloEKF}. O avanço para a etapa seguinte depende da satisfação ininterrupta do critério estrito dado na Equação~\eqref{eq:criterio_trava_yaw}
+    \begin{equation}
+    |e_{\psi}| \le 1,00^\circ \quad \text{durante} \quad \Delta t_{\text{yaw}} \ge 0,30\text{ s}
+    \label{eq:criterio_trava_yaw}
+    \end{equation}
+    representando 6 quadros sucessivos a 20 Hz contidos na margem de um grau. Adicionalmente, caso sombras projetadas pela fuselagem ocultem uma das alças por tempo superior a 3,0 segundos, uma taxa de rotação forçada de $\omega = 0,25\text{ rad/s}$ é acionada para retirar a aeronave da projeção de sombra;
+    \item Na Etapa 3A (Descida no Ponto Virtual com Offset), consumada a trava de guinada, o ponto de mira translada do centroide da gaiola para o Ponto de Captura Virtual recuado em $+42,16\text{ mm}$ (16,53\% da altura da caixa). O drone desce no referencial do gancho de 1,50 m até 0,35 m, aplicando amortecimento desacelerado nos 25 cm finais para dissipar a inércia descendente;
+    \item Na Etapa 3B (Ancoragem Milimétrica em Hover), o multirrotor estabiliza em voo pairado na cota crítica de 0,35 m ($v_z = 0,0\text{ m/s}$). O ganho proporcional é ajustado para $K_p = 0,25$ com saturação restrita a $v_{\max} = 0,06\text{ m/s}$. O disparo para a captura mecânica exige o atendimento do critério espacial formulado na Equação~\eqref{eq:criterio_hover_etapa3b}
+    \begin{equation}
+    \|e_{xy}\| = \sqrt{e_x^2 + e_y^2} \le 
+    \begin{cases} 
+    0,005\text{ m} \quad (5\text{ mm}), & \text{se } t_{\text{hover}} < 8,0\text{ s} \quad \text{durante} \quad \Delta t \ge 1,50\text{ s} \\ 
+    0,015\text{ m} \quad (15\text{ mm}), & \text{se } t_{\text{hover}} \ge 8,0\text{ s} \quad (\textit{fallback}\text{ de contingência})
+    \end{cases}
+    \label{eq:criterio_hover_etapa3b}
+    \end{equation}
+    onde a tolerância de 5 mm deve persistir de forma ininterrupta por 1,50 segundos (30 ciclos de processamento a 20 Hz). Se o tempo decorrido no pairado $t_{\text{hover}}$ exceder 8,0 segundos devido a rajadas de vento na simulação, a tolerância de segurança é flexibilizada para 15 mm para evitar que o sistema permaneça bloqueado indefinidamente;
+    \item Na Etapa 4 (Descida Cega Terminal / \textit{Blind Drop} e Travamento Mecânico), confirmada a estabilização milimétrica a 0,35 m, as velocidades horizontais e a rotação de guinada são travadas em zero ($v_x = v_y = \omega = 0,0$) e o drone executa uma descida vertical firme a velocidade constante de $v_z = 0,28\text{ m/s}$ (reduzida para $0,12\text{ m/s}$ na penetração de toque). Essa descida em malha aberta no trecho final anula as perturbações decorrentes de recirculação aerodinâmica de solo e assegura que o gancho penetre no olhal da alça metálica. A descida finaliza quando a profundidade óptica calculada pela Equação~\eqref{eq:profundidade_relativa_fase2} satisfaz a condição de captura dada na Equação~\eqref{eq:criterio_blind_drop}
+    \begin{equation}
+    Z_{\text{rel}} \le 0,050\text{ m} \quad (50\text{ mm})
+    \label{eq:criterio_blind_drop}
+    \end{equation}
+    Ao atingir a cota de 50 mm, o nó comanda parada imediata de propulsão e finaliza a execução via \texttt{raise SystemExit}.
+\end{enumerate}
+
+\textbf{Estado 6 (Pouso, Desarme e Registro Científico):} Finalizada a etapa visual, o controle do drone é transferido para a rotina de encerramento no script principal. O piloto automático é comutado para o modo nativo de pouso (\texttt{LAND}), permitindo que o trem de pouso toque o solo de maneira amortecida. O algoritmo monitora o estado dos motores até confirmar o desarme eletrônico total (\texttt{vehicle.armed == False}).
+
+Por fim, o sistema extrai os parâmetros cinemáticos consolidados da missão, englobando o tempo de voo, a taxa de retenção no campo de visão, a contagem de bloqueios de histerese, o desvio angular final de guinada e os erros métricos finais no plano horizontal ($e_x, e_y$ e RMSE). Os indicadores são apresentados no terminal e persistidos estruturadamente no arquivo \texttt{relatorio\_testes\_monte\_carlo.csv}, viabilizando a análise estatística quantitativa da eficácia e repetibilidade do sistema de captura.
+
+A integração temporal e a transição dinâmica entre todos os regimes de voo ao longo de uma missão nominal completa são sintetizadas no perfil de voo da Figura~\ref{fig:perfil_voo_missao}. O gráfico correlaciona a evolução contínua da altitude barométrica relativa $Z_{\text{alt}}$ com a sequência discreta dos estados operacionais: a decolagem inicial até a faixa estocástica de cruzeiro ($16,0\text{ m a } 20,0\text{ m}$), a navegação translacional para a coordenada do GPS civil, o afunilamento em alta velocidade governado pela histerese visual com a rampa de frenagem entre 6,0 m e 2,0 m, o intervalo de parada para comutação dos nós ROS 2 na cota de 2,0 m, e os quatro degraus de precisão da Fase 2 (estabilização em 1,50 m para trava de guinada, descida no Ponto de Captura Virtual, voo pairado de ancoragem milimétrica a 0,35 m e a rampa final de \textit{Blind Drop} a $0,28\text{ m/s}$ até o toque físico a 0,05 m e desarme automático dos motores).
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Perfil temporal de voo e curva de altitude da missão autônoma nominal, ilustrando a evolução da coordenada vertical ao longo dos sete estados operacionais, os patamares de estabilização e a comutação de controladores}
+    \label{fig:perfil_voo_missao}
+
+    \vspace{0.2cm}
+
+    % Espaço reservado para a imagem
+    \vspace*{7cm}
+    %\includegraphics[width=0.85\linewidth]{figuras/perfil_voo_missao.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{figure}

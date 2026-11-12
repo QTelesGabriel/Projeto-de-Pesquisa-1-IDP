@@ -121,15 +121,21 @@ class RastreadorYOLO(Node):
         pt1_segura = (int(cx) - dx_segura, int(cy) - dy_segura)
         pt2_segura = (int(cx) + dx_segura, int(cy) + dy_segura)
         cv2.rectangle(cv_image, pt1_segura, pt2_segura, (100, 255, 100), 1) # Verde Claro
+        cv2.putText(cv_image, "Zona Segura (40%)", (pt1_segura[0] + 8, pt1_segura[1] + 20),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (100, 255, 100), 1, cv2.LINE_AA)
         
         dx_fuga = int(self.limite_fuga * largura_img / 2)
         dy_fuga = int(self.limite_fuga * altura_img / 2)
         pt1_fuga = (int(cx) - dx_fuga, int(cy) - dy_fuga)
         pt2_fuga = (int(cx) + dx_fuga, int(cy) + dy_fuga)
         cv2.rectangle(cv_image, pt1_fuga, pt2_fuga, (0, 165, 255), 1) # Laranja
+        cv2.putText(cv_image, "Limite de Fuga (60%)", (pt1_fuga[0] + 8, pt1_fuga[1] + 20),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 165, 255), 1, cv2.LINE_AA)
         
         # Desenha uma cruz no centro exato da imagem
-        cv2.drawMarker(cv_image, (int(cx), int(cy)), (255, 255, 255), markerType=cv2.MARKER_CROSS, markerSize=10, thickness=1)
+        cv2.drawMarker(cv_image, (int(cx), int(cy)), (255, 255, 255), markerType=cv2.MARKER_CROSS, markerSize=14, thickness=1)
+        cv2.putText(cv_image, "MIRA", (int(cx) + 10, int(cy) - 8),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
         
         if len(resultados[0].boxes) > 0:
             # Reseta temporizadores de perda de alvo e varredura de busca
@@ -140,13 +146,20 @@ class RastreadorYOLO(Node):
             box = resultados[0].boxes[0].xyxy[0].cpu().numpy()
             x1, y1, x2, y2 = map(int, box)
             
-            # Desenha a caixa na tela
+            # Confiança da detecção
+            conf_val = float(resultados[0].boxes[0].conf[0].item()) if hasattr(resultados[0].boxes[0], 'conf') and len(resultados[0].boxes[0].conf) > 0 else 0.95
+            
+            # Desenha a caixa na tela com rótulo
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(cv_image, f"armadilha: {conf_val:.2f}", (x1, max(22, y1 - 8)),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
             
             # Calcula o centro bruto da gaiola em pixels
             centro_gaiola_x = (x1 + x2) / 2.0
             centro_gaiola_y = (y1 + y2) / 2.0
             cv2.circle(cv_image, (int(centro_gaiola_x), int(centro_gaiola_y)), 5, (0, 0, 255), -1)
+            cv2.putText(cv_image, "Centroide YOLO (com jitter)", (int(centro_gaiola_x) + 8, int(centro_gaiola_y) - 6),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.42, (0, 0, 255), 1, cv2.LINE_AA)
             
             # PBVS: Conversão de Píxeis para METROS FÍSICOS (Z-Depth)
             x_m = (centro_gaiola_x - cx) * altitude / fx
@@ -160,7 +173,10 @@ class RastreadorYOLO(Node):
                     # Projeta o ponto 3D filtrado de volta para 2D (Pixels) para mostrar na tela
                     pixel_x_filtrado = int((x_m_filtrado * fx / altitude) + cx)
                     pixel_y_filtrado = int((y_m_filtrado * fy / altitude) + cy)
-                    cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 5, (255, 0, 0), -1)
+                    cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 6, (255, 150, 0), -1)
+                    cv2.circle(cv_image, (pixel_x_filtrado, pixel_y_filtrado), 6, (255, 255, 255), 1)
+                    cv2.putText(cv_image, "Posicao Filtrada EKF", (pixel_x_filtrado + 10, pixel_y_filtrado + 8),
+                                cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 150, 0), 1, cv2.LINE_AA)
             else:
                 x_m_filtrado, y_m_filtrado = x_m, y_m
                 
@@ -239,11 +255,11 @@ class RastreadorYOLO(Node):
                 enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z)
                 
                 cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, cor, 2)
+                            cv2.FONT_HERSHEY_DUPLEX, 0.65, cor, 1, cv2.LINE_AA)
             else:
                 enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0)
                 cv2.putText(cv_image, f"Alt: {altitude:.1f}m | FILTRANDO PONTO INICIAL...", (20, 40), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+                            cv2.FONT_HERSHEY_DUPLEX, 0.65, (0, 165, 255), 1, cv2.LINE_AA)
         else:
             # Nenhum alvo detectado pelo YOLO!
             # 1. Filtro de Kalman NÃO é usado sem detecção (reseta o filtro para evitar velocidade residual)
@@ -333,7 +349,7 @@ class RastreadorYOLO(Node):
                 cor = (0, 165, 255) # Laranja
                 
             cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, cor, 2)
+                        cv2.FONT_HERSHEY_DUPLEX, 0.65, cor, 1, cv2.LINE_AA)
             
         cv2.imshow(self.nome_janela, cv_image)
         cv2.waitKey(1)

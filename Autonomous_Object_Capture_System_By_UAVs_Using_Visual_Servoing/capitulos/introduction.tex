@@ -24,7 +24,7 @@ Diante do exposto, o objetivo geral desta monografia é desenvolver e validar um
 	
 	\item Implementar filtros de Kalman para eliminar os tremores da detecção visual e suavizar a leitura do ângulo de rotação, garantindo que o drone mantenha sua trajetória estável por até 4,0 segundos de predição caso a câmera perca a visão do alvo temporariamente;
 	
-	\item Converter as coordenadas da imagem em distâncias reais em metros e aplicar uma regra de histerese visual (zona segura nos 40\% centrais da tela e bloqueio de descida se o erro passar de 60\%), garantindo que a armadilha permaneça 100\% do tempo dentro do campo de visão da câmera durante a descida de 18 a 2 metros;
+	\item Converter as coordenadas da imagem em distâncias reais em metros e aplicar uma regra de histerese visual (zona segura nos 40\% centrais da tela e bloqueio de descida se o erro passar de 60\%), garantindo que a armadilha permaneça 100\% do tempo dentro do campo de visão da câmera durante a descida;
 	
 	\item Projetar uma estratégia de voo em cascata (estabilização de atitude a 400 Hz no piloto automático e navegação visual a 20 Hz) que evite oscilações bruscas na aproximação e faça o drone girar autonomamente para se alinhar à tampa da armadilha, atingindo um erro angular de guinada (\textit{Yaw}) inferior a 1,0 grau;
 	

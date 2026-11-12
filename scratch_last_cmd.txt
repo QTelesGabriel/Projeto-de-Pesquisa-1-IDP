@@ -1,0 +1,183 @@
+﻿$script = @'
+Add-Type -AssemblyName System.Drawing
+
+$img1Path = "Code/ferramentas/datasets/YOLOv11n/images/train/foto_0050.jpg"
+$img2Path = "Code/ferramentas/datasets/YOLOv11n-Fase2/train/images/captura_002_20261013_154852_jpg.rf.7aeef047ba6d2a937bf762810cfb5c45.jpg"
+
+$b1 = [System.Drawing.Bitmap]::FromFile($img1Path)
+$b2 = [System.Drawing.Bitmap]::FromFile($img2Path)
+
+# Target composite size: 1920 width, 600 height (each side 940x530 with borders)
+$outW = 1920
+$outH = 650
+
+$composite = New-Object System.Drawing.Bitmap($outW, $outH)
+$g = [System.Drawing.Graphics]::FromImage($composite)
+$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+$g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+$g.Clear([System.Drawing.Color]::FromArgb(25, 25, 25))
+
+# Sub-canvas for left image (940x530)
+$subW = 930
+$subH = 523
+$rect1 = New-Object System.Drawing.Rectangle(20, 60, $subW, $subH)
+$rect2 = New-Object System.Drawing.Rectangle(970, 60, $subW, $subH)
+
+$g.DrawImage($b1, $rect1)
+$g.DrawImage($b2, $rect2)
+
+$fontTitle = New-Object System.Drawing.Font("Arial", 13, [System.Drawing.FontStyle]::Bold)
+$fontHUD = New-Object System.Drawing.Font("Arial", 11, [System.Drawing.FontStyle]::Bold)
+$fontLabel = New-Object System.Drawing.Font("Arial", 9, [System.Drawing.FontStyle]::Bold)
+
+$brushWhite = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+$brushYellow = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Yellow)
+$brushCyan = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Cyan)
+$brushRed = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Red)
+$brushBlue = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(60, 150, 255))
+$brushGreen = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(50, 255, 50))
+$brushOrange = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 165, 0))
+$brushMagenta = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Magenta)
+
+$penGreenBox = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(50, 255, 50), 2)
+$penSafeZone = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(100, 255, 100), 1.5)
+$penSafeZone.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
+$penEscapeZone = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 165, 0), 1.5)
+$penEscapeZone.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
+
+$penWhite = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 2)
+$penRed = New-Object System.Drawing.Pen([System.Drawing.Color]::Red, 2)
+$penCyan = New-Object System.Drawing.Pen([System.Drawing.Color]::Cyan, 2)
+$penYellow = New-Object System.Drawing.Pen([System.Drawing.Color]::Yellow, 2)
+$penMagenta = New-Object System.Drawing.Pen([System.Drawing.Color]::Magenta, 2)
+
+# =========================================================================
+# LEFT: FASE 1 (Funil Ã“tico)
+# =========================================================================
+$g.DrawString("(a) Fase 1: Rastreamento em Funil Ã“tico (Altitude: 6,0 m) com AtenuaÃ§Ã£o de Jitter pelo EKF", $fontTitle, $brushWhite, 20, 20)
+
+# 1. Hysteresis zones (relative to rect1: 40% safe, 60% escape)
+$cx1 = 20 + $subW / 2
+$cy1 = 60 + $subH / 2
+
+$szW = $subW * 0.40
+$szH = $subH * 0.40
+$g.DrawRectangle($penSafeZone, [float]($cx1 - $szW/2), [float]($cy1 - $szH/2), [float]$szW, [float]$szH)
+$g.DrawString("Zona Segura (40%)", $fontLabel, $brushGreen, [float]($cx1 - $szW/2 + 5), [float]($cy1 - $szH/2 + 5))
+
+$ezW = $subW * 0.60
+$ezH = $subH * 0.60
+$g.DrawRectangle($penEscapeZone, [float]($cx1 - $ezW/2), [float]($cy1 - $ezH/2), [float]$ezW, [float]$ezH)
+$g.DrawString("Limite de Fuga (60%)", $fontLabel, $brushOrange, [float]($cx1 - $ezW/2 + 5), [float]($cy1 - $ezH/2 + 5))
+
+# 2. Camera crosshair (Mira)
+$g.DrawLine($penWhite, [float]($cx1 - 15), [float]$cy1, [float]($cx1 + 15), [float]$cy1)
+$g.DrawLine($penWhite, [float]$cx1, [float]($cy1 - 15), [float]$cx1, [float]($cy1 + 15))
+
+# 3. Trap bounding box (simulated around trap location in image)
+$boxX = $cx1 + 25
+$boxY = $cy1 - 20
+$bw = 140
+$bh = 140
+$g.DrawRectangle($penGreenBox, [float]($boxX - $bw/2), [float]($boxY - $bh/2), [float]$bw, [float]$bh)
+$g.DrawString("armadilha: 0.96", $fontLabel, $brushGreen, [float]($boxX - $bw/2), [float]($boxY - $bh/2 - 16))
+
+# 4. Raw YOLO centroid (Red dot with jitter)
+$rawX = $boxX + 12
+$rawY = $boxY - 8
+$g.FillEllipse($brushRed, [float]($rawX - 5), [float]($rawY - 5), 10, 10)
+$g.DrawString("Centroide YOLO (com jitter)", $fontLabel, $brushRed, [float]($rawX + 8), [float]($rawY - 6))
+
+# 5. Filtered EKF centroid (Blue dot smoothed)
+$ekfX = $boxX
+$ekfY = $boxY
+$g.FillEllipse($brushBlue, [float]($ekfX - 6), [float]($ekfY - 6), 12, 12)
+$g.DrawEllipse($penWhite, [float]($ekfX - 6), [float]($ekfY - 6), 12, 12)
+$g.DrawString("PosiÃ§Ã£o Filtrada EKF", $fontLabel, $brushBlue, [float]($ekfX + 10), [float]($ekfY + 8))
+
+# HUD Status Top
+$g.FillRectangle((New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(180, 0, 0, 0))), 25, 65, 480, 28)
+$g.DrawString("Alt: 6.0m | MODO: FUNIL OTICO (EKF ATIVO)", $fontHUD, $brushCyan, 30, 70)
+
+
+# =========================================================================
+# RIGHT: FASE 2 (PrecisÃ£o Terminal)
+# =========================================================================
+$g.DrawString("(b) Fase 2: PrecisÃ£o Terminal (Altitude: 0,35 m) com Rastreamento de AlÃ§as e Offset", $fontTitle, $brushWhite, 970, 20)
+
+$cx2 = 970 + $subW / 2
+$cy2 = 60 + $subH / 2
+
+# 1. Camera Crosshair (Mira)
+$g.DrawLine($penWhite, [float]($cx2 - 25), [float]$cy2, [float]($cx2 + 25), [float]$cy2)
+$g.DrawLine($penWhite, [float]$cx2, [float]($cy2 - 25), [float]$cx2, [float]($cy2 + 25))
+$g.DrawEllipse($penWhite, [float]($cx2 - 4), [float]($cy2 - 4), 8, 8)
+$g.DrawString("MIRA (Centro da CÃ¢mera)", $fontLabel, $brushWhite, [float]($cx2 + 15), [float]($cy2 - 12))
+
+# 2. Trap Lid Box
+$lidW = 420
+$lidH = 420
+$lidX = $cx2 - 10
+$lidY = $cy2 + 40
+$g.DrawRectangle($penCyan, [float]($lidX - $lidW/2), [float]($lidY - $lidH/2), [float]$lidW, [float]$lidH)
+$g.DrawString("tampa: 0.98", $fontLabel, $brushCyan, [float]($lidX - $lidW/2), [float]($lidY - $lidH/2 - 16))
+
+# 3. Offset Target Crosshair (Red - where hook must align)
+# Mount offset is +42.16 mm in Y (about 55 pixels at 0.35m)
+$hookX = $cx2 - 10
+$hookY = $cy2 + 95
+$g.FillEllipse($brushRed, [float]($hookX - 6), [float]($hookY - 6), 12, 12)
+$g.DrawEllipse($penWhite, [float]($hookX - 10), [float]($hookY - 10), 20, 20)
+$g.DrawString("ALVO (OFFSET GANCHO: +42,16 mm)", $fontLabel, $brushRed, [float]($hookX + 15), [float]($hookY - 6))
+
+# 4. Three handles tracked by EKF (P0, P1, P2)
+$p0X = $lidX
+$p0Y = $lidY - 45
+$p1X = $lidX - 65
+$p1Y = $lidY + 50
+$p2X = $lidX + 65
+$p2Y = $lidY + 50
+
+# Draw Handle Boxes & EKF points
+$hw = 65; $hh = 45
+$g.DrawRectangle($penYellow, [float]($p0X - $hw/2), [float]($p0Y - $hh/2), $hw, $hh)
+$g.FillEllipse($brushMagenta, [float]($p0X - 5), [float]($p0Y - 5), 10, 10)
+$g.DrawString("EKF P0 (AlÃ§a Topo)", $fontLabel, $brushMagenta, [float]($p0X + 12), [float]($p0Y - 8))
+
+$g.DrawRectangle($penYellow, [float]($p1X - $hw/2), [float]($p1Y - $hh/2), $hw, $hh)
+$g.FillEllipse($brushYellow, [float]($p1X - 5), [float]($p1Y - 5), 10, 10)
+$g.DrawString("EKF P1", $fontLabel, $brushYellow, [float]($p1X - 55), [float]($p1Y - 8))
+
+$g.DrawRectangle($penYellow, [float]($p2X - $hw/2), [float]($p2Y - $hh/2), $hw, $hh)
+$g.FillEllipse($brushYellow, [float]($p2X - 5), [float]($p2Y - 5), 10, 10)
+$g.DrawString("EKF P2", $fontLabel, $brushYellow, [float]($p2X + 12), [float]($p2Y - 8))
+
+# Yaw Orientation Line connecting handles
+$penYaw = New-Object System.Drawing.Pen([System.Drawing.Color]::Magenta, 1.8)
+$penYaw.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
+$g.DrawLine($penYaw, [float]$p0X, [float]$p0Y, [float]$lidX, [float]$lidY)
+$g.DrawString("Eixo Yaw (+93,37Â°)", $fontLabel, $brushMagenta, [float]($lidX + 10), [float]($lidY + 15))
+
+# HUD Status Top
+$g.FillRectangle((New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(180, 0, 0, 0))), 975, 65, 520, 28)
+$g.DrawString("Alt: 0.35m | ETAPA 3: AJUSTE FINO (ERRO <= 5mm)", $fontHUD, $brushCyan, 980, 70)
+
+# Bottom border info
+$g.DrawString("Interface de VisÃ£o Computacional (OpenCV HUD) integrada em malha fechada com o ROS 2", New-Object System.Drawing.Font("Arial", 10, [System.Drawing.FontStyle]::Italic), (New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(180, 180, 180))), 20, 615)
+
+# Save
+$outPath = "Autonomous_Object_Capture_System_By_UAVs_Using_Visual_Servoing/figuras/visao_drone_filtro_ekf.png"
+$composite.Save($outPath, [System.Drawing.Imaging.ImageFormat]::Png)
+
+$b1.Dispose()
+$b2.Dispose()
+$composite.Dispose()
+$g.Dispose()
+
+Write-Output "Composite image saved to $outPath"
+'@
+
+Set-Content -Path "scratch_gen_hud_fig.ps1" -Value $script
+powershell -ExecutionPolicy Bypass -File "scratch_gen_hud_fig.ps1"
+Remove-Item "scratch_gen_hud_fig.ps1"
+

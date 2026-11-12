@@ -217,7 +217,7 @@ class RastreadorFinoYOLO(Node):
         cv2.line(cv_image, (int(self.cx), int(self.cy) - 25), (int(self.cx), int(self.cy) + 25), (255, 255, 255), 2)
         cv2.circle(cv_image, (int(self.cx), int(self.cy)), 4, (255, 255, 255), -1)
         cv2.putText(cv_image, "MIRA (Centro Camera)", (int(self.cx) + 12, int(self.cy) - 10), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
         
         boxes = resultados[0].boxes
         if len(boxes) > 0:
@@ -258,12 +258,12 @@ class RastreadorFinoYOLO(Node):
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 7, (0, 0, 255), -1)
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 13, (0, 0, 255), 2)
                     cv2.putText(cv_image, "ALVO (OFFSET)", (int(alvo_x) + 16, int(alvo_y)), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
                 else:
                     # Durante Etapas 1 e 2: mira no centro geométrico da armadilha
                     centro_x, centro_y = box_cx, box_cy
                     cv2.putText(cv_image, "CENTRO GAIOLA", (int(box_cx) + 10, int(box_cy)), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 165, 0), 1)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 165, 0), 1, cv2.LINE_AA)
                     # Desenha prévia discreta do offset
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 5, (128, 128, 128), -1)
                             
@@ -287,7 +287,7 @@ class RastreadorFinoYOLO(Node):
                     if not self.rotacao_concluida:
                         cv2.rectangle(cv_image, (b_coords[0], b_coords[1]), (b_coords[2], b_coords[3]), (0, 0, 255), 1)
                         cv2.putText(cv_image, "DUPLICADA", (b_coords[0], b_coords[1] - 4), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+                                    cv2.FONT_HERSHEY_DUPLEX, 0.35, (0, 0, 255), 1, cv2.LINE_AA)
             
             # Seleciona apenas as 3 alças estritamente distintas de maior confiança
             for b, coords in alcas_distintas[:3]:
@@ -385,18 +385,18 @@ class RastreadorFinoYOLO(Node):
                     cv2.circle(cv_image, (int(apex_pt[0]), int(apex_pt[1])), 8, (255, 0, 255), -1)
                     cv2.circle(cv_image, (int(apex_pt[0]), int(apex_pt[1])), 13, (255, 0, 255), 2)
                     cv2.putText(cv_image, "EKF P0", (int(apex_pt[0]) + 15, int(apex_pt[1]) + 4), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 0, 255), 1)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.40, (255, 0, 255), 1, cv2.LINE_AA)
                     
                     # Pontos da Base em ciano (Pontos Base 1 e 2 filtrados)
                     cv2.circle(cv_image, (int(b1_pt[0]), int(b1_pt[1])), 6, (255, 255, 0), -1)
                     cv2.circle(cv_image, (int(b1_pt[0]), int(b1_pt[1])), 11, (255, 255, 0), 2)
                     cv2.putText(cv_image, "EKF P1", (int(b1_pt[0]) - 55, int(b1_pt[1]) + 4), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 0), 1)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.40, (255, 255, 0), 1, cv2.LINE_AA)
                                 
                     cv2.circle(cv_image, (int(b2_pt[0]), int(b2_pt[1])), 6, (255, 255, 0), -1)
                     cv2.circle(cv_image, (int(b2_pt[0]), int(b2_pt[1])), 11, (255, 255, 0), 2)
                     cv2.putText(cv_image, "EKF P2", (int(b2_pt[0]) + 15, int(b2_pt[1]) + 4), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 255, 0), 1)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.40, (255, 255, 0), 1, cv2.LINE_AA)
                     
                     # Linhas do triângulo filtrado
                     cv2.line(cv_image, (int(b1_pt[0]), int(b1_pt[1])), (int(b2_pt[0]), int(b2_pt[1])), (255, 255, 0), 2)
@@ -407,7 +407,7 @@ class RastreadorFinoYOLO(Node):
                     cv2.arrowedLine(cv_image, (int(mid_base[0]), int(mid_base[1])), 
                                     (int(apex_pt[0]), int(apex_pt[1])), (0, 255, 255), 2, tipLength=0.25)
                     cv2.putText(cv_image, "ALCAS FILTRADAS (EKF)", (int(mid_base[0]) - 85, int(mid_base[1]) - 14), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.44, (0, 255, 255), 1)
+                                cv2.FONT_HERSHEY_DUPLEX, 0.44, (0, 255, 255), 1, cv2.LINE_AA)
                                 
                 # Controle de Yaw (Ativo estritamente na Etapa 2: altitude_bruta <= 1.40m)
                 if not self.rotacao_concluida:
@@ -631,21 +631,21 @@ class RastreadorFinoYOLO(Node):
         
         # Textos do Painel de Status
         cv2.putText(cv_image, f"Alt Bruta: {altitude_bruta:.2f}m | Alt Rel: {altitude_relativa:.2f}m | Yaw: {status_yaw_str} (Erro: {erro_yaw_str})", 
-                    (28, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                    (28, 38), cv2.FONT_HERSHEY_DUPLEX, 0.58, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(cv_image, self.etapa_atual_nome, (28, 72), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.68, cor_status, 2)
+                    cv2.FONT_HERSHEY_DUPLEX, 0.65, cor_status, 1, cv2.LINE_AA)
                     
         if 'erro_xy_atual' in locals():
             label_alvo = "Erro Offset" if self.rotacao_concluida else "Erro Centro Gaiola"
             cor_erro = (0, 255, 0) if (self.rotacao_concluida and erro_xy_atual <= self.margem_erro_cravado) else (0, 255, 255)
             cv2.putText(cv_image, f"{label_alvo}: {erro_mm:.1f} mm  |  Meta Fina: <= {self.margem_erro_cravado*1000:.1f} mm ({self.tempo_cravado_necessario:.1f}s)", 
-                        (28, 102), cv2.FONT_HERSHEY_SIMPLEX, 0.58, cor_erro, 2)
+                        (28, 102), cv2.FONT_HERSHEY_DUPLEX, 0.55, cor_erro, 1, cv2.LINE_AA)
                         
         # Textos da Caixa de Legendas (Enxuta e com indicação clara do erro em graus)
         cv2.putText(cv_image, "=== LEGENDA & ORIENTACAO ===", (leg_x1 + 80, leg_y1 + 25), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(cv_image, "[+] Mira Drone   (*) Alvo Offset   [^] Alcas EKF", (leg_x1 + 15, leg_y1 + 53), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 200, 200), 1)
+                    cv2.FONT_HERSHEY_DUPLEX, 0.40, (200, 200, 200), 1, cv2.LINE_AA)
         
         # Linha destacada mostrando quantos graus está errado
         if erro_angular_deg is not None:
@@ -663,7 +663,7 @@ class RastreadorFinoYOLO(Node):
             texto_yaw_leg = f"Erro de Yaw: Buscando alcas ({len(alcas_pts)}/3)..."
             
         cv2.putText(cv_image, texto_yaw_leg, (leg_x1 + 20, leg_y1 + 85), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, cor_yaw_leg, 2)
+                    cv2.FONT_HERSHEY_DUPLEX, 0.50, cor_yaw_leg, 1, cv2.LINE_AA)
                     
         cv2.imshow(self.nome_janela, cv_image)
         cv2.waitKey(1)

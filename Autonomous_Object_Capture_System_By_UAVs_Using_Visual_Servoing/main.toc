@@ -14,11 +14,15 @@
 \contentsline {section}{\numberline {3}Methodology}{41}{section*.28}%
 \contentsline {subsection}{3.1 Visão Geral e Classificação da Pesquisa}{41}{section*.29}%
 \contentsline {subsection}{3.2 Ambiente de Simulação e Modelagem da Plataforma Aérea}{44}{section*.32}%
-\contentsline {section}{\numberline {4}Results and Discussion}{51}{section*.36}%
-\contentsline {section}{\numberline {5}Conclusion}{53}{section*.37}%
-\contentsline {section}{References}{54}{section*.38}%
-\contentsline {section}{Appendices}{59}{section*.39}%
-\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{60}{section*.40}%
-\contentsline {section}{Annexes}{61}{section*.41}%
-\contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{62}{section*.42}%
+\contentsline {subsection}{3.3 Construção dos Datasets Sintéticos e Treinamento dos Detectores Visuais}{49}{section*.36}%
+\contentsline {subsection}{3.4 Implementação da Filtragem Estocástica de Estados (EKF)}{54}{section*.42}%
+\contentsline {subsection}{3.5 Reconstrução Geométrica 3D e Controle Cinemático}{56}{section*.44}%
+\contentsline {subsection}{3.6 Arquitetura de Máquina de Estados e Sequenciamento da Missão}{61}{section*.47}%
+\contentsline {section}{\numberline {4}Results and Discussion}{68}{section*.51}%
+\contentsline {section}{\numberline {5}Conclusion}{70}{section*.52}%
+\contentsline {section}{References}{71}{section*.53}%
+\contentsline {section}{Appendices}{76}{section*.54}%
+\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{77}{section*.55}%
+\contentsline {section}{Annexes}{78}{section*.56}%
+\contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{79}{section*.57}%
 \contentsfinish 
