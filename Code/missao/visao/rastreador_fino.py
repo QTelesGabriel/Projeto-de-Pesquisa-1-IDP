@@ -8,10 +8,11 @@ import os
 import sys
 import time
 import math
+import threading
 import numpy as np
 from ultralytics import YOLO
 
-from controle_voo.movimento import enviar_velocidade
+from controle_voo.movimento import enviar_velocidade, enviar_posicao_xy_velocidade_z
 from controle_voo.gimbal import apontar_gimbal_nadir
 
 try:
@@ -34,11 +35,22 @@ class RastreadorFinoYOLO(Node):
         caminho_modelo = os.path.join(os.path.dirname(__file__), '..', '..', 'modelos_IA', 'YOLOv10n_Fase2_Armadilha_Alcas', 'weights', 'best.pt')
         self.get_logger().info(f"Carregando modelo YOLO FASE 2 de: {caminho_modelo}")
         self.yolo = YOLO(caminho_modelo)
+
+        # Modelo YOLO da Etapa Final (0.35m -> 0.20m): YOLOv10n_EtapaFinal_Alinhamento (mAP50-95: 99.50% - 1 Classe: 0: Alinhamento)
+        caminho_modelo_alinhamento = os.path.join(
+            os.path.dirname(__file__), '..', '..', 'modelos_IA',
+            'YOLOv10n_EtapaFinal_Alinhamento', 'weights', 'best.pt'
+        )
+        self.get_logger().info(f"Carregando modelo YOLO ETAPA FINAL (0.20m) de: {caminho_modelo_alinhamento}")
+        self.yolo_alinhamento = YOLO(caminho_modelo_alinhamento)
         
         # 2. Configurações de Controle (Ajuste Fino)
         # Ganhos bem menores que a Fase 1 para evitar oscilações brutas de perto
         self.kp = 0.15  
         self.kd = 0.05
+        self.kp_alinhamento = 0.22
+        self.kd_alinhamento = 0.08
+        self.vel_max_alinhamento = 0.035
         
         # Ganhos para a rotação (Yaw)
         self.kp_yaw = 0.4
@@ -49,18 +61,25 @@ class RastreadorFinoYOLO(Node):
         self.erro_yaw_anterior = 0.0
         self.ultimo_tempo = None
         
-        # 3. Geometria Física e Máquina de Estados (4 Etapas)
+        # 3. Geometria Física e Máquina de Estados (5 Etapas)
         self.altura_gaiola = 0.317         # Altura exata da tampa da gaiola (sem alças, extraída do STL)
         self.altura_camera_offset = 0.320  # Distância dos pés de pouso do drone até a lente da câmera (m)
         
-        # Proporção do Offset do Alvo (Em relação ao tamanho da Bounding Box)
-        # Valores calculados analiticamente a partir da geometria CAD/SDF do chassi e do gimbal:
-        # X: Câmera perfeitamente centrada no eixo lateral (desvio < 0.5 mm) -> offset_pct_x = 0.0000
+        # Proporção do Offset do Alvo para o modelo da Fase 2 (armadilha completa 0.2550m x 0.2550m):
+        # X: Câmera perfeitamente centrada no eixo lateral (desvio < 0.6 mm) -> offset_pct_x = 0.0000
         # Y: Mount do Gimbal a +0.04216m do centro do drone / Bounding Box de 0.2550m -> offset_pct_y = 0.1653
         self.offset_pct_x = 0.0000
         self.offset_pct_y = 0.1653
+
+        # Proporção do Offset do Alvo para o modelo Etapa Final (classe 'Alinhamento', aro central ~72mm x 72mm):
+        # Na armadilha-final.stl, o aro circular fica em (-0.00022m, +0.04133m), quase colinear ao eixo óptico da
+        # câmera (+0.00057m, +0.04216m) quando o drone está centrado sobre a armadilha (pos_drone == pos_armadilha).
+        # Calibração empírica sobre as 400 imagens rotuladas do Dataset Etapa Final (20-35cm):
+        #   cx - box_cx = +0.24mm / 71.65mm = +0.0034 | box_cy - cy = +0.88mm / 72.14mm = +0.0121
+        self.offset_pct_x_alinhamento = 0.0034
+        self.offset_pct_y_alinhamento = 0.0121
         
-        # Parâmetros das 4 Etapas da Fase 2
+        # Parâmetros das Etapas da Fase 2 + Etapa Final
         self.alt_yaw = 1.50                # Etapa 1 -> Etapa 2: Hover a 1.50m para alinhamento de Yaw (subido 10 cm)
         # Ângulo alvo compensado para a assimetria física do CAD (+93.37° em vez de 90.00°)
         # Isso garante que a carcaça e a linha da base fiquem perfeitamente ortogonais ao drone
@@ -72,10 +91,12 @@ class RastreadorFinoYOLO(Node):
         self.timeout_sombra_alca = 3.0     # 3.0s sem as 3 alças para forçar rotação
         self.vel_yaw_sombra = 0.25         # Velocidade angular forçada (rad/s) para fugir da sombra
         self.ultimo_log_sombra = 0.0       # Controle de frequência de logs de alerta
-        self.alt_final = 0.35              # Etapa 3A -> Etapa 3B: Hover a 0.35m para ajuste fino no offset
+        self.alt_transicao_alinhamento = 0.35 # Etapa 3 -> Etapa 4: Troca para novo modelo sem esperar alinhamento a 0.35m
+        self.alt_final = 0.20              # Etapa 4: Hover a 0.20m para ajuste fino com o novo modelo Alinhamento
+        self.margem_erro_fov_baixa_alt = 0.040 # Pausa descida 0.35m->0.20m se erro > 40mm para proteger o FOV
         self.margem_erro_cravado = 0.005   # Margem reduzida para 5 mm (0.005m) de erro no offset (ajuste fino rigoroso)
-        self.tempo_cravado_necessario = 1.5 # 1.5 segundos sustentados continuamente <= 5 mm (30 frames contínuos)
-        self.vel_descida_cega = 0.55       # Descida firme (m/s) para encurtar janela de deriva no Blind Drop
+        self.tempo_cravado_necessario = 2.5 # 2.5 segundos sustentados continuamente <= 5 mm a 0.20m (50 frames contínuos)
+        self.vel_descida_cega = 0.80       # Descida firme (m/s, igual ao LAND_SPD_MS) para encurtar janela de deriva no Blind Drop
         self.altitude_captura = 0.025      # Altitude bruta (m) próxima ao toque antes de acionar LAND
         self.ultimo_log_headless = 0.0
         
@@ -87,12 +108,20 @@ class RastreadorFinoYOLO(Node):
         self.ultimo_alt_blind_drop = None
         self.tempo_alt_estagnada = None
         self.diagnostico_thread = None
+        self.blind_drop_pos_norte = None
+        self.blind_drop_pos_leste = None
+        self.blind_drop_down_inicio = None
+        self.blind_drop_down_limite = None
+        self.blind_drop_yaw_rad = None
         
         # Variáveis da Máquina de Estados de Descida
         self.rotacao_concluida = False
+        self.usando_modelo_alinhamento = False
+        self.hover_final_iniciado = False
+        self._resetar_derivada = False
         self.tempo_yaw_ok = None
         self.tempo_cravado = None
-        self.etapa_atual_nome = "ETAPA 1/4: APROXIMACAO INICIAL"
+        self.etapa_atual_nome = "ETAPA 1/5: APROXIMACAO INICIAL"
         
         # Filtro EMA para Bounding Box
         self.ema_x1 = None
@@ -100,6 +129,7 @@ class RastreadorFinoYOLO(Node):
         self.ema_x2 = None
         self.ema_y2 = None
         self.ema_alpha = 0.5 # 0.5 suaviza bem sem adicionar muito atraso
+        self.ema_alpha_alinhamento = 0.55 # Suavização equilibrada com modelo Etapa Final a 0.20m-0.35m
         
         # Filtro EKF para limpar ruídos da visão a curta distância
         try:
@@ -188,21 +218,42 @@ class RastreadorFinoYOLO(Node):
         # z_camera = altitude_bruta + 0.320m (offset dos pés até a lente); z_alvo = 0.317m
         altitude_relativa = max(0.005, (altitude_bruta + self.altura_camera_offset) - self.altura_gaiola) # Proteção contra divisão por zero
 
-        # --- ETAPA 4: DESCIDA FINAL (BLIND DROP) E VERIFICAÇÃO DE CAPTURA ---
+        # --- ETAPA 5: DESCIDA FINAL (BLIND DROP) E VERIFICAÇÃO DE CAPTURA ---
         if self.iniciou_blind_drop:
             self._processar_passo_blind_drop(altitude_bruta, altitude_relativa, tempo_atual)
             return
 
+        # Comuta imediatamente para o novo modelo Alinhamento ao cruzar 0.35m (sem esperar alinhamento total a 0.35m)
+        if self.rotacao_concluida and not self.usando_modelo_alinhamento and altitude_bruta <= self.alt_transicao_alinhamento:
+            self.usando_modelo_alinhamento = True
+            self.ema_x1 = self.ema_y1 = self.ema_x2 = self.ema_y2 = None
+            self._resetar_derivada = True
+            if self.usar_filtro:
+                self.filtro.reset()
+                # Reduz R em relação a 0.5 (curta distância), mantendo suavização firme contra oscilações
+                self.filtro.kf.R = np.array([[0.005, 0.0], [0.0, 0.005]], dtype=float)
+                self.filtro.kf.Q = np.array([
+                    [0.0005, 0.0, 0.0, 0.0],
+                    [0.0, 0.0005, 0.0, 0.0],
+                    [0.0, 0.0, 0.01, 0.0],
+                    [0.0, 0.0, 0.0, 0.01],
+                ], dtype=float)
+            self.get_logger().info(
+                f"[+] TRANSICAO @ {altitude_bruta:.2f}m: Trocando para YOLOv10n_EtapaFinal_Alinhamento (alinhamento final a {self.alt_final:.2f}m)."
+            )
+
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
-        # --- PERCEPÇÃO VISUAL (YOLO 2 Classes) ---
+        # --- PERCEPÇÃO VISUAL (Fase 2: 2 Classes | Etapa Final: 1 Classe 'Alinhamento') ---
         # ISOLAMENTO DE IMAGEM: O YOLO recebe um clone intocado (cópia limpa) da câmera.
         # Nenhuma alteração gráfica do OpenCV contamina a entrada do modelo.
         img_yolo = cv_image.copy()
-        resultados = self.yolo.predict(img_yolo, verbose=False, conf=0.5)
+        modelo_ativo = self.yolo_alinhamento if self.usando_modelo_alinhamento else self.yolo
+        resultados = modelo_ativo.predict(img_yolo, verbose=False, conf=0.5)
         
         centro_x, centro_y = None, None
         box_cx, box_cy = None, None
+        detectou_alvo = False
         alcas_pts = []
         erro_angular_deg = None
         yaw_rate = 0.0
@@ -216,43 +267,58 @@ class RastreadorFinoYOLO(Node):
         
         boxes = resultados[0].boxes
         if len(boxes) > 0:
-            # Separa detecções por classe (0: alca, 1: armadilha)
-            boxes_armadilha = [b for b in boxes if int(b.cls[0].item()) == 1]
-            boxes_alca = [b for b in boxes if int(b.cls[0].item()) == 0]
+            if self.usando_modelo_alinhamento:
+                # Modelo Etapa Final: 1 classe (0: Alinhamento)
+                boxes_alvo = [b for b in boxes if int(b.cls[0].item()) == 0]
+                boxes_alca = []
+                offset_x_ativo = self.offset_pct_x_alinhamento
+                offset_y_ativo = self.offset_pct_y_alinhamento
+                cor_bbox = (0, 255, 0)
+                label_alvo_offset = "ALVO (ALINHAMENTO)"
+            else:
+                # Modelo Fase 2: 2 classes (0: alca, 1: armadilha)
+                boxes_alvo = [b for b in boxes if int(b.cls[0].item()) == 1]
+                boxes_alca = [b for b in boxes if int(b.cls[0].item()) == 0]
+                offset_x_ativo = self.offset_pct_x
+                offset_y_ativo = self.offset_pct_y
+                cor_bbox = (255, 255, 0)
+                label_alvo_offset = "ALVO (OFFSET)"
             
-            # 2. Analisa a Armadilha (Gaiola inteira) e calcula o Alvo Virtual com Offset
-            if len(boxes_armadilha) > 0:
-                best_armadilha = max(boxes_armadilha, key=lambda b: float(b.conf[0].item()))
-                x1_raw, y1_raw, x2_raw, y2_raw = map(float, best_armadilha.xyxy[0].cpu().numpy())
+            # 2. Analisa o alvo principal (Armadilha ou Alinhamento) e calcula o Alvo Virtual com Offset
+            if len(boxes_alvo) > 0:
+                detectou_alvo = True
+                best_alvo = max(boxes_alvo, key=lambda b: float(b.conf[0].item()))
+                x1_raw, y1_raw, x2_raw, y2_raw = map(float, best_alvo.xyxy[0].cpu().numpy())
                 
-                # Filtro EMA para suavizar a bounding box da armadilha
+                # Filtro EMA para suavizar a bounding box do alvo
+                alpha_ema = self.ema_alpha_alinhamento if self.usando_modelo_alinhamento else self.ema_alpha
                 if self.ema_x1 is None:
                     self.ema_x1, self.ema_y1, self.ema_x2, self.ema_y2 = x1_raw, y1_raw, x2_raw, y2_raw
                 else:
-                    self.ema_x1 = (self.ema_alpha * x1_raw) + ((1 - self.ema_alpha) * self.ema_x1)
-                    self.ema_y1 = (self.ema_alpha * y1_raw) + ((1 - self.ema_alpha) * self.ema_y1)
-                    self.ema_x2 = (self.ema_alpha * x2_raw) + ((1 - self.ema_alpha) * self.ema_x2)
-                    self.ema_y2 = (self.ema_alpha * y2_raw) + ((1 - self.ema_alpha) * self.ema_y2)
+                    self.ema_x1 = (alpha_ema * x1_raw) + ((1.0 - alpha_ema) * self.ema_x1)
+                    self.ema_y1 = (alpha_ema * y1_raw) + ((1.0 - alpha_ema) * self.ema_y1)
+                    self.ema_x2 = (alpha_ema * x2_raw) + ((1.0 - alpha_ema) * self.ema_x2)
+                    self.ema_y2 = (alpha_ema * y2_raw) + ((1.0 - alpha_ema) * self.ema_y2)
                     
                 x1, y1, x2, y2 = int(self.ema_x1), int(self.ema_y1), int(self.ema_x2), int(self.ema_y2)
-                cv2.rectangle(cv_image, (x1, y1), (x2, y2), (255, 255, 0), 2)
+                cv2.rectangle(cv_image, (x1, y1), (x2, y2), cor_bbox, 2)
                 
-                box_w = x2 - x1
-                box_h = y2 - y1
-                box_cx = x1 + box_w / 2.0
-                box_cy = y1 + box_h / 2.0
+                box_w = self.ema_x2 - self.ema_x1
+                box_h = self.ema_y2 - self.ema_y1
+                box_cx = self.ema_x1 + box_w / 2.0
+                box_cy = self.ema_y1 + box_h / 2.0
                 cv2.circle(cv_image, (int(box_cx), int(box_cy)), 5, (255, 165, 0), -1)
                 
                 # Alvo Virtual com Offset Proporcional calibrado
-                alvo_x = box_cx + (box_w * self.offset_pct_x)
-                alvo_y = box_cy - (box_h * self.offset_pct_y)
+                alvo_x = box_cx + (box_w * offset_x_ativo)
+                alvo_y = box_cy - (box_h * offset_y_ativo)
                 
-                # O alinhamento no Alvo Virtual com Offset atua após a trava de Yaw (Etapa 3)
+                # O alinhamento no Alvo Virtual com Offset atua após a trava de Yaw (Etapa 3 em diante)
                 if self.rotacao_concluida:
                     centro_x, centro_y = alvo_x, alvo_y
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 7, (0, 0, 255), -1)
                     cv2.circle(cv_image, (int(alvo_x), int(alvo_y)), 13, (0, 0, 255), 2)
-                    cv2.putText(cv_image, "ALVO (OFFSET)", (int(alvo_x) + 16, int(alvo_y)), 
+                    cv2.putText(cv_image, label_alvo_offset, (int(alvo_x) + 16, int(alvo_y)), 
                                 cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
                 else:
                     # Durante Etapas 1 e 2: mira no centro geométrico da armadilha (sem exibir offset)
@@ -476,6 +542,12 @@ class RastreadorFinoYOLO(Node):
             self.erro_final_x = erro_x
             self.erro_final_y = erro_y
             
+            # Evita salto derivativo no primeiro frame após trocar o modelo YOLO
+            if self._resetar_derivada:
+                self.erro_x_anterior = erro_x
+                self.erro_y_anterior = erro_y
+                self._resetar_derivada = False
+
             # Derivadas de velocidade translacional
             derivada_x = (erro_x - self.erro_x_anterior) / dt
             derivada_y = (erro_y - self.erro_y_anterior) / dt
@@ -485,22 +557,23 @@ class RastreadorFinoYOLO(Node):
             erro_xy_atual = (erro_x**2 + erro_y**2)**0.5
             erro_mm = erro_xy_atual * 1000.0
             
-            # --- MÁQUINA DE ESTADOS DA FASE 2 (4 ETAPAS) ---
+            # --- MÁQUINA DE ESTADOS DA FASE 2 + ETAPA FINAL (5 ETAPAS) ---
+            kd_atual = self.kd
             if not self.rotacao_concluida:
                 # ETAPAS ANTERIORES À TRAVA DE YAW (Centralizado na Armadilha)
                 if altitude_bruta > self.alt_yaw:
-                    # ETAPA 1: Aproximação inicial até 1.40m
+                    # ETAPA 1: Aproximação inicial até 1.50m
                     vel_z = 0.20
                     yaw_rate = 0.0 # Yaw travado, não gira ainda
                     self.tempo_yaw_ok = None
                     self.tempo_cravado = None
                     max_vel = 0.4
                     kp_atual = self.kp
-                    self.etapa_atual_nome = f"ETAPA 1/4: APROXIMACAO INICIAL (Descendo para {self.alt_yaw:.2f}m)"
+                    self.etapa_atual_nome = f"ETAPA 1/5: APROXIMACAO INICIAL (Descendo para {self.alt_yaw:.2f}m)"
                     cor_status = (0, 165, 255) # Laranja
                 else:
-                    # ETAPA 2: Hover a 1.40m para alinhamento e trava de Yaw com Kalman nas alças
-                    vel_z = 0.0 # Hover estável a 1.40m
+                    # ETAPA 2: Hover a 1.50m para alinhamento e trava de Yaw com Kalman nas alças
+                    vel_z = 0.0 # Hover estável a 1.50m
                     self.tempo_cravado = None
                     max_vel = 0.25
                     kp_atual = self.kp
@@ -508,57 +581,74 @@ class RastreadorFinoYOLO(Node):
                     if erro_angular_deg is not None:
                         if self.tempo_yaw_ok is not None:
                             tempo_yaw_acumulado = agora - self.tempo_yaw_ok
-                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° ({tempo_yaw_acumulado:.2f}s/{self.tempo_yaw_ok_necessario:.2f}s)"
+                            self.etapa_atual_nome = f"ETAPA 2/5: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° ({tempo_yaw_acumulado:.2f}s/{self.tempo_yaw_ok_necessario:.2f}s)"
                             cor_status = (0, 255, 0) # Verde se estiver sustentando dentro da meta
                         else:
-                            self.etapa_atual_nome = f"ETAPA 2/4: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° (Meta <={self.margem_erro_yaw_deg:.1f}°)"
+                            self.etapa_atual_nome = f"ETAPA 2/5: AJUSTE YAW @ {self.alt_yaw:.2f}m | Erro: {erro_angular_deg:+.1f}° (Meta <={self.margem_erro_yaw_deg:.1f}°)"
                             cor_status = (0, 255, 255) # Amarelo
                     else:
                         self.tempo_yaw_ok = None
                         tempo_sem = (agora - self.tempo_sem_3_alcas) if self.tempo_sem_3_alcas is not None else 0.0
                         if tempo_sem >= self.timeout_sombra_alca:
-                            self.etapa_atual_nome = f"ETAPA 2/4: DESVIO DE SOMBRA! Forcando Rotacao ({len(alcas_pts)}/3 alcas)"
+                            self.etapa_atual_nome = f"ETAPA 2/5: DESVIO DE SOMBRA! Forcando Rotacao ({len(alcas_pts)}/3 alcas)"
                             cor_status = (255, 0, 255) # Magenta para indicar desvio de sombra
                         else:
-                            self.etapa_atual_nome = f"ETAPA 2/4: BUSCANDO 3 ALCAS ({len(alcas_pts)}/3) - {tempo_sem:.1f}s/{self.timeout_sombra_alca:.1f}s"
+                            self.etapa_atual_nome = f"ETAPA 2/5: BUSCANDO 3 ALCAS ({len(alcas_pts)}/3) - {tempo_sem:.1f}s/{self.timeout_sombra_alca:.1f}s"
                             cor_status = (0, 165, 255) # Laranja
             else:
                 # ETAPAS APÓS TRAVA DE YAW (Centralizado no Alvo Virtual com Offset)
                 yaw_rate = 0.0 # Yaw permanentemente travado
-                
-                if altitude_bruta > self.alt_final:
-                    # ETAPA 3A: Descida centrada no Offset até alt_final (0.35m)
+
+                if self.hover_final_iniciado and altitude_bruta > self.alt_final + 0.04:
+                    self.hover_final_iniciado = False
+
+                if not self.usando_modelo_alinhamento:
+                    # ETAPA 3: Descida no Offset (Fase 2) até 0.35m (sem parar para alinhamento total a 0.35m)
                     dist_descida = altitude_bruta - self.alt_final
-                    # Desacelera suavemente nos últimos 25cm para amortecer a inércia e não quicar/ultrapassar
                     fator_frenagem = min(1.0, max(0.25, dist_descida / 0.25))
                     vel_z = 0.18 * fator_frenagem
                     self.tempo_cravado = None
                     max_vel = 0.35
                     kp_atual = self.kp
-                    self.etapa_atual_nome = f"ETAPA 3/4: DESCENDO NO OFFSET (Ate {self.alt_final:.2f}m)"
+                    self.etapa_atual_nome = f"ETAPA 3/5: DESCENDO NO OFFSET (Troca @ {self.alt_transicao_alinhamento:.2f}m)"
                     cor_status = (0, 220, 0) # Verde
+                elif (not self.hover_final_iniciado) and altitude_bruta > self.alt_final:
+                    # ETAPA 4A: Descida de 0.35m até 0.20m guiada pelo novo modelo Alinhamento
+                    self.tempo_cravado = None
+                    max_vel = 0.25
+                    kp_atual = self.kp
+                    if (not detectou_alvo) or erro_xy_atual > self.margem_erro_fov_baixa_alt:
+                        vel_z = 0.0
+                        self.etapa_atual_nome = f"ETAPA 4/5: CENTRALIZANDO ALINHAMENTO ({erro_mm:.1f}mm)"
+                        cor_status = (0, 165, 255)
+                    else:
+                        dist_descida = altitude_bruta - self.alt_final
+                        # Desacelera suavemente nos últimos 25cm para pousar o hover em 0.20m sem overshoot
+                        fator_frenagem = min(1.0, max(0.25, dist_descida / 0.25))
+                        vel_z = 0.18 * fator_frenagem
+                        self.etapa_atual_nome = f"ETAPA 4/5: DESCENDO P/ {self.alt_final:.2f}m (Modelo Alinhamento)"
+                        cor_status = (0, 220, 0) # Verde
                 else:
-                    # ETAPA 3B: Ajuste Fino a 0.35m com margem estrita <= 5 mm por 1.5s (sem fallback)
-                    vel_z = 0.0 # Hover a 0.35m
-                    max_vel = 0.06 # Permite pequenas correções milimétricas sem ficar preso na deadband
-                    kp_atual = 0.25 # Ganho proporcional responsivo para distâncias milimétricas
+                    # ETAPA 4B: Ajuste Fino a 0.20m com novo modelo Alinhamento (margem estrita <= 5 mm por 2.5s)
+                    self.hover_final_iniciado = True
+                    vel_z = 0.0 # Hover a 0.20m
+                    max_vel = self.vel_max_alinhamento
+                    kp_atual = self.kp_alinhamento
+                    kd_atual = self.kd_alinhamento
                     
-                    # Critério estrito: Alinhamento cravado <= 5 mm sustentado continuamente por 1.5s
-                    if erro_xy_atual <= self.margem_erro_cravado:
+                    # Critério estrito: Alinhamento cravado <= 5 mm sustentado continuamente por 2.5s apenas após atingir 0.20m
+                    if detectou_alvo and erro_xy_atual <= self.margem_erro_cravado:
                         if self.tempo_cravado is None:
                             self.tempo_cravado = agora
                         tempo_acumulado = agora - self.tempo_cravado
                         meta_label = f"<={self.margem_erro_cravado*1000:.0f}mm"
-                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO {meta_label} ({erro_mm:.1f}mm) - {tempo_acumulado:.1f}s/{self.tempo_cravado_necessario:.1f}s"
+                        self.etapa_atual_nome = f"ETAPA 4/5: AJUSTE FINO @ {self.alt_final:.2f}m {meta_label} ({erro_mm:.1f}mm) - {tempo_acumulado:.1f}s/{self.tempo_cravado_necessario:.1f}s"
                         cor_status = (0, 255, 0) # Verde brilhante
                         
                         if tempo_acumulado >= self.tempo_cravado_necessario:
-                            enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
-                            self._imprimir_diagnostico_pre_blind_drop(
-                                erro_x, erro_y, erro_mm, box_cx, box_cy, altitude_relativa
-                            )
+                            self._configurar_trava_blind_drop(erro_x, erro_y, altitude_bruta)
                             self.iniciou_blind_drop = True
-                            self.tempo_inicio_blind_drop = time.time()
+                            self.tempo_inicio_blind_drop = agora
                             self.ultimo_alt_blind_drop = altitude_bruta
                             self.tempo_alt_estagnada = None
                             if self.mostrar_janela:
@@ -566,16 +656,22 @@ class RastreadorFinoYOLO(Node):
                                     cv2.destroyWindow(self.nome_janela)
                                 except Exception:
                                     pass
-                            enviar_velocidade(self.vehicle, 0.0, 0.0, self.vel_descida_cega, 0.0)
-                            self.get_logger().info(f"[+] ETAPA 3 CONCLUIDA [PRECISAO CRAVADA]: Alvo a {erro_mm:.2f} mm! Disparando Etapa 4 (Blind Drop a {self.vel_descida_cega} m/s).")
+                            self._enviar_comando_blind_drop(0.0)
+                            self.diagnostico_thread = threading.Thread(
+                                target=self._imprimir_diagnostico_pre_blind_drop,
+                                args=(erro_x, erro_y, erro_mm, box_cx, box_cy, altitude_relativa),
+                                daemon=True,
+                            )
+                            self.diagnostico_thread.start()
+                            self.get_logger().info(f"[+] ETAPA 4 CONCLUIDA [PRECISAO CRAVADA @ {self.alt_final:.2f}m]: Alvo a {erro_mm:.2f} mm! Disparando Etapa 5 (Blind Drop travado XY a {self.vel_descida_cega} m/s).")
                             return
                     else:
                         self.tempo_cravado = None
-                        self.etapa_atual_nome = f"ETAPA 3/4: AJUSTE FINO @ {self.alt_final:.2f}m | Erro: {erro_mm:.1f}mm (Meta <={self.margem_erro_cravado*1000:.0f}mm)"
+                        self.etapa_atual_nome = f"ETAPA 4/5: AJUSTE FINO @ {self.alt_final:.2f}m | Erro: {erro_mm:.1f}mm (Meta <={self.margem_erro_cravado*1000:.0f}mm)"
                         cor_status = (0, 255, 255) # Amarelo alerta
                         
-            vel_x = (erro_x * kp_atual + derivada_x * self.kd)
-            vel_y = (erro_y * kp_atual + derivada_y * self.kd)
+            vel_x = (erro_x * kp_atual + derivada_x * kd_atual)
+            vel_y = (erro_y * kp_atual + derivada_y * kd_atual)
             vel_x = max(-max_vel, min(max_vel, vel_x))
             vel_y = max(-max_vel, min(max_vel, vel_y))
             
@@ -666,7 +762,12 @@ class RastreadorFinoYOLO(Node):
                     cv2.FONT_HERSHEY_DUPLEX, 0.65, cor_status, 1, cv2.LINE_AA)
                     
         if 'erro_xy_atual' in locals():
-            label_alvo = "Erro Offset" if self.rotacao_concluida else "Erro Centro Gaiola"
+            if self.usando_modelo_alinhamento:
+                label_alvo = "Erro Alinhamento (0.20m)"
+            elif self.rotacao_concluida:
+                label_alvo = "Erro Offset"
+            else:
+                label_alvo = "Erro Centro Gaiola"
             cor_erro = (0, 255, 0) if (self.rotacao_concluida and erro_xy_atual <= self.margem_erro_cravado) else (0, 255, 255)
             cv2.putText(cv_image, f"{label_alvo}: {erro_mm:.1f} mm  |  Meta Fina: <= {self.margem_erro_cravado*1000:.1f} mm ({self.tempo_cravado_necessario:.1f}s)", 
                         (28, 102), cv2.FONT_HERSHEY_DUPLEX, 0.55, cor_erro, 1, cv2.LINE_AA)
@@ -697,8 +798,61 @@ class RastreadorFinoYOLO(Node):
         cv2.imshow(self.nome_janela, cv_image)
         cv2.waitKey(1)
 
+    def _configurar_trava_blind_drop(self, erro_x, erro_y, altitude_bruta):
+        """Trava a coordenada horizontal NED exata do alvo (drone + resíduo óptico rotacionado) antes da descida cega."""
+        loc = getattr(getattr(self.vehicle, 'location', None), 'local_frame', None)
+        yaw_atual = getattr(getattr(self.vehicle, 'attitude', None), 'yaw', None)
+        if (
+            loc is not None
+            and loc.north is not None
+            and loc.east is not None
+            and loc.down is not None
+            and yaw_atual is not None
+        ):
+            cos_y = math.cos(yaw_atual)
+            sin_y = math.sin(yaw_atual)
+            delta_n = (erro_x * cos_y) - (erro_y * sin_y)
+            delta_e = (erro_x * sin_y) + (erro_y * cos_y)
+            self.blind_drop_pos_norte = float(loc.north) + delta_n
+            self.blind_drop_pos_leste = float(loc.east) + delta_e
+            self.blind_drop_down_inicio = float(loc.down)
+            self.blind_drop_down_limite = float(loc.down) + max(altitude_bruta, self.alt_final) + 0.15
+            self.blind_drop_yaw_rad = float(yaw_atual)
+        else:
+            self.blind_drop_pos_norte = None
+            self.blind_drop_pos_leste = None
+            self.blind_drop_down_inicio = None
+            self.blind_drop_down_limite = None
+            self.blind_drop_yaw_rad = None
+
+    def _enviar_comando_blind_drop(self, dt_blind, finalizar=False):
+        """Mantém trava XY em LOCAL_NED via PosVelAccel durante o Blind Drop (ou fallback em velocidade zero XY)."""
+        if self.blind_drop_pos_norte is not None:
+            if finalizar:
+                baixo_z = self.blind_drop_down_limite
+                vel_z_cmd = 0.0
+            else:
+                baixo_z = min(
+                    self.blind_drop_down_inicio + (self.vel_descida_cega * dt_blind),
+                    self.blind_drop_down_limite,
+                )
+                vel_z_cmd = self.vel_descida_cega if baixo_z < self.blind_drop_down_limite else 0.0
+            enviar_posicao_xy_velocidade_z(
+                self.vehicle,
+                self.blind_drop_pos_norte,
+                self.blind_drop_pos_leste,
+                baixo_z,
+                vel_z_cmd,
+                yaw_rad=self.blind_drop_yaw_rad,
+            )
+            return vel_z_cmd
+
+        vel_z_cmd = 0.0 if finalizar else self.vel_descida_cega
+        enviar_velocidade(self.vehicle, 0.0, 0.0, vel_z_cmd, 0.0)
+        return vel_z_cmd
+
     def _processar_passo_blind_drop(self, altitude_bruta, altitude_relativa, agora):
-        """Comanda a descida vertical em malha aberta e detecta o toque próximo ao alvo."""
+        """Comanda a descida vertical travada no plano horizontal e detecta o toque próximo ao alvo."""
         if self.tempo_inicio_blind_drop is None:
             self.tempo_inicio_blind_drop = agora
         dt_blind = agora - self.tempo_inicio_blind_drop
@@ -720,7 +874,7 @@ class RastreadorFinoYOLO(Node):
         timeout_blind = (dt_blind >= 6.0)
 
         if tocou_chao or estagnado_no_alvo or timeout_blind:
-            enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
+            self._enviar_comando_blind_drop(dt_blind, finalizar=True)
             self.get_logger().info("CAPTURA BEM SUCEDIDA! Altura de toque atingida.")
 
             if self.erro_final_x is not None:
@@ -731,12 +885,11 @@ class RastreadorFinoYOLO(Node):
 
             raise SystemExit
 
-        vel_z = self.vel_descida_cega
-        enviar_velocidade(self.vehicle, 0.0, 0.0, vel_z, 0.0)
+        vel_z = self._enviar_comando_blind_drop(dt_blind)
         if self.logger:
             self.logger.registrar(
                 fase='FASE 2: MICRO',
-                etapa='ETAPA 4: BLIND DROP',
+                etapa='ETAPA 5: BLIND DROP',
                 altitude=altitude_bruta,
                 erro_x=self.erro_final_x,
                 erro_y=self.erro_final_y,

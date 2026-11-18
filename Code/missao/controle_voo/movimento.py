@@ -35,6 +35,31 @@ def enviar_velocidade(vehicle, velocity_x, velocity_y, velocity_z, yaw_rate=0.0)
     vehicle.send_mavlink(msg)
     vehicle.flush()
 
+def enviar_posicao_xy_velocidade_z(vehicle, norte_x, leste_y, baixo_z, vel_z, yaw_rad=None):
+    """
+    Trava a posição horizontal (Norte, Leste) em LOCAL_NED e comanda descida vertical
+    via SubMode PosVelAccel do ArduPilot (vx=0, vy=0, vz=vel_z).
+    """
+    if yaw_rad is None:
+        type_mask = 0b0000110111000000  # Pos + Vel usados; Acc, Yaw e YawRate ignorados
+        yaw_cmd = 0.0
+    else:
+        type_mask = 0b0000100111000000  # Pos + Vel + Yaw travado; Acc e YawRate ignorados
+        yaw_cmd = yaw_rad
+
+    msg = vehicle.message_factory.set_position_target_local_ned_encode(
+        0,       # time_boot_ms
+        0, 0,    # target_system, target_component
+        mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+        type_mask,
+        norte_x, leste_y, baixo_z,
+        0.0, 0.0, vel_z,
+        0.0, 0.0, 0.0,
+        yaw_cmd, 0.0
+    )
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
 def ir_para_posicao_local(vehicle, frente_x, direita_y, baixo_z):
     """
     Move o drone para uma posição X, Y, Z (em metros) relativa ao ponto de decolagem.
