@@ -1,0 +1,50 @@
+% ==================== TABELA LATEX: DETECÇÃO MACROSCÓPICA DA ARMADILHA NA FASE 1 ====================
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \captionsetup{justification=centering}
+    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1}
+    \label{tab:comparativo_yolo_fase1_resultados}
+    \vspace{0.2cm}
+    \begin{tabular}{lcccccc}
+        \hline
+        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
+        \hline
+        YOLOv8n    & 100.00\%     & 99.96\%    & 99.50\%    & 71.17\%         & 43.9         & 22.8 \\
+        YOLOv10n   & 96.00\%      & 97.60\%    & 99.20\%    & 72.53\%         & 47.5         & 21.0 \\
+        YOLOv11n   & 99.20\%      & 99.60\%    & 99.47\%    & 73.38\%         & 48.9         & 20.4 \\
+        \textbf{YOLO26n} & \textbf{98.39\%} & \textbf{97.82\%} & \textbf{99.22\%} & \textbf{75.75\%} & \textbf{45.0} & \textbf{22.2} \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}
+
+
+% ==================== TABELA LATEX: DETECÇÃO MULTI-CLASSE DA FASE 2 (ALÇAS E TAMPA) ====================
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \captionsetup{justification=centering}
+    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (alças e tampa)}
+    \label{tab:comparativo_yolo_fase2_resultados}
+    \vspace{0.2cm}
+    \begin{tabular}{lcccccc}
+        \hline
+        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
+        \hline
+        YOLOv8n    & 99.74\%      & 99.88\%    & 99.50\%    & 87.48\%         & 45.6         & 21.9 \\
+        \textbf{YOLOv10n} & \textbf{98.04\%} & \textbf{98.58\%} & \textbf{99.43\%} & \textbf{89.02\%} & \textbf{47.9} & \textbf{20.9} \\
+        YOLOv11n   & 98.85\%      & 99.84\%    & 99.49\%    & 88.23\%         & 48.0         & 20.8 \\
+        YOLO26n    & 98.70\%      & 98.55\%    & 99.46\%    & 88.80\%         & 45.5         & 22.0 \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}

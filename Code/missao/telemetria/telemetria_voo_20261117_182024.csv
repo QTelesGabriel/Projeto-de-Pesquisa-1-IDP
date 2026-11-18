@@ -1,0 +1,1 @@
+Timestamp,Tempo_Relativo_s,Fase,Etapa,Altitude_m,Erro_X_m,Erro_Y_m,Erro_XY_mm,Erro_Yaw_deg,Vel_X_cmd,Vel_Y_cmd,Vel_Z_cmd,Yaw_Rate_cmd,Afastamento_FOV_pct,Descendo_Flag,Bloqueios_Histerese,EKF_Ativo

@@ -1,0 +1,6 @@
+Timestamp,Alt_Inicial_m,Erro_GPS_Raio_m,Yaw_Inicial_deg,Tempo_Total_s,T3_FOV_Retido,T3_Max_Afastamento_pct,T3_Bloqueios_Histerese,T4_Erro_Yaw_Final_deg,T5_Erro_X_mm,T5_Erro_Y_mm,T5_RMSE_Final_mm,T5_Acoplamento_Confirmado,Arquivo_Telemetria,T5_Erro_X_PreBlindDrop_mm,T5_Erro_Y_PreBlindDrop_mm,T5_RMSE_PreBlindDrop_mm
+2026-11-17 17:38:47,16.82,3.17,74.7,105.43,SIM,39.1,0,0.96,-12.16,-4.81,13.08,NAO,telemetria_voo_20261117_173656.csv,1.83,-3.63,4.07
+2026-11-17 17:44:30,16.22,3.44,101.6,86.52,SIM,49.9,0,0.68,-8.51,-8.33,11.91,NAO,telemetria_voo_20261117_174258.csv,3.89,0.43,3.91
+2026-11-17 17:48:25,17.56,1.77,229.3,151.47,SIM,15.6,0,-0.68,-7.87,-13.4,15.54,NAO,telemetria_voo_20261117_174548.csv,-1.63,0.45,1.69
+2026-11-17 18:15:58,19.22,2.04,136.0,107.99,SIM,25.6,0,-0.27,5.76,-2.12,6.14,SIM,telemetria_voo_20261117_181406.csv,-1.94,-1.78,2.63
+2026-11-17 18:19:10,19.24,1.64,353.7,113.95,SIM,20.1,0,0.7,-0.02,-15.88,15.88,NAO,telemetria_voo_20261117_181710.csv,-0.47,-0.97,1.08

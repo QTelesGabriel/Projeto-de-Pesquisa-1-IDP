@@ -231,7 +231,7 @@ class FiltroAlvoEKF:
 
         # Verificação do limite de segurança sem visão
         if self.tempo_sem_medicao > self.timeout_limite:
-            self.iniciado = False
+            self.reset()
             return None, None
 
         x_limpo = float(self.kf.x[0, 0])
@@ -341,7 +341,7 @@ class FiltroAnguloEKF:
         else:
             self.tempo_sem_medicao += dt
             if self.tempo_sem_medicao > self.timeout_limite:
-                self.iniciado = False
+                self.reset()
                 return None
 
         self.dt_anterior = dt

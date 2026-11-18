@@ -12,9 +12,11 @@ from ultralytics import YOLO
 from controle_voo.movimento import enviar_velocidade
 
 class RastreadorYOLO(Node):
-    def __init__(self, vehicle):
+    def __init__(self, vehicle, logger=None, mostrar_janela=True):
         super().__init__('rastreador_yolo')
         self.vehicle = vehicle
+        self.logger = logger
+        self.mostrar_janela = mostrar_janela
         self.bridge = CvBridge()
         
         # 1. Carrega o modelo YOLO da Fase 1 (Melhor treinado: YOLO26n - mAP50-95 de 75.68%)
@@ -73,7 +75,8 @@ class RastreadorYOLO(Node):
         )
         
         self.nome_janela = "Visao VANT - Descida em Funil"
-        cv2.namedWindow(self.nome_janela, cv2.WINDOW_AUTOSIZE)
+        if self.mostrar_janela:
+            cv2.namedWindow(self.nome_janela, cv2.WINDOW_AUTOSIZE)
         self.get_logger().info("Nó de rastreamento iniciado! Procurando armadilha...")
 
     def camera_info_callback(self, msg):
@@ -253,11 +256,45 @@ class RastreadorYOLO(Node):
                     
                 # Envia o comando para os motores
                 enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z)
+                if self.logger:
+                    self.logger.registrar(
+                        fase='FASE 1: MACRO',
+                        etapa='DESCIDA FUNIL' if self.descendo else 'BLOQUEIO HISTERESE',
+                        altitude=altitude,
+                        erro_x=erro_x,
+                        erro_y=erro_y,
+                        erro_yaw_deg=None,
+                        vel_x=vel_x,
+                        vel_y=vel_y,
+                        vel_z=vel_z,
+                        yaw_rate=0.0,
+                        afastamento_fov_pct=afastamento_pct,
+                        descendo=self.descendo,
+                        bloqueios=self.bloqueios_histerese,
+                        ekf_ativo=self.usar_filtro
+                    )
                 
                 cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 
                             cv2.FONT_HERSHEY_DUPLEX, 0.65, cor, 1, cv2.LINE_AA)
             else:
                 enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0)
+                if self.logger:
+                    self.logger.registrar(
+                        fase='FASE 1: MACRO',
+                        etapa='FILTRANDO PONTO INICIAL',
+                        altitude=altitude,
+                        erro_x=None,
+                        erro_y=None,
+                        erro_yaw_deg=None,
+                        vel_x=0.0,
+                        vel_y=0.0,
+                        vel_z=0.0,
+                        yaw_rate=0.0,
+                        afastamento_fov_pct=0.0,
+                        descendo=False,
+                        bloqueios=self.bloqueios_histerese,
+                        ekf_ativo=self.usar_filtro
+                    )
                 cv2.putText(cv_image, f"Alt: {altitude:.1f}m | FILTRANDO PONTO INICIAL...", (20, 40), 
                             cv2.FONT_HERSHEY_DUPLEX, 0.65, (0, 165, 255), 1, cv2.LINE_AA)
         else:
@@ -351,5 +388,6 @@ class RastreadorYOLO(Node):
             cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 
                         cv2.FONT_HERSHEY_DUPLEX, 0.65, cor, 1, cv2.LINE_AA)
             
-        cv2.imshow(self.nome_janela, cv_image)
-        cv2.waitKey(1)
+        if self.mostrar_janela:
+            cv2.imshow(self.nome_janela, cv_image)
+            cv2.waitKey(1)

@@ -6,6 +6,7 @@ collections.MutableMapping = collections.abc.MutableMapping
 # ---------------------------------------------------------
 
 from dronekit import connect, VehicleMode
+import argparse
 import sys
 import os
 import csv
@@ -20,6 +21,7 @@ from datetime import datetime
 from controle_voo.takeoff import arm_and_takeoff
 from controle_voo.gimbal import apontar_gimbal_nadir
 from controle_voo.movimento import ir_para_posicao_local, enviar_velocidade, girar_drone, configurar_parametro
+from gazebo_pose import parsear_pose_info_gz, ler_poses_absolutas_gazebo
 from visao.rastreador import RastreadorYOLO
 
 CONEXAO = 'udp:127.0.0.1:14550'
@@ -34,7 +36,28 @@ def aguardar_atributos(vehicle, timeout=30):
         time.sleep(1)
     return False
 
+
+def parsear_argumentos(argv=None):
+    """Lê as opções de linha de comando para execução com/sem interface gráfica e salvamento automático."""
+    parser = argparse.ArgumentParser(description="Missão autônoma de captura visual VTS")
+    parser.add_argument(
+        '--sem-gui',
+        action='store_true',
+        help='Executa sem abrir janelas OpenCV (ativado automaticamente se DISPLAY/WAYLAND_DISPLAY estiverem ausentes).',
+    )
+    parser.add_argument(
+        '--auto',
+        action='store_true',
+        help='Registra automaticamente no CSV usando os critérios objetivos de T3, T4 e T5 sem pedir [S/N/D].',
+    )
+    return parser.parse_args(argv)
+
+
 def main():
+    args = parsear_argumentos()
+    sem_display = not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY')
+    mostrar_janela = not (args.sem_gui or sem_display)
+    print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | Registro CSV: {'AUTOMATICO (--auto)' if args.auto else 'CONFIRMACAO MANUAL [S/N/D]'}")
     print(f"Conectando ao drone em: {CONEXAO}")
     try:
         vehicle = connect(CONEXAO, wait_ready=False, heartbeat_timeout=15)
@@ -49,6 +72,8 @@ def main():
         sys.exit(1)
         
     rclpy.init()
+    rastreador_node = None
+    rastreador_fino_node = None
 
     try:
         print("[+] Conexão bem-sucedida! Iniciando missão...")
@@ -56,6 +81,7 @@ def main():
         # Trava total de Yaw no ArduPilot: impede qualquer rotação automática na direção de voo
         print("[+] Configurando ArduPilot: trava absoluta de Yaw (WP_YAW_BEHAVIOR = 0)...")
         configurar_parametro(vehicle, 'WP_YAW_BEHAVIOR', 0)
+        configurar_parametro(vehicle, 'LAND_SPD_MS', 0.8)
 
         # 1. Aponta câmera para baixo e VIRA ELA 90 GRAUS PARA A ESQUERDA (-90)
         # Isso garante que desde a Fase 1 o drone vai voar com o chassi 90º rotacionado à direita
@@ -110,8 +136,13 @@ def main():
         print("\n[+] Voo estabilizado! Iniciando Inteligência Visual...")
         tempo_inicio_missao = time.time()
         
+        # Inicializa Logger de Telemetria Científica Contínua
+        from telemetria_logger import TelemetriaLogger
+        telemetria = TelemetriaLogger()
+        print(f"[+] Gravando telemetria contínua em: {telemetria.nome_arquivo}")
+        
         # 4. Inicia o Cérebro ROS (Visão Computacional)
-        rastreador_node = RastreadorYOLO(vehicle)
+        rastreador_node = RastreadorYOLO(vehicle, logger=telemetria, mostrar_janela=mostrar_janela)
         
         try:
             # O ROS assume o controle dos motores a partir daqui
@@ -126,11 +157,13 @@ def main():
             
             # Limpa os processos da fase 1
             rastreador_node.destroy_node()
-            cv2.destroyAllWindows()
+            rastreador_node = None
+            if mostrar_janela:
+                cv2.destroyAllWindows()
             
             # 5. Inicia o Cérebro ROS da Fase 2 (Ajuste Fino)
             from visao.rastreador_fino import RastreadorFinoYOLO
-            rastreador_fino_node = RastreadorFinoYOLO(vehicle)
+            rastreador_fino_node = RastreadorFinoYOLO(vehicle, logger=telemetria, mostrar_janela=mostrar_janela)
             
             try:
                 rclpy.spin(rastreador_fino_node)
@@ -138,14 +171,18 @@ def main():
                 tempo_total_missao = round(time.time() - tempo_inicio_missao, 2)
                 print("\n[+] Fase Micro concluída! Alvo capturado. Pousando para inspeção visual...")
                 
-                # Extrai as métricas finais registradas no nó antes de destruí-lo (Testes 4 e 5)
-                err_x_mm = round((rastreador_fino_node.erro_final_x or 0.0) * 1000.0, 2)
-                err_y_mm = round((rastreador_fino_node.erro_final_y or 0.0) * 1000.0, 2)
-                rmse_mm = round(math.sqrt(err_x_mm**2 + err_y_mm**2), 2)
+                # Extrai as métricas visuais registradas antes do Blind Drop (referência de voo)
+                err_x_vis_mm = round((rastreador_fino_node.erro_final_x or 0.0) * 1000.0, 2)
+                err_y_vis_mm = round((rastreador_fino_node.erro_final_y or 0.0) * 1000.0, 2)
+                rmse_vis_mm = round(math.sqrt(err_x_vis_mm**2 + err_y_vis_mm**2), 2)
                 err_yaw_deg = round(rastreador_fino_node.ultimo_erro_yaw_deg if rastreador_fino_node.ultimo_erro_yaw_deg is not None else 0.0, 2)
+                gz_pre_resultado = rastreador_fino_node.gz_pre_resultado
+                diag_thread = rastreador_fino_node.diagnostico_thread
                 
                 rastreador_fino_node.destroy_node()
-                cv2.destroyAllWindows()
+                rastreador_fino_node = None
+                if mostrar_janela:
+                    cv2.destroyAllWindows()
                 
                 # 6. Fase 3 - Pouso e Desarme sobre a Gaiola
                 from dronekit import VehicleMode
@@ -154,9 +191,28 @@ def main():
                 
                 print("[+] Aguardando o toque no solo e o desarme automático dos motores...")
                 while vehicle.armed:
-                    time.sleep(1)
+                    time.sleep(0.25)
                     
                 print("\n[+] VANT desarmado sobre a armadilha!")
+                time.sleep(0.5)
+                if diag_thread is not None:
+                    diag_thread.join(timeout=2.0)
+
+                # Medição absoluta pós-pouso completo no mundo Gazebo (Ground Truth)
+                poses_mundo = ler_poses_absolutas_gazebo(world_name='iris_runway')
+                if poses_mundo is not None:
+                    pos_drone = poses_mundo['drone_coaxial']['position']
+                    pos_armadilha = poses_mundo['armadilha_alvo']['position']
+                    err_x_mm = round((pos_drone['x'] - pos_armadilha['x']) * 1000.0, 2)
+                    err_y_mm = round((pos_drone['y'] - pos_armadilha['y']) * 1000.0, 2)
+                    rmse_mm = round(math.sqrt(err_x_mm**2 + err_y_mm**2), 2)
+                    fonte_erro_t5 = "MUNDO GAZEBO (Pós-Pouso Completo)"
+                else:
+                    print("[!] Aviso: falha ao ler /world/iris_runway/pose/info; usando erro visual pré-Blind Drop.")
+                    pos_drone = None
+                    pos_armadilha = None
+                    err_x_mm, err_y_mm, rmse_mm = err_x_vis_mm, err_y_vis_mm, rmse_vis_mm
+                    fonte_erro_t5 = "VISAO PRE-BLIND DROP (Fallback)"
                 
                 # =============================================================
                 # CONSOLIDAÇÃO MULTI-TESTE (TESTES 3, 4 E 5 UNIFICADOS)
@@ -172,50 +228,99 @@ def main():
                 print(f"   -> Maior Afastamento: {t3_max_afastamento:.1f}% da borda (Bloqueios de descida: {t3_bloqueios})")
                 print(f" [TESTE 4 - YAW]:")
                 print(f"   -> Erro Final de Yaw: {err_yaw_deg:+.2f}° (Meta TCC: <= 1.0°)")
-                print(f" [TESTE 5 - ACOPLAMENTO & OFFSET]:")
-                print(f"   -> Erro Final em X  : {err_x_mm:+.2f} mm")
-                print(f"   -> Erro Final em Y  : {err_y_mm:+.2f} mm")
-                print(f"   -> RMSE Cravado     : {rmse_mm:.2f} mm (Meta TCC: <= 8.0 mm)")
-                print("-" * 68)
-                print("🔍 Olhe no Gazebo 3D para verificar a posição física da garra:")
-                print("  [S] Salvar como SUCESSO (A garra acoplou perfeitamente no gancho)")
-                print("  [N] Salvar como FALHA   (A garra errou o gancho ou deslocou a gaiola)")
-                print("  [D] DESCARTAR / TESTE   (Não salvar no CSV, apenas teste experimental)")
-                print("-" * 68)
-                
-                try:
-                    escolha = input(">> Deseja salvar este voo? [S/N/D] (Padrão: D): ").strip().upper()
-                except Exception:
-                    escolha = 'D'
-                    
-                if escolha in ['S', 'SIM']:
-                    status_str = 'SIM'
-                elif escolha in ['N', 'NAO', 'NÃO']:
-                    status_str = 'NAO'
+                print(f" [TESTE 5 - ACOPLAMENTO & OFFSET ({fonte_erro_t5})]:")
+                if pos_drone is not None and pos_armadilha is not None:
+                    print(f"   -> Pos. Drone Mundo : X={pos_drone['x']:.4f} m | Y={pos_drone['y']:.4f} m | Z={pos_drone['z']:.4f} m")
+                    print(f"   -> Pos. Alvo Mundo  : X={pos_armadilha['x']:.4f} m | Y={pos_armadilha['y']:.4f} m | Z={pos_armadilha['z']:.4f} m")
+                print(f"   -> Erro Mundo X (L) : {err_x_mm:+.2f} mm")
+                print(f"   -> Erro Mundo Y (N) : {err_y_mm:+.2f} mm")
+                print(f"   -> Erro Radial Mundo: {rmse_mm:.2f} mm (Meta TCC: <= 8.0 mm)")
+                print(f"   -> (Ref. Visão pré-Blind Drop : {rmse_vis_mm:.2f} mm | X={err_x_vis_mm:+.2f}, Y={err_y_vis_mm:+.2f})")
+                if gz_pre_resultado:
+                    print(f"   -> (Ref. Gazebo pré-Blind Drop: {gz_pre_resultado['rmse_mm']:.2f} mm | X={gz_pre_resultado['dx_mm']:+.2f}, Y={gz_pre_resultado['dy_mm']:+.2f} | Diff={gz_pre_resultado['diff_mm']:.2f} mm)")
                 else:
+                    print("   -> (Ref. Gazebo pré-Blind Drop: indisponível)")
+                print("-" * 68)
+                # Fechamento do logger de telemetria
+                telemetria.fechar()
+                
+                # Avaliação analítica de critérios do TCC
+                criterio_t3 = (t3_fov_retido == 'SIM')
+                criterio_t4 = (abs(err_yaw_deg) <= 1.0)
+                criterio_t5 = (rmse_mm <= 8.0)
+                sucesso_automatico = (criterio_t3 and criterio_t4 and criterio_t5)
+                status_sugerido = 'SIM' if sucesso_automatico else 'NAO'
+                
+                print("🔍 Avaliação Analítica dos Critérios do TCC:")
+                print(f"   -> [T3] 100% Retido no FOV  : {'ATENDIDO' if criterio_t3 else 'NAO ATENDIDO'}")
+                print(f"   -> [T4] Erro Yaw <= 1.0°    : {'ATENDIDO' if criterio_t4 else 'NAO ATENDIDO'} ({err_yaw_deg:+.2f}°)")
+                print(f"   -> [T5] RMSE <= 8.0 mm      : {'ATENDIDO' if criterio_t5 else 'NAO ATENDIDO'} ({rmse_mm:.2f} mm)")
+                print(f"   => Classificação Automática: {status_sugerido}")
+                print("-" * 68)
+                if args.auto:
+                    status_str = status_sugerido
+                    print(f"[+] Registro automático (--auto): voo classificado como {status_str} pelos critérios T3/T4/T5.")
+                else:
+                    print("  [S] Confirmar SUCESSO | [N] Marcar FALHA | [D] DESCARTAR")
+                    
                     status_str = None
+                    while True:
+                        try:
+                            escolha = input(f">> Confirme o resultado do voo [S/N/D] (Sugestão automática: {status_sugerido}): ").strip().upper()
+                        except EOFError:
+                            escolha = 'D'
+                        
+                        if escolha in ['S', 'SIM']:
+                            status_str = 'SIM'
+                            break
+                        elif escolha in ['N', 'NAO', 'NÃO']:
+                            status_str = 'NAO'
+                            break
+                        elif escolha in ['D', 'DESCARTAR']:
+                            status_str = None
+                            break
+                        else:
+                            print("[!] Opção inválida. Digite S (Sucesso), N (Falha) ou D (Descartar).")
                     
                 caminho_csv = os.path.join(os.path.dirname(__file__), 'relatorio_testes_monte_carlo.csv')
+                colunas_csv = [
+                    'Timestamp', 'Alt_Inicial_m', 'Erro_GPS_Raio_m', 'Yaw_Inicial_deg', 'Tempo_Total_s',
+                    'T3_FOV_Retido', 'T3_Max_Afastamento_pct', 'T3_Bloqueios_Histerese',
+                    'T4_Erro_Yaw_Final_deg',
+                    'T5_Erro_X_mm', 'T5_Erro_Y_mm', 'T5_RMSE_Final_mm', 'T5_Acoplamento_Confirmado',
+                    'Arquivo_Telemetria',
+                    'T5_Erro_X_PreBlindDrop_mm', 'T5_Erro_Y_PreBlindDrop_mm', 'T5_RMSE_PreBlindDrop_mm'
+                ]
                 
                 if status_str is not None:
-                    arquivo_existe = os.path.exists(caminho_csv)
+                    arquivo_existe = os.path.exists(caminho_csv) and os.path.getsize(caminho_csv) > 0
+                    if arquivo_existe:
+                        with open(caminho_csv, 'r', newline='', encoding='utf-8') as f_in:
+                            linhas_existentes = list(csv.reader(f_in))
+                        if not linhas_existentes:
+                            arquivo_existe = False
+                        elif len(linhas_existentes[0]) < len(colunas_csv):
+                            linhas_migradas = [colunas_csv]
+                            for linha_antiga in linhas_existentes[1:]:
+                                faltantes = len(colunas_csv) - len(linha_antiga)
+                                linhas_migradas.append(linha_antiga + [''] * max(0, faltantes))
+                            with open(caminho_csv, 'w', newline='', encoding='utf-8') as f_out:
+                                csv.writer(f_out).writerows(linhas_migradas)
                     with open(caminho_csv, 'a', newline='', encoding='utf-8') as f_csv:
                         writer = csv.writer(f_csv)
                         if not arquivo_existe:
-                            writer.writerow([
-                                'Timestamp', 'Alt_Inicial_m', 'Erro_GPS_Raio_m', 'Yaw_Inicial_deg', 'Tempo_Total_s',
-                                'T3_FOV_Retido', 'T3_Max_Afastamento_pct', 'T3_Bloqueios_Histerese',
-                                'T4_Erro_Yaw_Final_deg',
-                                'T5_Erro_X_mm', 'T5_Erro_Y_mm', 'T5_RMSE_Final_mm', 'T5_Acoplamento_Confirmado'
-                            ])
+                            writer.writerow(colunas_csv)
                         writer.writerow([
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             altitude_inicial, raio_erro, angulo_aleatorio, tempo_total_missao,
                             t3_fov_retido, t3_max_afastamento, t3_bloqueios,
                             err_yaw_deg,
-                            err_x_mm, err_y_mm, rmse_mm, status_str
+                            err_x_mm, err_y_mm, rmse_mm, status_str,
+                            telemetria.nome_arquivo,
+                            err_x_vis_mm, err_y_vis_mm, rmse_vis_mm
                         ])
                     print(f"\n[+] Voo registrado com sucesso em: {os.path.basename(caminho_csv)} ({status_str})")
+                    print(f"[+] Telemetria gravada em: {telemetria.nome_arquivo}")
                     
                     # Exibe histórico consolidado
                     try:
@@ -230,6 +335,9 @@ def main():
                             
                             rmses = [float(l[11]) for l in linhas if len(l) > 11]
                             rmse_medio = sum(rmses) / len(rmses) if rmses else 0.0
+
+                            rmses_pre = [float(l[16]) for l in linhas if len(l) > 16 and l[16] != '']
+                            rmse_pre_medio = sum(rmses_pre) / len(rmses_pre) if rmses_pre else None
                             
                             yaws = [abs(float(l[8])) for l in linhas if len(l) > 8]
                             yaw_medio = sum(yaws) / len(yaws) if yaws else 0.0
@@ -238,7 +346,9 @@ def main():
                             print(f"📊 HISTÓRICO CONSOLIDADO ({total_testes} missões oficiais gravadas):")
                             print(f"   [Teste 3] Taxa de Retenção FOV   : {fov_100_pct}/{total_testes} ({taxa_fov:.1f}%) [Meta: 100%]")
                             print(f"   [Teste 4] Erro Médio de Yaw      : {yaw_medio:.2f}° [Meta: <= 1.0°]")
-                            print(f"   [Teste 5] RMSE Médio de Posição  : {rmse_medio:.2f} mm (Mín: {min(rmses):.2f} mm, Máx: {max(rmses):.2f} mm)")
+                            if rmse_pre_medio is not None:
+                                print(f"   [Teste 5] Erro Pré-Blind Drop    : {rmse_pre_medio:.2f} mm")
+                            print(f"   [Teste 5] Erro Pós-LAND (Mundo)  : {rmse_medio:.2f} mm (Mín: {min(rmses):.2f} mm, Máx: {max(rmses):.2f} mm)")
                             print(f"   [Teste 5] Taxa Real Acoplamento  : {sucessos_t5}/{total_testes} ({taxa_acoplamento:.1f}%) [Meta TCC: > 60%]")
                     except Exception:
                         pass
@@ -259,9 +369,20 @@ def main():
         except:
             pass
             
-        cv2.destroyAllWindows()
-        if 'rastreador_node' in locals():
+        if 'mostrar_janela' in locals() and mostrar_janela:
+            try:
+                cv2.destroyAllWindows()
+            except Exception:
+                pass
+        if 'telemetria' in locals():
+            try:
+                telemetria.fechar()
+            except:
+                pass
+        if rastreador_node is not None:
             rastreador_node.destroy_node()
+        if rastreador_fino_node is not None:
+            rastreador_fino_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
         vehicle.close()

@@ -7,7 +7,12 @@ pkill -9 -f "ardupilot|mavproxy|gz|sim_vehicle|ruby"
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/ardupilot_gazebo
 export GZ_SIM_RESOURCE_PATH="$PWD/models:$PWD/worlds:/opt/ros/jazzy/share"
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$PWD/build"
+
+# Com interface gráfica
 gz sim -v4 -r worlds/tcc.sdf
+
+# Sem interface gráfica
+gz sim -v4 -s -r --headless-rendering worlds/tcc.sdf
 
 # Terminal 2: ArduPilot SITL. Use -w na primeira execucao (ou sempre que
 
@@ -29,6 +34,10 @@ ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.m
 
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/missao
 python3 main.py
+
+ou
+
+python3 main.py --sem-gui --auto
 
 # Para executar a captura automatizada de fotos da Fase 2:
 
