@@ -33,6 +33,7 @@ class RastreadorYOLO(Node):
         self.erro_x_anterior = 0.0
         self.erro_y_anterior = 0.0
         self.ultimo_tempo = None
+        self.ultimo_log_headless = 0.0
         self.descendo = False # Estado da histerese de descida
         
         self.zona_segura = 0.4  # 40% do centro da tela (Retângulo interno)
@@ -139,6 +140,10 @@ class RastreadorYOLO(Node):
         cv2.drawMarker(cv_image, (int(cx), int(cy)), (255, 255, 255), markerType=cv2.MARKER_CROSS, markerSize=14, thickness=1)
         cv2.putText(cv_image, "MIRA", (int(cx) + 10, int(cy) - 8),
                     cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+
+        texto_status = ""
+        erro_xy_m = None
+        afastamento_pct_log = None
         
         if len(resultados[0].boxes) > 0:
             # Reseta temporizadores de perda de alvo e varredura de busca
@@ -256,6 +261,8 @@ class RastreadorYOLO(Node):
                     
                 # Envia o comando para os motores
                 enviar_velocidade(self.vehicle, vel_x, vel_y, vel_z)
+                erro_xy_m = (erro_x**2 + erro_y**2)**0.5
+                afastamento_pct_log = afastamento_pct
                 if self.logger:
                     self.logger.registrar(
                         fase='FASE 1: MACRO',
@@ -295,7 +302,8 @@ class RastreadorYOLO(Node):
                         bloqueios=self.bloqueios_histerese,
                         ekf_ativo=self.usar_filtro
                     )
-                cv2.putText(cv_image, f"Alt: {altitude:.1f}m | FILTRANDO PONTO INICIAL...", (20, 40), 
+                texto_status = "FILTRANDO PONTO INICIAL..."
+                cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 
                             cv2.FONT_HERSHEY_DUPLEX, 0.65, (0, 165, 255), 1, cv2.LINE_AA)
         else:
             # Nenhum alvo detectado pelo YOLO!
@@ -391,3 +399,13 @@ class RastreadorYOLO(Node):
         if self.mostrar_janela:
             cv2.imshow(self.nome_janela, cv_image)
             cv2.waitKey(1)
+        else:
+            self._gerar_log_terminal(tempo_atual, altitude, texto_status, erro_xy_m, afastamento_pct_log)
+
+    def _gerar_log_terminal(self, tempo_atual, altitude, texto_status, erro_xy_m=None, afastamento_pct=None):
+        """Gera log periódico no terminal durante a Fase 1 em modo headless (--sem-gui)."""
+        if (tempo_atual - self.ultimo_log_headless) >= 3.0:
+            self.ultimo_log_headless = tempo_atual
+            info_erro = f" | Erro={erro_xy_m:.2f}m" if erro_xy_m is not None else ""
+            info_fov = f" | FOV={afastamento_pct:.1f}%" if afastamento_pct is not None else ""
+            self.get_logger().info(f"[HEADLESS] [FASE 1] Alt={altitude:.2f}m{info_erro}{info_fov} | {texto_status}")
