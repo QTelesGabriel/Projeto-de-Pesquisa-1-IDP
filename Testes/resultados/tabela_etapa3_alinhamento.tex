@@ -1,0 +1,24 @@
+% ==================== TABELA LATEX: 3ª ETAPA (ALINHAMENTO @ 0,20m) ====================
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{4.5pt}
+    \captionsetup{justification=centering}
+    \caption{Comparativo de desempenho entre arquiteturas YOLO na 3ª Etapa (alinhamento fino a 0,20 m)}
+    \label{tab:comparativo_yolo_etapa3_alinhamento}
+    \vspace{0.2cm}
+    \begin{tabular}{lccccccc}
+        \hline
+        \textbf{Modelo} & \textbf{$mAP@50$ (Val)} & \textbf{$mAP@50\text{--}95$ (Val)} & \textbf{$mAP@50\text{--}95$ (Test)} & \textbf{IoU Médio} & \textbf{Erro Centro (mm)} & \textbf{Lat. (ms)} & \textbf{FPS} \\
+        \hline
+        YOLOv8n   & 99.50\%    & 95.75\%    & 95.42\%    & 95.66\%    & 0.43       & 38.1     & 26.2 \\
+        YOLOv10n  & 99.50\%    & 99.50\%    & 99.50\%    & 96.49\%    & 0.50       & 35.0     & 28.6 \\
+        YOLOv11n  & 99.50\%    & 99.50\%    & 99.50\%    & 95.46\%    & 0.41       & 38.8     & 25.8 \\
+        YOLO26n   & 99.50\%    & 99.50\%    & 99.50\%    & 96.58\%    & 0.44       & 39.0     & 25.7 \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}

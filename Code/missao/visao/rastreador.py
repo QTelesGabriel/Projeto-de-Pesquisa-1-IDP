@@ -12,10 +12,11 @@ from ultralytics import YOLO
 from controle_voo.movimento import enviar_velocidade
 
 class RastreadorYOLO(Node):
-    def __init__(self, vehicle, logger=None, mostrar_janela=True):
+    def __init__(self, vehicle, logger=None, mostrar_janela=True, teste2_logger=None):
         super().__init__('rastreador_yolo')
         self.vehicle = vehicle
         self.logger = logger
+        self.teste2_logger = teste2_logger
         self.mostrar_janela = mostrar_janela
         self.bridge = CvBridge()
         
@@ -279,6 +280,23 @@ class RastreadorYOLO(Node):
                         descendo=self.descendo,
                         bloqueios=self.bloqueios_histerese,
                         ekf_ativo=self.usar_filtro
+                    )
+                if self.teste2_logger:
+                    self.teste2_logger.registrar(
+                        fase='FASE 1: MACRO',
+                        etapa='DESCIDA FUNIL' if self.descendo else 'BLOQUEIO HISTERESE',
+                        altitude_m=altitude,
+                        vehicle=self.vehicle,
+                        oclusao_ativa=False,
+                        visivel_yolo=True,
+                        ekf_predizendo=False,
+                        erro_x_bruto_m=x_m,
+                        erro_y_bruto_m=y_m,
+                        erro_x_ekf_m=erro_x,
+                        erro_y_ekf_m=erro_y,
+                        vel_x=vel_x,
+                        vel_y=vel_y,
+                        vel_z=vel_z,
                     )
                 
                 cv2.putText(cv_image, f"Alt: {altitude:.1f}m | {texto_status}", (20, 40), 

@@ -24,11 +24,14 @@ except ImportError:
     from gazebo_pose import ler_poses_absolutas_gazebo
 
 class RastreadorFinoYOLO(Node):
-    def __init__(self, vehicle, logger=None, mostrar_janela=True):
+    def __init__(self, vehicle, logger=None, mostrar_janela=True, teste_oclusao=False, duracao_oclusao=3.8, teste2_logger=None):
         super().__init__('rastreador_fino_yolo')
         self.vehicle = vehicle
         self.logger = logger
+        self.teste2_logger = teste2_logger
         self.mostrar_janela = mostrar_janela
+        self.teste_oclusao = bool(teste_oclusao)
+        self.duracao_oclusao = float(duracao_oclusao)
         self.bridge = CvBridge()
         
         # 1. Carrega o modelo YOLO da Fase 2 (Melhor treinado: YOLOv10n - mAP50-95 de 89.08% - 2 Classes: 0: alca, 1: armadilha)
@@ -108,6 +111,11 @@ class RastreadorFinoYOLO(Node):
         self.ultimo_alt_blind_drop = None
         self.tempo_alt_estagnada = None
         self.diagnostico_thread = None
+        self.teste_oclusao_estado = 'AGUARDANDO'
+        self.tempo_inicio_oclusao = None
+        self.tempo_fim_oclusao = None
+        self.frames_visiveis_etapa3 = 0
+        self._threads_marcos = []
         self.blind_drop_pos_norte = None
         self.blind_drop_pos_leste = None
         self.blind_drop_down_inicio = None
@@ -224,7 +232,7 @@ class RastreadorFinoYOLO(Node):
             return
 
         # Comuta imediatamente para o novo modelo Alinhamento ao cruzar 0.35m (sem esperar alinhamento total a 0.35m)
-        if self.rotacao_concluida and not self.usando_modelo_alinhamento and altitude_bruta <= self.alt_transicao_alinhamento:
+        if self.rotacao_concluida and not self.usando_modelo_alinhamento and altitude_bruta <= self.alt_transicao_alinhamento and self.teste_oclusao_estado != 'ATIVA':
             self.usando_modelo_alinhamento = True
             self.ema_x1 = self.ema_y1 = self.ema_x2 = self.ema_y2 = None
             self._resetar_derivada = True
@@ -247,15 +255,31 @@ class RastreadorFinoYOLO(Node):
         # --- PERCEPÇÃO VISUAL (Fase 2: 2 Classes | Etapa Final: 1 Classe 'Alinhamento') ---
         # ISOLAMENTO DE IMAGEM: O YOLO recebe um clone intocado (cópia limpa) da câmera.
         # Nenhuma alteração gráfica do OpenCV contamina a entrada do modelo.
-        img_yolo = cv_image.copy()
-        modelo_ativo = self.yolo_alinhamento if self.usando_modelo_alinhamento else self.yolo
-        resultados = modelo_ativo.predict(img_yolo, verbose=False, conf=0.5)
-        
+        oclusao_ativa = self._atualizar_estado_oclusao(tempo_atual, dt, altitude_bruta)
+        if oclusao_ativa:
+            boxes = []
+            if self.mostrar_janela:
+                cv_image = (cv_image * 0.22).astype(np.uint8)
+                t_occ = tempo_atual - self.tempo_inicio_oclusao
+                cv2.putText(
+                    cv_image,
+                    f"OCLUSAO SIMULADA (EKF PREDIZENDO): {t_occ:.2f}s / {self.duracao_oclusao:.2f}s",
+                    (int(self.cx) - 340, int(self.cy) - 55),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.85, (0, 140, 255), 2, cv2.LINE_AA
+                )
+        else:
+            img_yolo = cv_image.copy()
+            modelo_ativo = self.yolo_alinhamento if self.usando_modelo_alinhamento else self.yolo
+            resultados = modelo_ativo.predict(img_yolo, verbose=False, conf=0.5)
+            boxes = resultados[0].boxes
+
         centro_x, centro_y = None, None
         box_cx, box_cy = None, None
+        x_yolo_bruto_m, y_yolo_bruto_m = None, None
         detectou_alvo = False
         alcas_pts = []
         erro_angular_deg = None
+        erro_yaw_bruto_deg = None
         yaw_rate = 0.0
         
         # 1. Desenha a mira central (Eixo óptico da Câmera / Centro do Drone)
@@ -265,7 +289,6 @@ class RastreadorFinoYOLO(Node):
         cv2.putText(cv_image, "MIRA (Centro Camera)", (int(self.cx) + 12, int(self.cy) - 10), 
                     cv2.FONT_HERSHEY_DUPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
         
-        boxes = resultados[0].boxes
         if len(boxes) > 0:
             if self.usando_modelo_alinhamento:
                 # Modelo Etapa Final: 1 classe (0: Alinhamento)
@@ -287,8 +310,22 @@ class RastreadorFinoYOLO(Node):
             # 2. Analisa o alvo principal (Armadilha ou Alinhamento) e calcula o Alvo Virtual com Offset
             if len(boxes_alvo) > 0:
                 detectou_alvo = True
+                if self.rotacao_concluida and not self.usando_modelo_alinhamento:
+                    self.frames_visiveis_etapa3 += 1
                 best_alvo = max(boxes_alvo, key=lambda b: float(b.conf[0].item()))
                 x1_raw, y1_raw, x2_raw, y2_raw = map(float, best_alvo.xyxy[0].cpu().numpy())
+
+                raw_w = x2_raw - x1_raw
+                raw_h = y2_raw - y1_raw
+                raw_cx = x1_raw + raw_w / 2.0
+                raw_cy = y1_raw + raw_h / 2.0
+                if self.rotacao_concluida:
+                    alvo_raw_x = raw_cx + (raw_w * offset_x_ativo)
+                    alvo_raw_y = raw_cy - (raw_h * offset_y_ativo)
+                else:
+                    alvo_raw_x, alvo_raw_y = raw_cx, raw_cy
+                x_yolo_bruto_m = (alvo_raw_x - self.cx) * altitude_relativa / self.fx
+                y_yolo_bruto_m = (alvo_raw_y - self.cy) * altitude_relativa / self.fy
                 
                 # Filtro EMA para suavizar a bounding box do alvo
                 alpha_ema = self.ema_alpha_alinhamento if self.usando_modelo_alinhamento else self.ema_alpha
@@ -382,6 +419,9 @@ class RastreadorFinoYOLO(Node):
                     # Separa consistentemente b1 (esquerda) e b2 (direita) pelo produto vetorial com o eixo
                     mid_raw = (cand_b1 + cand_b2) / 2.0
                     u_raw = apex_raw - mid_raw
+                    ang_yolo_puro = math.atan2(float(u_raw[1]), float(u_raw[0]))
+                    erro_yaw_bruto = (ang_yolo_puro - self.angulo_alvo + math.pi) % (2.0 * math.pi) - math.pi
+                    erro_yaw_bruto_deg = math.degrees(erro_yaw_bruto)
                     v_cand = cand_b1 - mid_raw
                     cross = u_raw[0] * v_cand[1] - u_raw[1] * v_cand[0]
                     if cross > 0:
@@ -694,6 +734,26 @@ class RastreadorFinoYOLO(Node):
                     bloqueios=0,
                     ekf_ativo=self.usar_filtro
                 )
+            if self.teste2_logger:
+                self.teste2_logger.registrar(
+                    fase='FASE 2: MICRO',
+                    etapa=self.etapa_atual_nome,
+                    altitude_m=altitude_bruta,
+                    vehicle=self.vehicle,
+                    oclusao_ativa=oclusao_ativa,
+                    visivel_yolo=detectou_alvo,
+                    ekf_predizendo=(self.usar_filtro and not detectou_alvo),
+                    erro_x_bruto_m=x_yolo_bruto_m,
+                    erro_y_bruto_m=y_yolo_bruto_m,
+                    erro_x_ekf_m=erro_x,
+                    erro_y_ekf_m=erro_y,
+                    yaw_bruto_deg=erro_yaw_bruto_deg,
+                    yaw_ekf_deg=(None if self.rotacao_concluida else erro_angular_deg),
+                    vel_x=vel_x,
+                    vel_y=vel_y,
+                    vel_z=vel_z,
+                    yaw_rate=yaw_rate,
+                )
         else:
             enviar_velocidade(self.vehicle, 0.0, 0.0, 0.0, 0.0)
             if self.logger:
@@ -712,6 +772,20 @@ class RastreadorFinoYOLO(Node):
                     descendo=False,
                     bloqueios=0,
                     ekf_ativo=False
+                )
+            if self.teste2_logger:
+                self.teste2_logger.registrar(
+                    fase='FASE 2: MICRO',
+                    etapa=self.etapa_atual_nome,
+                    altitude_m=altitude_bruta,
+                    vehicle=self.vehicle,
+                    oclusao_ativa=oclusao_ativa,
+                    visivel_yolo=detectou_alvo,
+                    ekf_predizendo=False,
+                    erro_x_bruto_m=x_yolo_bruto_m,
+                    erro_y_bruto_m=y_yolo_bruto_m,
+                    yaw_bruto_deg=erro_yaw_bruto_deg,
+                    yaw_ekf_deg=(None if self.rotacao_concluida else erro_angular_deg),
                 )
             self.etapa_atual_nome = "ALVO PERDIDO (Aguardando)"
             cor_status = (0, 0, 255)
@@ -945,5 +1019,67 @@ class RastreadorFinoYOLO(Node):
             print(f"   * Dist. Bruta Lente<->Gaiola    : {dist_bruta_lente_mm:.2f} mm (sem compensação de offset)", flush=True)
         if diferenca_mm is not None:
             print(f"   * Diferença |Real - Câmera|     : {diferenca_mm:.2f} mm", flush=True)
+        if self.teste2_logger:
+            self.teste2_logger.registrar_marco('pre_blind_drop', poses_mundo, extra={'erro_visao_mm': round(erro_mm, 2)})
         print("=" * 68 + "\n", flush=True)
+
+    def _agendar_marco_gazebo(self, nome_marco, delay_s=0.0, extra=None):
+        """Captura a pose absoluta do Gazebo em background sem bloquear a malha de 20 Hz."""
+        if not self.teste2_logger:
+            return
+
+        def _worker():
+            if delay_s > 0.0:
+                time.sleep(delay_s)
+            poses = ler_poses_absolutas_gazebo(world_name='iris_runway', tentativas=2, timeout_s=2.0)
+            self.teste2_logger.registrar_marco(nome_marco, poses, extra=extra)
+
+        th = threading.Thread(target=_worker, daemon=True)
+        th.start()
+        self._threads_marcos.append(th)
+
+    def aguardar_marcos_teste2(self, timeout_s=3.0):
+        """Aguarda finalização das threads de leitura do Gazebo do Teste 2."""
+        for th in self._threads_marcos:
+            th.join(timeout=timeout_s)
+
+    def _atualizar_estado_oclusao(self, tempo_atual, dt, altitude_bruta):
+        """Controla a janela isolada de oclusão simulada na Etapa 3 para validação do EKF."""
+        if not self.teste_oclusao or self.teste_oclusao_estado == 'CONCLUIDA':
+            return False
+
+        if self.teste_oclusao_estado == 'AGUARDANDO':
+            if (
+                self.rotacao_concluida
+                and not self.usando_modelo_alinhamento
+                and self.frames_visiveis_etapa3 >= 10
+                and 0.55 <= altitude_bruta <= 1.30
+            ):
+                self.teste_oclusao_estado = 'ATIVA'
+                self.tempo_inicio_oclusao = tempo_atual
+                self._agendar_marco_gazebo('pre_oclusao', extra={'altitude_m': round(altitude_bruta, 3)})
+                self.get_logger().warn(
+                    f"[TESTE 2] OCLUSAO SIMULADA INICIADA @ {altitude_bruta:.2f}m por {self.duracao_oclusao:.2f}s (EKF em predição cega)."
+                )
+                return True
+            return False
+
+        decorrido = tempo_atual - self.tempo_inicio_oclusao
+        proximo_sem_medicao = (self.filtro.tempo_sem_medicao + dt) if self.usar_filtro else decorrido
+        if decorrido >= self.duracao_oclusao or (self.usar_filtro and proximo_sem_medicao > (self.filtro.timeout_limite - 0.08)):
+            self.teste_oclusao_estado = 'CONCLUIDA'
+            self.tempo_fim_oclusao = tempo_atual
+            self.ema_x1 = self.ema_y1 = self.ema_x2 = self.ema_y2 = None
+            self._agendar_marco_gazebo(
+                'pos_oclusao',
+                extra={'altitude_m': round(altitude_bruta, 3), 'duracao_s': round(decorrido, 3)},
+            )
+            self._agendar_marco_gazebo('pos_reaquisicao', delay_s=1.0)
+            self.get_logger().info(
+                f"[TESTE 2] FIM DA OCLUSAO ({decorrido:.2f}s) @ {altitude_bruta:.2f}m — Retomando YOLO para reaquisição."
+            )
+            return False
+
+        return True
+
 

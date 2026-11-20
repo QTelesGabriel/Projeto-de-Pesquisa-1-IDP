@@ -50,6 +50,17 @@ def parsear_argumentos(argv=None):
         action='store_true',
         help='Registra automaticamente no CSV usando os critérios objetivos de T3, T4 e T5 sem pedir [S/N/D].',
     )
+    parser.add_argument(
+        '--teste-oclusao',
+        action='store_true',
+        help='Executa ensaio isolado do Teste 2 (EKF + oclusão simulada no Gazebo), sem gravar no Monte Carlo (T3/T4/T5).',
+    )
+    parser.add_argument(
+        '--duracao-oclusao',
+        type=float,
+        default=3.8,
+        help='Duração da oclusão total simulada na Etapa 3 em segundos (padrão: 3.8s, dentro do limite de 4.0s).',
+    )
     return parser.parse_args(argv)
 
 
@@ -57,7 +68,10 @@ def main():
     args = parsear_argumentos()
     sem_display = not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY')
     mostrar_janela = not (args.sem_gui or sem_display)
-    print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | Registro CSV: {'AUTOMATICO (--auto)' if args.auto else 'CONFIRMACAO MANUAL [S/N/D]'}")
+    if args.teste_oclusao:
+        print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | MODO ISOLADO: TESTE 2 EKF + OCLUSAO ({args.duracao_oclusao:.2f}s) [sem impacto no Teste 5]")
+    else:
+        print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | Registro CSV: {'AUTOMATICO (--auto)' if args.auto else 'CONFIRMACAO MANUAL [S/N/D]'}")
     print(f"Conectando ao drone em: {CONEXAO}")
     try:
         vehicle = connect(CONEXAO, wait_ready=False, heartbeat_timeout=15)
@@ -136,13 +150,30 @@ def main():
         print("\n[+] Voo estabilizado! Iniciando Inteligência Visual...")
         tempo_inicio_missao = time.time()
         
-        # Inicializa Logger de Telemetria Científica Contínua
-        from telemetria_logger import TelemetriaLogger
-        telemetria = TelemetriaLogger()
-        print(f"[+] Gravando telemetria contínua em: {telemetria.nome_arquivo}")
+        # Inicializa logger isolado (Teste 2 no simulador) OU logger padrão (Testes 3/4/5)
+        telemetria = None
+        teste2_logger = None
+        if args.teste_oclusao:
+            from teste2_oclusao_logger import Teste2OclusaoLogger
+            teste2_logger = Teste2OclusaoLogger(condicoes_iniciais={
+                'alt_inicial_m': altitude_inicial,
+                'erro_gps_m': raio_erro,
+                'yaw_inicial_deg': angulo_aleatorio,
+                'duracao_oclusao_cfg_s': args.duracao_oclusao,
+            })
+            print(f"[+] [TESTE 2 ISOLADO] Gravando dados exclusivos em: {teste2_logger.caminho_csv}")
+        else:
+            from telemetria_logger import TelemetriaLogger
+            telemetria = TelemetriaLogger()
+            print(f"[+] Gravando telemetria contínua em: {telemetria.nome_arquivo}")
         
         # 4. Inicia o Cérebro ROS (Visão Computacional)
-        rastreador_node = RastreadorYOLO(vehicle, logger=telemetria, mostrar_janela=mostrar_janela)
+        rastreador_node = RastreadorYOLO(
+            vehicle,
+            logger=telemetria,
+            mostrar_janela=mostrar_janela,
+            teste2_logger=teste2_logger,
+        )
         
         try:
             # O ROS assume o controle dos motores a partir daqui
@@ -163,7 +194,14 @@ def main():
             
             # 5. Inicia o Cérebro ROS da Fase 2 (Ajuste Fino)
             from visao.rastreador_fino import RastreadorFinoYOLO
-            rastreador_fino_node = RastreadorFinoYOLO(vehicle, logger=telemetria, mostrar_janela=mostrar_janela)
+            rastreador_fino_node = RastreadorFinoYOLO(
+                vehicle,
+                logger=telemetria,
+                mostrar_janela=mostrar_janela,
+                teste_oclusao=args.teste_oclusao,
+                duracao_oclusao=args.duracao_oclusao,
+                teste2_logger=teste2_logger,
+            )
             
             try:
                 rclpy.spin(rastreador_fino_node)
@@ -178,6 +216,7 @@ def main():
                 err_yaw_deg = round(rastreador_fino_node.ultimo_erro_yaw_deg if rastreador_fino_node.ultimo_erro_yaw_deg is not None else 0.0, 2)
                 gz_pre_resultado = rastreador_fino_node.gz_pre_resultado
                 diag_thread = rastreador_fino_node.diagnostico_thread
+                marcos_threads = list(rastreador_fino_node._threads_marcos)
                 
                 rastreador_fino_node.destroy_node()
                 rastreador_fino_node = None
@@ -197,9 +236,21 @@ def main():
                 time.sleep(0.5)
                 if diag_thread is not None:
                     diag_thread.join(timeout=2.0)
+                for th in marcos_threads:
+                    th.join(timeout=2.0)
 
                 # Medição absoluta pós-pouso completo no mundo Gazebo (Ground Truth)
                 poses_mundo = ler_poses_absolutas_gazebo(world_name='iris_runway')
+
+                if args.teste_oclusao:
+                    teste2_logger.registrar_marco('pos_pouso', poses_mundo, extra={'tempo_total_s': tempo_total_missao})
+                    teste2_logger.fechar()
+                    testes_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'Testes'))
+                    if testes_dir not in sys.path:
+                        sys.path.insert(0, testes_dir)
+                    from teste_2_simulador_analise import analisar_voo_teste2_simulador
+                    analisar_voo_teste2_simulador(teste2_logger.caminho_csv, teste2_logger.caminho_marcos)
+                    return
                 if poses_mundo is not None:
                     pos_drone = poses_mundo['drone_coaxial']['position']
                     pos_armadilha = poses_mundo['armadilha_alvo']['position']
@@ -374,9 +425,14 @@ def main():
                 cv2.destroyAllWindows()
             except Exception:
                 pass
-        if 'telemetria' in locals():
+        if 'telemetria' in locals() and telemetria is not None:
             try:
                 telemetria.fechar()
+            except:
+                pass
+        if 'teste2_logger' in locals() and teste2_logger is not None:
+            try:
+                teste2_logger.fechar()
             except:
                 pass
         if rastreador_node is not None:
