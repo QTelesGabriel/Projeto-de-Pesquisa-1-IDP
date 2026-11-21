@@ -15,14 +15,41 @@
 \contentsline {subsection}{3.1 Visão Geral e Classificação da Pesquisa}{41}{section*.29}%
 \contentsline {subsection}{3.2 Ambiente de Simulação e Modelagem da Plataforma Aérea}{44}{section*.32}%
 \contentsline {subsection}{3.3 Construção dos Datasets Sintéticos e Treinamento dos Detectores Visuais}{49}{section*.36}%
-\contentsline {subsection}{3.4 Implementação da Filtragem Estocástica de Estados (EKF)}{54}{section*.42}%
-\contentsline {subsection}{3.5 Reconstrução Geométrica 3D e Controle Cinemático}{56}{section*.44}%
-\contentsline {subsection}{3.6 Arquitetura de Máquina de Estados e Sequenciamento da Missão}{61}{section*.47}%
-\contentsline {section}{\numberline {4}Results and Discussion}{68}{section*.51}%
-\contentsline {section}{\numberline {5}Conclusion}{70}{section*.52}%
-\contentsline {section}{References}{71}{section*.53}%
-\contentsline {section}{Appendices}{76}{section*.54}%
-\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{77}{section*.55}%
-\contentsline {section}{Annexes}{78}{section*.56}%
-\contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{79}{section*.57}%
+\contentsline {subsubsection}{3.3.1Justificativa Física e Óptica para a Introdução do Modelo da Fase 3}{50}{section*.37}%
+\contentsline {subsubsection}{3.3.2Treinamento Supervisionado e Comparativo das Arquiteturas YOLO}{51}{section*.39}%
+\contentsline {subsection}{3.4 Implementação da Filtragem Estocástica de Estados (EKF)}{54}{section*.45}%
+\contentsline {subsection}{3.5 Reconstrução Geométrica 3D e Controle Cinemático}{56}{section*.47}%
+\contentsline {subsection}{3.6 Arquitetura de Máquina de Estados e Sequenciamento da Missão}{62}{section*.50}%
+\contentsline {subsection}{3.7 Protocolo Experimental e Definição dos Ensaios de Validação}{67}{section*.54}%
+\contentsline {section}{\numberline {4}Results and Discussion}{71}{section*.56}%
+\contentsline {subsection}{4.1 Visão Geral da Avaliação Experimental}{71}{section*.57}%
+\contentsline {subsection}{4.2 Teste 1 --- Avaliação Comparativa e Desempenho dos Detectores YOLO (Objetivos 1 e 2)}{71}{section*.58}%
+\contentsline {subsubsection}{4.2.1Discussão Crítica e Fatores de Melhoria dos Detectores Visuais}{73}{section*.62}%
+\contentsline {subsection}{4.3 Teste 2 --- Validação Estocástica e em Malha Fechada do Filtro EKF (Objetivo 3)}{74}{section*.63}%
+\contentsline {subsubsection}{4.3.1Discussão Crítica sobre o Desempenho do EKF}{75}{section*.65}%
+\contentsline {subsection}{4.4 Teste 3 --- Retenção no Campo de Visão e Histerese Óptica (Objetivo 4)}{75}{section*.66}%
+\contentsline {subsubsection}{4.4.1Discussão Crítica sobre a Histerese e a Dinâmica Descendente}{76}{section*.67}%
+\contentsline {subsection}{4.5 Teste 4 --- Controle em Cascata e Alinhamento Autônomo de Guinada (Objetivo 5)}{76}{section*.68}%
+\contentsline {subsubsection}{4.5.1Discussão Crítica do Alinhamento Angular}{76}{section*.69}%
+\contentsline {subsection}{4.6 Teste 5 --- Bateria de Monte Carlo da Missão Completa e Acoplamento Milimétrico (Objetivos 6 e 7)}{77}{section*.70}%
+\contentsline {subsubsection}{4.6.1Discussão Crítica sobre a Discrepância de Erro e o Efeito Solo}{78}{section*.72}%
+\contentsline {subsubsection}{4.6.2Discussão sobre o Tempo Médio de Missão e o Compromisso de Engenharia}{79}{section*.73}%
+\contentsline {subsubsection}{4.6.3Fatores de Melhoria para a Taxa de Acoplamento}{79}{section*.74}%
+\contentsline {subsection}{4.7 Síntese Global e Validação dos Objetivos Específicos}{79}{section*.75}%
+\contentsline {subsubsection}{4.7.1Confronto com a Literatura Correlata}{80}{section*.77}%
+\contentsline {section}{\numberline {5}Conclusion}{82}{section*.78}%
+\contentsline {subsection}{5.1 Retomada do Tema e do Problema de Pesquisa}{82}{section*.79}%
+\contentsline {subsection}{5.2 Síntese dos Resultados Alcançados}{83}{section*.80}%
+\contentsline {subsection}{5.3 Avaliação do Cumprimento dos Objetivos}{84}{section*.81}%
+\contentsline {subsubsection}{5.3.1Objetivo Geral}{84}{section*.82}%
+\contentsline {subsubsection}{5.3.2Atendimento dos Objetivos Específicos}{84}{section*.83}%
+\contentsline {subsubsection}{5.3.3Análise de Objetivos Parcialmente Alcançados e Ressalvas de Engenharia}{86}{section*.85}%
+\contentsline {subsection}{5.4 Contribuições Científicas e Tecnológicas}{87}{section*.86}%
+\contentsline {subsection}{5.5 Limitações do Trabalho}{87}{section*.87}%
+\contentsline {subsection}{5.6 Sugestões para Trabalhos Futuros}{88}{section*.88}%
+\contentsline {section}{References}{89}{section*.89}%
+\contentsline {section}{Appendices}{94}{section*.90}%
+\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{95}{section*.91}%
+\contentsline {section}{Annexes}{96}{section*.92}%
+\contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{97}{section*.93}%
 \contentsfinish 

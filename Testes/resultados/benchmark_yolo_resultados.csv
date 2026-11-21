@@ -1,9 +1,9 @@
 Fase,Arquitetura,Precisao_pct,Recall_pct,mAP50_pct,mAP50_95_pct,Latencia_ms,FPS,Atendeu_mAP50,Atendeu_FPS,Caminho_Pesos
-Fase 1,YOLOv8n,100.0,99.96,99.5,71.17,43.89,22.8,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv8n_Armadilha_TCC/weights/best.pt
-Fase 1,YOLOv10n,96.0,97.6,99.2,72.53,47.53,21.0,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv10n_Armadilha_TCC/weights/best.pt
-Fase 1,YOLOv11n,99.2,99.6,99.47,73.38,48.91,20.4,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv11n_Armadilha_TCC/weights/best.pt
-Fase 1,YOLO26n,98.39,97.82,99.22,75.75,45.05,22.2,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLO26n_Armadilha_TCC/weights/best.pt
-Fase 2,YOLOv8n,99.74,99.88,99.5,87.48,45.63,21.9,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv8n_Fase2_Armadilha_Alcas/weights/best.pt
-Fase 2,YOLOv10n,98.04,98.58,99.43,89.02,47.91,20.9,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv10n_Fase2_Armadilha_Alcas/weights/best.pt
-Fase 2,YOLOv11n,98.85,99.84,99.49,88.23,48.01,20.8,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv11n_Fase2_Armadilha_Alcas/weights/best.pt
-Fase 2,YOLO26n,98.7,98.55,99.46,88.8,45.52,22.0,SIM,SIM,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLO26n_Fase2_Armadilha_Alcas/weights/best.pt
+Fase 1,YOLOv8n,100.0,99.96,99.5,71.11,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv8n_Armadilha_TCC/weights/best.pt
+Fase 1,YOLOv10n,96.01,97.6,99.2,72.54,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv10n_Armadilha_TCC/weights/best.pt
+Fase 1,YOLOv11n,99.19,99.6,99.47,73.38,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv11n_Armadilha_TCC/weights/best.pt
+Fase 1,YOLO26n,98.39,97.77,99.23,75.68,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLO26n_Armadilha_TCC/weights/best.pt
+Fase 2,YOLOv8n,99.74,99.88,99.5,87.49,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv8n_Fase2_Armadilha_Alcas/weights/best.pt
+Fase 2,YOLOv10n,98.02,98.58,99.43,89.08,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv10n_Fase2_Armadilha_Alcas/weights/best.pt
+Fase 2,YOLOv11n,98.84,99.84,99.49,88.23,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLOv11n_Fase2_Armadilha_Alcas/weights/best.pt
+Fase 2,YOLO26n,98.69,98.7,99.46,88.8,,,SIM,--,/home/gabriel/Projetos/Projeto-de-Pesquisa-1-IDP/Code/modelos_IA/YOLO26n_Fase2_Armadilha_Alcas/weights/best.pt

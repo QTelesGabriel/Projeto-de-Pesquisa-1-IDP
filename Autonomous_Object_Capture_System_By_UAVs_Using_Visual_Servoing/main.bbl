@@ -259,21 +259,21 @@ R.~Ladig, H.~Paul, R.~Miyazaki, and K.~Shimonomura, ``Aerial manipulation using
   \emph{Journal of Robotics and Mechatronics}, vol.~33, no.~2, pp. 196--204,
   2021.
 
-\bibitem{thomas2014}
-J.~Thomas, G.~Loianno, K.~Sreenath, and V.~Kumar, ``Toward image based visual
-  servoing for aerial grasping and perching,'' in \emph{Proceedings of the 2014
-  IEEE International Conference on Robotics and Automation (ICRA)}.\hskip 1em
-  plus 0.5em minus 0.4em\relax Hong Kong, China: IEEE, 2014, pp. 2113--2118.
+\bibitem{ubellacker2024}
+S.~Ubellacker, A.~Ray, J.~M. Bern, J.~Strader, and L.~Carlone, ``High-speed
+  aerial grasping using a soft drone with onboard perception,'' \emph{npj
+  Robotics}, vol.~2, no.~1, p.~5, 8 2024.
 
 \bibitem{bauer2023}
 E.~Bauer, B.~G. Cangan, and R.~K. Katzschmann, ``Autonomous marker-less rapid
   aerial grasping,'' in \emph{2023 IEEE/RSJ International Conference on
   Intelligent Robots and Systems (IROS)}, 2023.
 
-\bibitem{ubellacker2024}
-S.~Ubellacker, A.~Ray, J.~M. Bern, J.~Strader, and L.~Carlone, ``High-speed
-  aerial grasping using a soft drone with onboard perception,'' \emph{npj
-  Robotics}, vol.~2, no.~1, p.~5, 8 2024.
+\bibitem{thomas2014}
+J.~Thomas, G.~Loianno, K.~Sreenath, and V.~Kumar, ``Toward image based visual
+  servoing for aerial grasping and perching,'' in \emph{Proceedings of the 2014
+  IEEE International Conference on Robotics and Automation (ICRA)}.\hskip 1em
+  plus 0.5em minus 0.4em\relax Hong Kong, China: IEEE, 2014, pp. 2113--2118.
 
 \bibitem{shen2023}
 L.~Shen, B.~Lang, and Z.~Song, ``Ds-yolov8-based object detection method for

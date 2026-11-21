@@ -1,22 +1,24 @@
-#!/usr/bin/makefile
+LATEX = xelatex -interaction=nonstopmode
+BIB = bibtex
+LATEXMK = latexmk -xelatex -interaction=nonstopmode
 
-LATEX=xelatex
-BIB=bibtex
-
-PARTES = $(wildcard partes/*.tex)
-PARTES = $(wildcard figuras/*)
+FONTES_TEX = main.tex $(wildcard capitulos/*.tex) $(wildcard partes/*.tex) $(wildcard pacotes/*.tex)
+FIGURAS = $(wildcard figuras/*) $(wildcard configs/figuras/*)
 
 all: main.pdf
-	$(MAKE) clean
 
-main.pdf: main.tex referencias.bib $(PARTES) $(FIGURAS)
-	$(LATEX) main.tex
-	$(BIB) main.aux
-	$(LATEX) main.tex
-	$(LATEX) main.tex
+main.pdf: $(FONTES_TEX) referencias.bib $(FIGURAS)
+	@if command -v latexmk >/dev/null 2>&1; then \
+		$(LATEXMK) main.tex; \
+	else \
+		$(LATEX) main.tex && \
+		$(BIB) main.aux && \
+		$(LATEX) main.tex && \
+		$(LATEX) main.tex; \
+	fi
 
 clean:
-	rm -f *.aux *.bbl *.blg *.bcf *.run.xml *.log *.toc *.out *.lof *.lot *.fls
+	rm -f *.aux *.bbl *.blg *.bcf *.run.xml *.log *.toc *.out *.lof *.lot *.fls *.xdv *.fdb_latexmk "main.synctex(busy)"
 
 cleanall: clean
 	rm -f main.pdf

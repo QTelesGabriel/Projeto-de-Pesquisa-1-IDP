@@ -1,5 +1,14 @@
 \babel@toc {english}{}\relax 
 \contentsline {table}{\numberline {1}{\ignorespaces Análise Comparativa dos Trabalhos Relacionados}}{37}{table.1}%
-\contentsline {table}{\numberline {2}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1 (150 épocas)}}{51}{table.caption.38}%
-\contentsline {table}{\numberline {3}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (300 épocas)}}{52}{table.caption.39}%
+\contentsline {table}{\numberline {2}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1 (150 épocas)}}{52}{table.caption.40}%
+\contentsline {table}{\numberline {3}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (300 épocas)}}{52}{table.caption.41}%
+\contentsline {table}{\numberline {4}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m, 200 épocas)}}{53}{table.caption.42}%
+\contentsline {table}{\numberline {5}{\ignorespaces Síntese do protocolo experimental de validação vinculado aos sete objetivos específicos do trabalho}}{69}{table.caption.55}%
+\contentsline {table}{\numberline {6}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1}}{72}{table.caption.59}%
+\contentsline {table}{\numberline {7}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (alças e tampa)}}{72}{table.caption.60}%
+\contentsline {table}{\numberline {8}{\ignorespaces Comparativo de desempenho entre arquiteturas YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m)}}{73}{table.caption.61}%
+\contentsline {table}{\numberline {9}{\ignorespaces Métricas estatísticas consolidadas da validação estocástica do Filtro EKF ($N = 50$ ensaios de Monte Carlo)}}{74}{table.caption.64}%
+\contentsline {table}{\numberline {10}{\ignorespaces Consolidação estatística das baterias de voo autônomo (Monte Carlo) no simulador}}{78}{table.caption.71}%
+\contentsline {table}{\numberline {11}{\ignorespaces Quadro de consolidação final e atendimento aos objetivos específicos da pesquisa}}{80}{table.caption.76}%
+\contentsline {table}{\numberline {12}{\ignorespaces Avaliação sistemática do atendimento aos objetivos específicos da pesquisa}}{85}{table.caption.84}%
 \contentsfinish 

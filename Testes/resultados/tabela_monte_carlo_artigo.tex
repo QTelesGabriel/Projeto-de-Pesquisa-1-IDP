@@ -1,0 +1,31 @@
+% ==================== TABELA LATEX: MONTE CARLO ====================
+\begin{table}[H]
+    \centering
+    \small
+    \setlength{\tabcolsep}{6pt}
+    \captionsetup{justification=centering}
+    \caption{Consolidação estatística das baterias de voo autônomo (Monte Carlo) no simulador}
+    \label{tab:consolidado_monte_carlo}
+    \vspace{0.2cm}
+    \begin{tabular}{lccc}
+        \hline
+        \textbf{Métrica de Desempenho} & \textbf{Valor Obtido} & \textbf{Meta Estabelecida} & \textbf{Status} \\
+        \hline
+        Total de missões autônomas & 60 & $\ge 20$ voos & Concluído \\
+        Taxa de retenção no FOV (Teste 3) & 100.0\% & 100,0\% & Atendido \\
+        Afastamento médio da borda (FOV) & 29.1\% & $< 60,0\%$ (fuga) & Atendido \\
+        Bloqueios médios de histerese & 0.0 por voo & N/A & Atendido \\
+        Erro médio absoluto de Yaw (Teste 4) & 0.46$^\circ$ & $\le 1,00^\circ$ & Atendido \\
+        Desvio padrão do erro de Yaw & $\pm 0.54^\circ$ & N/A & Atendido \\
+        Erro médio pré-\textit{Blind Drop} (visão) & 3.13 mm & $\le 5,00$ mm & Atendido \\
+        RMSE médio terminal (Teste 5) & 5.25 mm & $\le 8,00$ mm & Atendido \\
+        Faixa de dispersão RMSE & [0.65; 11.04] mm & $\le 8,00$ mm & Avaliar \\
+        \textbf{Taxa Real de Acoplamento} & \textbf{76.7\%} & $\mathbf{> 60,0\%}$ & \textbf{Superado} \\
+        Tempo médio de missão & 111.1 s & $< 90,0$ s & Avaliar \\
+        \hline
+    \end{tabular}
+    \vspace{0.2cm}
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+\end{table}

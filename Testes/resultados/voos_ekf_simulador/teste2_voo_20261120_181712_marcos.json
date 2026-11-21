@@ -1,0 +1,71 @@
+{
+  "timestamp": "20261120_181712",
+  "condicoes_iniciais": {
+    "alt_inicial_m": 19.13,
+    "erro_gps_m": 3.83,
+    "yaw_inicial_deg": 105.3,
+    "duracao_oclusao_cfg_s": 3.8
+  },
+  "eventos": {
+    "pre_oclusao": {
+      "tempo_relativo_s": 141.569,
+      "drone_x_m": 49.99613,
+      "drone_y_m": -0.03403,
+      "drone_z_m": 1.66086,
+      "armadilha_x_m": 50.0,
+      "armadilha_y_m": -0.0,
+      "dx_mundo_mm": -3.87,
+      "dy_mundo_mm": -34.03,
+      "erro_radial_mundo_mm": 34.25,
+      "altitude_m": 1.29
+    },
+    "pos_oclusao": {
+      "tempo_relativo_s": 145.419,
+      "drone_x_m": 49.99881,
+      "drone_y_m": -0.02179,
+      "drone_z_m": 1.24549,
+      "armadilha_x_m": 50.0,
+      "armadilha_y_m": -0.0,
+      "dx_mundo_mm": -1.19,
+      "dy_mundo_mm": -21.79,
+      "erro_radial_mundo_mm": 21.83,
+      "altitude_m": 0.88,
+      "duracao_s": 3.843
+    },
+    "pos_reaquisicao": {
+      "tempo_relativo_s": 146.432,
+      "drone_x_m": 50.0023,
+      "drone_y_m": -0.02186,
+      "drone_z_m": 1.16832,
+      "armadilha_x_m": 50.0,
+      "armadilha_y_m": -0.0,
+      "dx_mundo_mm": 2.3,
+      "dy_mundo_mm": -21.86,
+      "erro_radial_mundo_mm": 21.98
+    },
+    "pre_blind_drop": {
+      "tempo_relativo_s": 176.041,
+      "drone_x_m": 49.99946,
+      "drone_y_m": -0.00294,
+      "drone_z_m": 0.58869,
+      "armadilha_x_m": 50.0,
+      "armadilha_y_m": -0.0,
+      "dx_mundo_mm": -0.54,
+      "dy_mundo_mm": -2.94,
+      "erro_radial_mundo_mm": 2.99,
+      "erro_visao_mm": 2.41
+    },
+    "pos_pouso": {
+      "tempo_relativo_s": 182.427,
+      "drone_x_m": 49.99904,
+      "drone_y_m": -0.00146,
+      "drone_z_m": 0.40477,
+      "armadilha_x_m": 50.0,
+      "armadilha_y_m": -0.0,
+      "dx_mundo_mm": -0.96,
+      "dy_mundo_mm": -1.46,
+      "erro_radial_mundo_mm": 1.75,
+      "tempo_total_s": 177.46
+    }
+  }
+}
