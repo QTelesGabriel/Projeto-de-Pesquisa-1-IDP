@@ -1,7 +1,7 @@
-\babel@toc {english}{}\relax 
-\contentsline {section}{\numberline {1}Introduction}{2}{section*.1}%
-\contentsline {section}{\numberline {2}Literature Review}{7}{section*.2}%
-\contentsline {subsection}{2.1 Theoretical Foundation}{7}{section*.3}%
+\babel@toc {brazilian}{}\relax 
+\contentsline {section}{\numberline {1}Introdução}{2}{section*.1}%
+\contentsline {section}{\numberline {2}Revisão de Literatura}{7}{section*.2}%
+\contentsline {subsection}{2.1 Fundamentação Teórica}{7}{section*.3}%
 \contentsline {subsubsection}{2.1.1Veículos Aéreos Não Tripulados (VANTs)}{7}{section*.4}%
 \contentsline {subsubsection}{2.1.2Visão Computacional Aplicada a VANTs}{11}{section*.8}%
 \contentsline {subsubsection}{2.1.3Servovisão (\textit {Visual Servoing})}{19}{section*.12}%
@@ -11,7 +11,7 @@
 \contentsline {subsubsection}{2.2.2Detecção e Rastreamento de Alvos em VANTs}{30}{section*.23}%
 \contentsline {subsubsection}{2.2.3Servovisão Aplicada a VANTs}{33}{section*.25}%
 \contentsline {subsubsection}{2.2.4Análise Comparativa dos Trabalhos Relacionados}{36}{section*.27}%
-\contentsline {section}{\numberline {3}Methodology}{41}{section*.28}%
+\contentsline {section}{\numberline {3}Metodologia}{41}{section*.28}%
 \contentsline {subsection}{3.1 Visão Geral e Classificação da Pesquisa}{41}{section*.29}%
 \contentsline {subsection}{3.2 Ambiente de Simulação e Modelagem da Plataforma Aérea}{44}{section*.32}%
 \contentsline {subsection}{3.3 Construção dos Datasets Sintéticos e Treinamento dos Detectores Visuais}{49}{section*.36}%
@@ -21,23 +21,23 @@
 \contentsline {subsection}{3.5 Reconstrução Geométrica 3D e Controle Cinemático}{56}{section*.47}%
 \contentsline {subsection}{3.6 Arquitetura de Máquina de Estados e Sequenciamento da Missão}{62}{section*.50}%
 \contentsline {subsection}{3.7 Protocolo Experimental e Definição dos Ensaios de Validação}{67}{section*.54}%
-\contentsline {section}{\numberline {4}Results and Discussion}{71}{section*.56}%
+\contentsline {section}{\numberline {4}Resultados e Discussão}{71}{section*.56}%
 \contentsline {subsection}{4.1 Visão Geral da Avaliação Experimental}{71}{section*.57}%
 \contentsline {subsection}{4.2 Teste 1 --- Avaliação Comparativa e Desempenho dos Detectores YOLO (Objetivos 1 e 2)}{71}{section*.58}%
 \contentsline {subsubsection}{4.2.1Discussão Crítica e Fatores de Melhoria dos Detectores Visuais}{73}{section*.62}%
 \contentsline {subsection}{4.3 Teste 2 --- Validação Estocástica e em Malha Fechada do Filtro EKF (Objetivo 3)}{74}{section*.63}%
 \contentsline {subsubsection}{4.3.1Discussão Crítica sobre o Desempenho do EKF}{75}{section*.65}%
 \contentsline {subsection}{4.4 Teste 3 --- Retenção no Campo de Visão e Histerese Óptica (Objetivo 4)}{75}{section*.66}%
-\contentsline {subsubsection}{4.4.1Discussão Crítica sobre a Histerese e a Dinâmica Descendente}{76}{section*.67}%
+\contentsline {subsubsection}{4.4.1Discussão Crítica sobre a Histerese e a Dinâmica Descendente}{75}{section*.67}%
 \contentsline {subsection}{4.5 Teste 4 --- Controle em Cascata e Alinhamento Autônomo de Guinada (Objetivo 5)}{76}{section*.68}%
 \contentsline {subsubsection}{4.5.1Discussão Crítica do Alinhamento Angular}{76}{section*.69}%
-\contentsline {subsection}{4.6 Teste 5 --- Bateria de Monte Carlo da Missão Completa e Acoplamento Milimétrico (Objetivos 6 e 7)}{77}{section*.70}%
-\contentsline {subsubsection}{4.6.1Discussão Crítica sobre a Discrepância de Erro e o Efeito Solo}{78}{section*.72}%
-\contentsline {subsubsection}{4.6.2Discussão sobre o Tempo Médio de Missão e o Compromisso de Engenharia}{79}{section*.73}%
-\contentsline {subsubsection}{4.6.3Fatores de Melhoria para a Taxa de Acoplamento}{79}{section*.74}%
+\contentsline {subsection}{4.6 Teste 5 --- Bateria de Monte Carlo da Missão Completa e Acoplamento Milimétrico (Objetivos 6 e 7)}{76}{section*.70}%
+\contentsline {subsubsection}{4.6.1Discussão Crítica sobre a Discrepância de Erro e o Efeito Solo}{77}{section*.72}%
+\contentsline {subsubsection}{4.6.2Discussão sobre o Tempo Médio de Missão e o Compromisso de Engenharia}{78}{section*.73}%
+\contentsline {subsubsection}{4.6.3Fatores de Melhoria para a Taxa de Acoplamento}{78}{section*.74}%
 \contentsline {subsection}{4.7 Síntese Global e Validação dos Objetivos Específicos}{79}{section*.75}%
-\contentsline {subsubsection}{4.7.1Confronto com a Literatura Correlata}{80}{section*.77}%
-\contentsline {section}{\numberline {5}Conclusion}{82}{section*.78}%
+\contentsline {subsubsection}{4.7.1Confronto com a Literatura Correlata}{79}{section*.77}%
+\contentsline {section}{\numberline {5}Conclusão}{82}{section*.78}%
 \contentsline {subsection}{5.1 Retomada do Tema e do Problema de Pesquisa}{82}{section*.79}%
 \contentsline {subsection}{5.2 Síntese dos Resultados Alcançados}{83}{section*.80}%
 \contentsline {subsection}{5.3 Avaliação do Cumprimento dos Objetivos}{84}{section*.81}%
@@ -47,9 +47,9 @@
 \contentsline {subsection}{5.4 Contribuições Científicas e Tecnológicas}{87}{section*.86}%
 \contentsline {subsection}{5.5 Limitações do Trabalho}{87}{section*.87}%
 \contentsline {subsection}{5.6 Sugestões para Trabalhos Futuros}{88}{section*.88}%
-\contentsline {section}{References}{89}{section*.89}%
-\contentsline {section}{Appendices}{94}{section*.90}%
-\contentsline {section}{Appendix \MakeUppercase []{a} - Título do apêndice A}{95}{section*.91}%
-\contentsline {section}{Annexes}{96}{section*.92}%
+\contentsline {section}{Referências}{89}{section*.89}%
+\contentsline {section}{Apêndices}{94}{section*.90}%
+\contentsline {section}{Apêndice \MakeUppercase []{a} - Título do apêndice A}{95}{section*.91}%
+\contentsline {section}{Anexos}{96}{section*.92}%
 \contentsline {subsection}{\MakeUppercase []{a}\hspace {1em} Título do Anexo A}{97}{section*.93}%
 \contentsfinish 

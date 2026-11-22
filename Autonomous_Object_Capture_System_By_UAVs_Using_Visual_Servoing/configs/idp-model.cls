@@ -25,7 +25,7 @@ headheight=1.8cm]{geometry}
 \bibliographystyle{IEEEtran} % Estilo de bibliografia IEEE
 
 
-\RequirePackage[english]{babel}
+\RequirePackage[english, brazilian]{babel}
 
 \onehalfspacing
 
@@ -205,15 +205,13 @@ headheight=1.8cm]{geometry}
 
         \vspace*{3cm}
  
-        \noindent{Undergraduate Thesis submitted in partial fulfillment of the
-        requirements for the degree of Bachelor of \nomecursoingles{} at the
-        Brazilian Institute of Education, Development and Research (IDP).}
+        \noindent{Trabalho de Conclusão de Curso apresentado como requisito parcial para a obtenção do título de Bacharel em \nomecurso{} no Instituto Brasileiro de Ensino, Desenvolvimento e Pesquisa (IDP).}
 
         \vspace*{3cm}
 
         {\bfseries\color{fundo_idp}
-        \iforientadora Advisor
-        \else Advisor
+        \iforientadora Orientadora:
+        \else Orientador:
         \fi}\\
         {\nomeorientador}
 
@@ -234,24 +232,22 @@ headheight=1.8cm]{geometry}
     \end{flushleft}
         \vspace*{2cm}
 
-        \noindent{Undergraduate Thesis submitted in partial fulfillment of the
-        requirements for the degree of Bachelor of \nomecursoingles{} at the
-        Brazilian Institute of Education, Development and Research (IDP).}
+        \noindent{Trabalho de Conclusão de Curso apresentado como requisito parcial para a obtenção do título de Bacharel em \nomecurso{} no Instituto Brasileiro de Ensino, Desenvolvimento e Pesquisa (IDP).}
 
     \begin{flushleft}
 
         \vspace*{2cm}
-        {Approved on \dataaprovacaoVal}
+        {Aprovado em \dataaprovacaoVal}
 
         \vspace*{1cm}
-        {\bfseries\color{fundo_idp}Examining Committee}
+        {\bfseries\color{fundo_idp}Banca Examinadora}
         
         
         {
         \vspace*{2cm}
         % \rule{\linewidth}{0.4pt}
         \vspace{1em}
-        {\nomeorientador\ (\iforientadora Advisor\else Advisor\fi) - \instorientador}
+        {\nomeorientador\ (\iforientadora Orientadora\else Orientador\fi) - \instorientador}
 
         \vspace*{2cm}
         % \rule{\linewidth}{0.4pt}
@@ -417,13 +413,13 @@ headheight=1.8cm]{geometry}
     \vspace*{\fill}
     \begin{center}
 
-    {\fontsize{60}{0}\bfseries\MakeUppercase{References}}
+    {\fontsize{60}{0}\bfseries\MakeUppercase{Referências}}
     \end{center}
     \vspace*{\fill}
 
     \refstepcounter{secnum}
     \phantomsection
-    \addcontentsline{toc}{section}{References}
+    \addcontentsline{toc}{section}{Referências}
 
     \color{black}
     
@@ -438,13 +434,21 @@ headheight=1.8cm]{geometry}
 
 \addto\captionsportuguese{
   \renewcommand{\refname}{%
-    \color{titulos}\bfseries\MakeUppercase{References}
+    \color{titulos}\bfseries\MakeUppercase{Referências}
+  }
+}
+\addto\captionsbrazilian{
+  \renewcommand{\refname}{%
+    \color{titulos}\bfseries\MakeUppercase{Referências}
   }
 }
 
 % SUMÁRIO
 % Altera o título do sumário
 \addto\captionsportuguese{%
+  \renewcommand{\contentsname}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Sumário}}
+}
+\addto\captionsbrazilian{%
   \renewcommand{\contentsname}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Sumário}}
 }
 \addto\captionsenglish{%
@@ -456,7 +460,10 @@ headheight=1.8cm]{geometry}
   \renewcommand{\listfigurename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Lista de Figuras}}
   \renewcommand{\listtablename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Lista de Tabelas}}
 }
-
+\addto\captionsbrazilian{%
+  \renewcommand{\listfigurename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Lista de Figuras}}
+  \renewcommand{\listtablename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{Lista de Tabelas}}
+}
 \addto\captionsenglish{%
   \renewcommand{\listfigurename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{List of Figures}}
   \renewcommand{\listtablename}{\color{white}\fontsize{40}{0}\bfseries\MakeUppercase{List of Tables}}
@@ -610,12 +617,12 @@ headheight=1.8cm]{geometry}
         \clearpage
         \stepcounter{apendicecount}%
         \ifnum\value{apendicecount}=1
-                \capaapendice{Appendices}
+                \capaapendice{Apêndices}
         \fi
         \phantomsection
-        \addcontentsline{toc}{section}{Appendix \MakeUppercase{\alph{apendicecount}} - #2}
+        \addcontentsline{toc}{section}{Apêndice \MakeUppercase{\alph{apendicecount}} - #2}
         \begin{center}
-                {\color{fundo_idp}\Large{Appendix \MakeUppercase{\alph{apendicecount}} - #2}}
+                {\color{fundo_idp}\Large{Apêndice \MakeUppercase{\alph{apendicecount}} - #2}}
         \end{center}
         \ifx&#1&%
                 \edef\tempaplabel{ap:\alph{apendicecount}}%
@@ -636,12 +643,12 @@ headheight=1.8cm]{geometry}
         \clearpage
         \stepcounter{anexocount}%
         \ifnum\value{anexocount}=1
-        \capaapendice{Annexes}
+        \capaapendice{Anexos}
         \fi
         \phantomsection
         \addcontentsline{toc}{subsection}{\MakeUppercase{\alph{anexocount}}\hspace{1em} #1}
         \begin{center}
-        {\color{fundo_idp}\Large{Annex \MakeUppercase{\alph{anexocount}}} - {#1}}
+        {\color{fundo_idp}\Large{Anexo \MakeUppercase{\alph{anexocount}}} - {#1}}
         \end{center}
         
         \input{#2}
