@@ -1,309 +1,371 @@
 \subsecao{Visão Geral da Avaliação Experimental}
 
-A avaliação do sistema autônomo de captura de armadilhas de vetores biológicos foi conduzida por meio de um protocolo integrado de validação empírica, estruturado para averiguar o cumprimento dos sete objetivos específicos delineados na Introdução. A metodologia experimental combinou avaliações quantitativas de inferência neural sobre conjuntos de dados sintéticos dedicados, ensaios estocásticos de filtragem de estados via simulação de Monte Carlo e baterias completas de voo autônomo em malha fechada no simulador físico Gazebo Sim acoplado ao piloto automático ArduPilot em arquitetura \textit{Software-in-the-Loop} (SITL).
+A avaliação do sistema autônomo de captura de armadilhas de vetores biológicos foi realizada por meio de um conjunto integrado de testes práticos, organizado para verificar se os sete objetivos específicos definidos na Introdução foram cumpridos. Os experimentos combinaram avaliações numéricas do desempenho das redes neurais sobre bancos de imagens sintéticas criados para o projeto, testes estatísticos por simulação de Monte Carlo para avaliar o filtro de rastreamento e baterias completas de voos autônomos integrados no simulador físico Gazebo Sim conectado ao piloto automático real ArduPilot no formato \textit{Software-in-the-Loop} (SITL).
 
-Os resultados e as discussões críticas são organizados em cinco eixos analíticos fundamentais:
+Os resultados e as discussões estão organizados em cinco etapas principais:
 \begin{enumerate}
-    \item Avaliação comparativa de acurácia, generalização e latência das redes da família YOLO em cada uma das três fases visuais (Objetivos 1 e 2);
-    \item Desempenho estocástico e validação em malha fechada do Filtro de Kalman Estendido (EKF) quanto à mitigação de ruído e sustentação em oclusões visuais (Objetivo 3);
-    \item Comportamento da estratégia de histerese óptica e retenção ininterrupta do alvo no campo de visão (Objetivo 4);
-    \item Estabilidade e exatidão da convergência angular de guinada (\textit{Yaw}) na aproximação terminal (Objetivo 5);
-    \item Consolidação estatística da missão autônoma completa em regime estocástico de Monte Carlo, precisão métrica de acoplamento e taxa de sucesso global (Objetivos 6 e 7).
+	\item Comparação da precisão, da capacidade de adaptação a novas imagens (generalização) e do tempo de resposta (latência) das redes da família YOLO em cada uma das três fases visuais (Objetivos 1 e 2);
+	\item Desempenho estatístico e validação em voo simulado do Filtro de Kalman Estendido (EKF) quanto à redução de ruídos e à capacidade de manter a trajetória quando a câmera perde o alvo de vista (Objetivo 3);
+	\item Comportamento da margem de segurança na tela (histerese visual) para manter a armadilha sempre visível dentro do campo de visão da câmera sem interrupções (Objetivo 4);
+	\item Estabilidade e precisão do alinhamento de giro horizontal (\textit{Yaw}) durante a aproximação final (Objetivo 5);
+	\item Consolidação estatística da missão autônoma completa nos ensaios de Monte Carlo, avaliando a precisão em milímetros do encaixe e a taxa global de sucesso das capturas (Objetivos 6 e 7).
 \end{enumerate}
 
-\subsecao{Teste 1 --- Avaliação Comparativa e Desempenho dos Detectores YOLO (Objetivos 1 e 2)}
+\subsecao{Teste 1: Avaliação Comparativa e Desempenho dos Detectores YOLO (Objetivos 1 e 2)}
 
-O primeiro ensaio avaliou quantitativamente quatro arquiteturas compactas da família YOLO (YOLOv8n, YOLOv10n, YOLOv11n e YOLO26n) nos três regimes visuais da missão. O objetivo residiu em verificar o atendimento à meta de acurácia geométrica ($mAP@50 > 90\%$) e à taxa mínima de inferência em tempo real ($> 20\text{ FPS}$, correspondendo a latência inferior a $50\text{ ms}$ em inferência unitária com \textit{batch} = 1).
+O primeiro teste avaliou em números quatro arquiteturas leves da família YOLO (YOLOv8n, YOLOv10n, YOLOv11n e YOLO26n) nas três etapas visuais da missão. O objetivo foi verificar se os modelos atingiam a meta de precisão na detecção ($mAP@50 > 90\%$) e a velocidade mínima de processamento em tempo real (acima de $20\text{ FPS}$, o que equivale a um tempo de resposta menor que $50\text{ ms}$ por imagem analisada individualmente, com \textit{batch} = 1).
 
-A Tabela~\ref{tab:comparativo_yolo_fase1_resultados} consolida o desempenho obtido pelas redes no conjunto de teste independente da \textbf{Fase 1} (detecção macroscópica da armadilha a altitudes entre 20,0 m e 2,0 m).
-
-\begin{table}[H]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \captionsetup{justification=centering}
-    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1}
-    \label{tab:comparativo_yolo_fase1_resultados}
-    \vspace{0.2cm}
-    \begin{tabular}{lcccccc}
-        \hline
-        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
-        \hline
-        YOLOv8n    & 100,00\%     & 99,96\%    & 99,50\%    & 71,11\%         & 42,6           & 23,5 \\
-        YOLOv10n   & 96,01\%      & 97,60\%    & 99,20\%    & 72,54\%         & 35,0           & 28,6 \\
-        YOLOv11n   & 99,19\%      & 99,60\%    & 99,47\%    & 73,38\%         & 44,7           & 22,4 \\
-        \textbf{YOLO26n} & \textbf{98,39\%} & \textbf{97,77\%} & \textbf{99,23\%} & \textbf{75,68\%} & \textbf{19,3} & \textbf{51,8} \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
-\end{table}
-
-Na Fase 1, as quatro arquiteturas avaliadas atingiram a meta mínima de $mAP@50 > 90\%$, operando acima de $99,20\%$. Sob o índice estrito $mAP@50\text{--}95$ (que avalia a acurácia geométrica da caixa delimitadora com limiares de IoU entre 0,50 e 0,95), o modelo \textbf{YOLO26n} obteve a melhor marca ($75,68\%$, superando o YOLOv8n em 4,57 pontos percentuais). Em relação à velocidade de inferência, o YOLO26n operou com latência unitária de $19,3\text{ ms}$, equivalente a \textbf{$51,8\text{ FPS}$}, superando a meta mínima de 20 FPS. Essa velocidade decorre da otimização dos blocos convolucionais profundos na arquitetura YOLO26n, que reduzem operações de memória sem degradar a capacidade de representação espacial de alvos distantes. Pela combinação de precisão geométrica em campo de visão amplo e reduzido consumo temporal, o YOLO26n foi selecionado para a Fase 1.
-
-A Tabela~\ref{tab:comparativo_yolo_fase2_resultados} sintetiza o benchmark das redes no dataset da \textbf{Fase 2} (detecção multi-classe das alças de içamento e da tampa da armadilha entre 2,0 m e 1,50 m).
+A Tabela~\ref{tab:comparativo_yolo_fase1_resultados} reúne os resultados obtidos pelas redes no conjunto de teste independente da Fase 1 (detecção geral da armadilha em alturas entre 20,0 m e 2,0 m).
 
 \begin{table}[H]
-    \centering
-    \small
-    \setlength{\tabcolsep}{5pt}
-    \captionsetup{justification=centering}
-    \caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (alças e tampa)}
-    \label{tab:comparativo_yolo_fase2_resultados}
-    \vspace{0.2cm}
-    \begin{tabular}{lcccccc}
-        \hline
-        \textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
-        \hline
-        YOLOv8n    & 99,74\%      & 99,88\%    & 99,50\%    & 87,49\%         & 42,6           & 23,5 \\
-        \textbf{YOLOv10n} & \textbf{98,02\%} & \textbf{98,58\%} & \textbf{99,43\%} & \textbf{89,08\%} & \textbf{22,4} & \textbf{44,6} \\
-        YOLOv11n   & 98,84\%      & 99,84\%    & 99,49\%    & 88,23\%         & 44,7           & 22,4 \\
-        YOLO26n    & 98,69\%      & 98,70\%    & 99,46\%    & 88,80\%         & 19,3           & 51,8 \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{3.5pt}
+	\captionsetup{justification=centering}
+	\caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1}
+	\label{tab:comparativo_yolo_fase1_resultados}
+	\vspace{0.2cm}
+	\begin{tabular}{lcccccc}
+		\hline
+		\textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
+		\hline
+		YOLOv8n    & 100,00\%     & 99,96\%    & 99,50\%    & 71,11\%         & 42,6           & 23,5 \\
+		YOLOv10n   & 96,01\%      & 97,60\%    & 99,20\%    & 72,54\%         & 35,0           & 28,6 \\
+		YOLOv11n   & 99,19\%      & 99,60\%    & 99,47\%    & 73,38\%         & 44,7           & 22,4 \\
+		\textbf{YOLO26n} & \textbf{98,39\%} & \textbf{97,77\%} & \textbf{99,23\%} & \textbf{75,68\%} & \textbf{19,3} & \textbf{51,8} \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
 \end{table}
 
-Na Fase 2, o desafio consistiu em isolar simultaneamente três alças contíguas dispostas em geometria triangular assimétrica. O modelo \textbf{YOLOv10n} registrou $mAP@50\text{--}95 = 89,08\%$ e taxa de inferência de $44,6\text{ FPS}$ ($22,4\text{ ms}$). A razão técnica para a escolha do YOLOv10n nesta fase reside na sua arquitetura com atribuição dupla de rótulos (\textit{Dual Label Assignment}), que viabiliza a inferência nativa \textbf{livre de Supressão de Não-Máximos (NMS-free)}. Em detectores dependentes de NMS tradicional (como o v8n e o v11n), a proximidade física milimétrica entre as alças triangulares sob ângulos oblíquos pode induzir a supressão de uma das caixas vizinhas, interpretada como detecção duplicada da mesma alça. Ao dispensar o algoritmo de NMS na inferência, o YOLOv10n mitigou a perda intermitente de vértices, permitindo o cálculo estável da atitude de guinada a 20 Hz.
+Na Fase 1, todos os quatro modelos testados alcançaram a meta de $mAP@50 > 90\%$, ficando acima de $99,20\%$. Quando avaliados pelo índice mais rigoroso $mAP@50\text{--}95$ (que mede o encaixe exato da caixa de detecção considerando níveis de sobreposição IoU entre 0,50 e 0,95), o modelo YOLO26n teve o melhor resultado ($75,68\%$, superando o YOLOv8n em 4,57 pontos percentuais). Quanto à velocidade de processamento, o YOLO26n respondeu em apenas $19,3\text{ ms}$ por imagem, o que corresponde a $51,8\text{ FPS}$, superando com folga o mínimo exigido de 20 FPS. Essa rapidez vem da otimização dos blocos de processamento interno da arquitetura YOLO26n, que reduzem o uso de memória sem perder a capacidade de enxergar bem alvos distantes. Por unir alta precisão geométrica em um campo de visão amplo com baixo tempo de processamento, o YOLO26n foi o escolhido para a Fase 1.
 
-Por fim, a Tabela~\ref{tab:comparativo_yolo_etapa3_alinhamento} apresenta os resultados do treinamento das quatro arquiteturas no conjunto da \textbf{Fase 3} (alinhamento fino a ultra-baixa altitude, entre 0,35 m e 0,20 m, focado exclusivamente no aro circular central interno da tampa).
+A Tabela~\ref{tab:comparativo_yolo_fase2_resultados} resume o desempenho das redes no banco de imagens da Fase 2 (detecção simultânea das alças de içamento e da tampa da armadilha entre 2,0 m e 1,50 m).
 
 \begin{table}[H]
-    \centering
-    \small
-    \setlength{\tabcolsep}{4.5pt}
-    \captionsetup{justification=centering}
-    \caption{Comparativo de desempenho entre arquiteturas YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m)}
-    \label{tab:comparativo_yolo_etapa3_alinhamento}
-    \vspace{0.2cm}
-    \begin{tabular}{lcccccc}
-        \hline
-        \textbf{Modelo} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Box Loss} & \textbf{Latência (ms)} \\
-        \hline
-        YOLOv8n   & 99,93\%    & 100,0\%    & 99,50\%    & 95,75\%         & 0,3069             & 42,6 \\
-        \textbf{YOLOv10n}  & \textbf{99,93\%} & \textbf{100,0\%} & \textbf{99,50\%} & \textbf{99,50\%} & \textbf{0,2584} & \textbf{35,0} \\
-        YOLOv11n  & 99,93\%    & 100,0\%    & 99,50\%    & 99,50\%         & 0,2162             & 44,7 \\
-        YOLO26n   & 99,93\%    & 100,0\%    & 99,50\%    & 99,50\%         & 0,2331             & 19,3 \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{3.5pt}
+	\captionsetup{justification=centering}
+	\caption{Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (alças e tampa)}
+	\label{tab:comparativo_yolo_fase2_resultados}
+	\vspace{0.2cm}
+	\begin{tabular}{lcccccc}
+		\hline
+		\textbf{Arquitetura} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Latência (ms)} & \textbf{Taxa (FPS)} \\
+		\hline
+		YOLOv8n    & 99,74\%      & 99,88\%    & 99,50\%    & 87,49\%         & 42,6           & 23,5 \\
+		\textbf{YOLOv10n} & \textbf{98,02\%} & \textbf{98,58\%} & \textbf{99,43\%} & \textbf{89,08\%} & \textbf{22,4} & \textbf{44,6} \\
+		YOLOv11n   & 98,84\%      & 99,84\%    & 99,49\%    & 88,23\%         & 44,7           & 22,4 \\
+		YOLO26n    & 98,69\%      & 98,70\%    & 99,46\%    & 88,80\%         & 19,3           & 51,8 \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
 \end{table}
 
-A introdução do modelo dedicado à Fase 3 elevou os indicadores de validação, com três das quatro redes alcançando \textbf{$99,50\%$} no índice $mAP@50\text{--}95$. Esse resultado fundamenta-se na própria formulação do problema: ao substituir a carcaça perimétrica de 255 mm (que sofria corte de bordas nas extremidades da lente Full HD) pelo aro circular interno de $72\text{ mm} \times 72\text{ mm}$, atenuou-se o efeito de escala variável e as distorções provocadas pela oclusão de sombras da fuselagem. A $0,20\text{ m}$ de altitude relativa, o aro central projeta uma assinatura óptica circular no centro da imagem ($5,5\text{ px/mm}$), viabilizando regressão espacial com reduzido desvio de centroide.
+Na Fase 2, o principal desafio foi diferenciar três alças muito próximas dispostas em um triângulo assimétrico. O modelo YOLOv10n atingiu o índice $mAP@50\text{--}95$ de $89,08\%$ e velocidade de $44,6\text{ FPS}$ ($22,4\text{ ms}$). O motivo técnico para escolher o YOLOv10n nessa fase está na sua estrutura com atribuição dupla de rótulos (\textit{Dual Label Assignment}), que permite rodar de forma nativa sem o filtro tradicional de Supressão de Não-Máximos (livre de NMS). Em detectores comuns que dependem do NMS (como o v8n e o v11n), a proximidade de poucos milímetros entre as alças triangulares vistas de ângulos inclinados pode fazer o sistema apagar uma das caixas vizinhas por confundi-la com uma detecção repetida da mesma peça. Ao eliminar a etapa de NMS durante a análise, o YOLOv10n evitou o desaparecimento intermitente das pontas do triângulo, garantindo um cálculo estável do ângulo de giro do drone a 20 Hz.
 
-O \textbf{YOLOv10n} foi confirmado como o modelo para a Fase 3 por aliar o $mAP@50\text{--}95$ de $99,50\%$, baixa perda de caixa delimitadora ($\text{Box Loss} = 0,2584$), latência estável de $35,0\text{ ms}$ ($28,6\text{ FPS}$) e ausência intrínseca de NMS, eliminando dispersões de tempo de processamento antes da descida cega terminal.
+Por fim, a Tab.~\ref{tab:comparativo_yolo_etapa3_alinhamento} mostra os resultados do treinamento das quatro arquiteturas no conjunto da Fase 3 (alinhamento fino em altura muito baixa, entre 0,35 m e 0,20 m, focado apenas no aro circular central interno da tampa).
+
+\begin{table}[H]
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{3.5pt}
+	\captionsetup{justification=centering}
+	\caption{Comparativo de desempenho entre arquiteturas YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m)}
+	\label{tab:comparativo_yolo_etapa3_alinhamento}
+	\vspace{0.2cm}
+	\begin{tabular}{lcccccc}
+		\hline
+		\textbf{Modelo} & \textbf{Precisão ($P$)} & \textbf{Recall ($R$)} & \textbf{$mAP@50$} & \textbf{$mAP@50\text{--}95$} & \textbf{Box Loss} & \textbf{Latência (ms)} \\
+		\hline
+		YOLOv8n   & 99,93\%    & 100,0\%    & 99,50\%    & 95,75\%         & 0,3069             & 42,6 \\
+		\textbf{YOLOv10n}  & \textbf{99,93\%} & \textbf{100,0\%} & \textbf{99,50\%} & \textbf{99,50\%} & \textbf{0,2584} & \textbf{35,0} \\
+		YOLOv11n  & 99,93\%    & 100,0\%    & 99,50\%    & 99,50\%         & 0,2162             & 44,7 \\
+		YOLO26n   & 99,93\%    & 100,0\%    & 99,50\%    & 99,50\%         & 0,2331             & 19,3 \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+\end{table}
+
+A criação de um modelo exclusivo para a Fase 3 melhorou ainda mais os índices de validação, com três das quatro redes atingindo $99,50\%$ na métrica $mAP@50\text{--}95$. Esse ganho vem diretamente da forma como o problema foi simplificado: ao trocar o corpo externo da armadilha de 255 mm (que acabava cortado nas bordas da câmera Full HD) pelo aro circular interno de $72\text{ mm} \times 72\text{ mm}$, reduziram-se os problemas causados pela mudança brusca de tamanho na tela e pelas sombras projetadas pelo corpo do drone. A $0,20\text{ m}$ de altura em relação ao alvo, o aro central forma um círculo bem definido no meio da imagem ($5,5\text{ px/mm}$), permitindo calcular o centro exato de encaixe com desvio mínimo.
+
+O YOLOv10n foi mantido como o modelo oficial da Fase 3 por reunir o índice $mAP@50\text{--}95$ de $99,50\%$, erro muito baixo no ajuste da caixa de detecção ($\text{Box Loss} = 0,2584$), tempo de resposta estável de $35,0\text{ ms}$ ($28,6\text{ FPS}$) e ausência total de NMS, o que evita variações no tempo de processamento logo antes da descida final sem câmera.
+
+A Figura~\ref{fig:predicoes_yolo_tres_fases} mostra exemplos reais das detecções feitas pelos modelos escolhidos nas três etapas da missão, destacando como as caixas de marcação se comportam em diferentes alturas de voo.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	\caption{Exemplos de inferência e caixas delimitadoras preditas pelos detectores selecionados nas três fases}
+	\label{fig:predicoes_yolo_tres_fases}
+	\vspace{0.2cm}
+	\includegraphics[width=0.92\linewidth]{figuras/predicoes_validacao_yolo.png}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+\end{figure}
 
 \subsubsecao{Discussão Crítica e Fatores de Melhoria dos Detectores Visuais}
 
-Embora as redes tenham superado as metas quantitativas em ambiente de simulação física, a transição desse pipeline perceptivo para ensaios em campo real impõe limitações que demandam discussão:
+Embora as redes neurais tenham superado todas as metas numéricas no ambiente de simulação física, levar esse sistema de visão computacional para testes reais em campo traz limitações práticas que precisam ser analisadas:
 \begin{enumerate}
-    \item \textbf{Condições de Iluminação Extrema e Sombras Complexas:} No simulador Gazebo, a fonte de luz solar é modelada por um emissor direcional com penumbra calculada numericamente. Em cenários reais abertos, a incidência de radiação solar difusa sob dias nublados, reflexos especulares em superfícies plásticas molhadas por chuva e o vento agitando vegetação circundante geram variações de contraste não contempladas nos conjuntos sintéticos. Para contornar essa deficiência, recomenda-se em trabalhos futuros a incorporação de técnicas de \textit{Domain Randomization} fotorealístico com variação estocástica de irradiância, renderização neural baseada em física (PBR) e coleta de dados híbrida via enriquecimento com modelos generativos de difusão;
-    \item \textbf{Quantização e Otimização para Hardware Embarcado:} As latências mensuradas foram obtidas em GPU de desenvolvimento. Para aplicação a bordo em computadores de baixo consumo de potência (como a família NVIDIA Jetson Orin Nano de 15 W), faz-se necessária a compilação dos pesos treinados com precisão inteira de 8 bits (\textit{INT8 Quantization}) utilizando o motor de aceleração TensorRT. Ensaios preliminares na literatura indicam que a quantização INT8 em modelos YOLO compactos preserva mais de $98\%$ da precisão original enquanto reduz a latência à metade, consolidando taxas superiores a 40 FPS mesmo sob restrições térmicas severas.
+	
+	\item \textbf{Condições de Iluminação Extrema e Sombras Complexas:} No simulador Gazebo, a luz do sol é reproduzida como uma fonte direta única com sombras calculadas matematicamente. Já em ambientes abertos reais, a luz espalhada em dias nublados, o brilho intenso vindo de reflexos nas superfícies plásticas molhadas pela chuva e o movimento da vegetação balançando com o vento criam mudanças de contraste que não foram reproduzidas nas imagens sintéticas. Para superar essa limitação, recomenda-se em trabalhos futuros aplicar técnicas de variação aleatória de domínio (\textit{Domain Randomization}), conforme formulado por Tobin \textit{et al.}~\cite{tobin2017domain}, variando estocasticamente a intensidade da luz, texturas e renderização realista baseada em física (PBR), além da montagem de bancos de imagens híbridos com modelos generativos de difusão. Se viável, ainda é recomendado montar um novo dataset com imagens da armadilha real;
+	
+	\item \textbf{Quantização e Otimização para Hardware Embarcado:} Os tempos de resposta (latências) medidos nos experimentos foram obtidos em uma placa de vídeo (GPU) de desenvolvimento. Para embarcar esse sistema no drone utilizando computadores compactos e de baixo consumo de energia, será importante converter os parâmetros treinados da rede para um formato mais leve com precisão inteira de 8 bits (quantização \textit{INT8}). Estudos recentes da área mostram que a quantização INT8 em modelos YOLO compactos mantém mais de $98\%$ da precisão original enquanto reduz o tempo de processamento pela metade, o que pode garantir taxas acima de 40 FPS mesmo quando o equipamento trabalha sob fortes limitações de aquecimento e energia \cite{rey2025performance}.
+	
 \end{enumerate}
 
-\subsecao{Teste 2 --- Validação Estocástica e em Malha Fechada do Filtro EKF (Objetivo 3)}
+\subsecao{Teste 2: Validação em Malha Fechada do Filtro EKF (Objetivo 3)}
 
-O segundo teste validou experimentalmente o módulo de filtragem estocástica (Filtro de Kalman Estendido), avaliando sua eficácia na atenuação de oscilações de alta frequência (\textit{jitter}) da detecção visual, na suavização do ruído angular sobre a variedade circular $S^1$ e na sustentação inercial da trajetória durante oclusões temporárias de até 4,0 segundos, conforme preconizado no Objetivo 3.
+O segundo teste avaliou na prática o desempenho do Filtro de Kalman Estendido (EKF), verificando sua capacidade de reduzir as oscilações rápidas (\textit{jitter}) nas detecções da câmera, suavizar as variações de ângulo na transição circular completa ($S^1$) e manter a estimativa da trajetória do drone durante bloqueios temporários de visão de até 4,0 segundos, como definido no Objetivo 3.
 
-A avaliação foi conduzida primeiramente em uma bateria estocástica de Monte Carlo independente com $N = 50$ ensaios sobre as classes reais \textit{FiltroAlvoEKF} e \textit{FiltroAnguloEKF}. Os resultados consolidados são apresentados na Tabela~\ref{tab:validacao_ekf_resultados}.
+A avaliação começou com uma bateria independente de $N = 50$ simulações estatísticas de Monte Carlo executadas diretamente sobre os módulos reais \textit{FiltroAlvoEKF} e \textit{FiltroAnguloEKF}. Os resultados gerais estão reunidos na Tab.~\ref{tab:validacao_ekf_resultados}.
 
 \begin{table}[H]
-    \centering
-    \small
-    \setlength{\tabcolsep}{4.5pt}
-    \captionsetup{justification=centering}
-    \caption{Métricas estatísticas consolidadas da validação estocástica do Filtro EKF ($N = 50$ ensaios de Monte Carlo)}
-    \label{tab:validacao_ekf_resultados}
-    \vspace{0.2cm}
-    \begin{tabular}{lcccc}
-        \hline
-        \textbf{Métrica de Avaliação} & \textbf{Média $\pm$ Desv. Padrão} & \textbf{Faixa [Mín; Máx]} & \textbf{Meta Estipulada} & \textbf{Resultado} \\
-        \hline
-        RMSE Posição Bruta ($XY$) & $58,57 \pm 2,97\text{ mm}$ & $[52,88; 68,57]\text{ mm}$ & Baseline & Referência \\
-        RMSE Posição com EKF ($XY$) & $28,17 \pm 3,57\text{ mm}$ & $[22,19; 39,29]\text{ mm}$ & $<$ Baseline & Atendido \\
-        \textbf{Atenuação de Jitter em $XY$} & $\mathbf{51,98 \pm 5,00\%}$ & $[\mathbf{37,58; 61,28\%}]$ & $\mathbf{\ge 40,0\%}$ & \textbf{Superado} \\
-        RMSE Guinada Bruto ($Yaw$) & $4,00^\circ \pm 0,29^\circ$ & $[3,28^\circ; 4,58^\circ]$ & Baseline & Referência \\
-        RMSE Guinada com EKF ($Yaw$) & $1,91^\circ \pm 0,30^\circ$ & $[1,37^\circ; 2,52^\circ]$ & $<$ Baseline & Atendido \\
-        \textbf{Atenuação de Ruído de $Yaw$} & $\mathbf{52,23 \pm 6,34\%}$ & $[\mathbf{37,81; 66,46\%}]$ & $\mathbf{\ge 40,0\%}$ & \textbf{Superado} \\
-        Deriva em Oclusão Total de 4,0 s & $127,55 \pm 59,97\text{ mm}$ & $[34,46; 265,16]\text{ mm}$ & $\le 250,0\text{ mm}$ & Atendido \\
-        Deriva de $Yaw$ em 4,0 s & $7,65^\circ \pm 4,90^\circ$ & $[0,01^\circ; 20,82^\circ]$ & Informativo & Atendido \\
-        Erro de Reaquisição pós-Oclusão & $23,37 \pm 4,60\text{ mm}$ & $[14,80; 35,87]\text{ mm}$ & $\le 60,0\text{ mm}$ & Atendido \\
-        Erro de Convergência pós-\textit{Reset} & $19,13 \pm 6,26\text{ mm}$ & $[9,32; 34,43]\text{ mm}$ & $\le 80,0\text{ mm}$ & Atendido \\
-        Sustentação sem Divergência (4 s) & $100,0\% \pm 0,0\%$ & $[100,0; 100,0\%]$ & $100,0\%$ (80 ciclos) & Atendido \\
-        \textit{Reset} Determinístico pós-4,0 s & $100,0\% \pm 0,0\%$ & $[100,0; 100,0\%]$ & $100,0\%$ dos ensaios & Atendido \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{2pt}
+	\captionsetup{justification=centering}
+	\caption{Métricas estatísticas consolidadas da validação estocástica do Filtro EKF ($N = 50$ ensaios de Monte Carlo)}
+	\label{tab:validacao_ekf_resultados}
+	\vspace{0.2cm}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{3.8cm}cccc}
+		\hline
+		\textbf{Métrica de Avaliação} & \textbf{Média $\pm$ Desv. Padrão} & \textbf{Faixa [Mín; Máx]} & \textbf{Meta} & \textbf{Resultado} \\
+		\hline
+		RMSE Posição Bruta ($XY$) & $58,57 \pm 2,97\text{ mm}$ & $[52,88; 68,57]\text{ mm}$ & Baseline & Referência \\
+		RMSE Posição com EKF ($XY$) & $28,17 \pm 3,57\text{ mm}$ & $[22,19; 39,29]\text{ mm}$ & $<$ Baseline & Atendido \\
+		\textbf{Atenuação de Jitter em $XY$} & $\mathbf{51,98 \pm 5,00\%}$ & $[\mathbf{37,58; 61,28\%}]$ & $\mathbf{\ge 40,0\%}$ & \textbf{Superado} \\
+		RMSE Guinada Bruto ($Yaw$) & $4,00^\circ \pm 0,29^\circ$ & $[3,28^\circ; 4,58^\circ]$ & Baseline & Referência \\
+		RMSE Guinada com EKF ($Yaw$) & $1,91^\circ \pm 0,30^\circ$ & $[1,37^\circ; 2,52^\circ]$ & $<$ Baseline & Atendido \\
+		\textbf{Atenuação de Ruído de $Yaw$} & $\mathbf{52,23 \pm 6,34\%}$ & $[\mathbf{37,81; 66,46\%}]$ & $\mathbf{\ge 40,0\%}$ & \textbf{Superado} \\
+		Deriva em Oclusão Total de 4,0 s & $127,55 \pm 59,97\text{ mm}$ & $[34,46; 265,16]\text{ mm}$ & $\le 250,0\text{ mm}$ & Atendido \\
+		Deriva de $Yaw$ em 4,0 s & $7,65^\circ \pm 4,90^\circ$ & $[0,01^\circ; 20,82^\circ]$ & Informativo & Atendido \\
+		Erro de Reaquisição pós-Oclusão & $23,37 \pm 4,60\text{ mm}$ & $[14,80; 35,87]\text{ mm}$ & $\le 60,0\text{ mm}$ & Atendido \\
+		Erro de Convergência pós-\textit{Reset} & $19,13 \pm 6,26\text{ mm}$ & $[9,32; 34,43]\text{ mm}$ & $\le 80,0\text{ mm}$ & Atendido \\
+		Sustentação sem Divergência (4 s) & $100,0\% \pm 0,0\%$ & $[100,0; 100,0\%]$ & $100,0\%$ (80 ciclos) & Atendido \\
+		\textit{Reset} Determinístico pós-4,0 s & $100,0\% \pm 0,0\%$ & $[100,0; 100,0\%]$ & $100,0\%$ dos ensaios & Atendido \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
 \end{table}
 
-Os dados confirmam que a atenuação de \textit{jitter} atingiu \textbf{$51,98\%$} no plano de translação horizontal e \textbf{$52,23\%$} no canal angular de guinada, superando a meta de redução de $40\%$ em relação aos sinais brutos da rede neural. A dispersão métrica do centroide caiu de $58,57\text{ mm}$ para $28,17\text{ mm}$, enquanto o ruído de guinada foi reduzido de $4,00^\circ$ para $1,91^\circ$. Durante a janela de oclusão total de 4,00 segundos (80 ciclos a 20 Hz nos quais o detector visual foi propositalmente desconectado), a propagação cinemática pura do EKF manteve a deriva média contida em $127,55\text{ mm}$ (inferior ao limite de 250 mm). No retorno do sinal visual, o filtro reabsorveu as novas observações e restabeleceu o erro de posicionamento para $23,37\text{ mm}$ no primeiro ciclo, sem provocar descontinuidades na trajetória. Nos cenários em que a ausência do alvo superou o limite temporal de 4,0 segundos, a rotina de segurança disparou o desarme determinístico em $100\%$ das repetições, confirmando a proteção contra predições cegas indefinidas.
+Os resultados confirmam que a redução das oscilações rápidas (\textit{jitter}) chegou a $51,98\%$ nos movimentos horizontais e a $52,23\%$ no ângulo de giro horizontal (guinada), superando a meta mínima de $40\%$ de melhoria em relação aos dados brutos vindos da rede neural. O erro médio de posição do centro do alvo caiu de $58,57\text{ mm}$ para $28,17\text{ mm}$, enquanto o ruído na medição do giro diminuiu de $4,00^\circ$ para $1,91^\circ$. Durante o intervalo de 4,00 segundos sem imagem (80 ciclos seguidos a 20 Hz em que o detector visual foi desligado propositalmente), o cálculo preditivo do EKF manteve o desvio médio acumulado em apenas $127,55\text{ mm}$ (bem abaixo do limite de 250 mm). Assim que a câmera voltou a enxergar o alvo, o filtro absorveu as novas leituras e corrigiu o erro de posição para $23,37\text{ mm}$ logo no primeiro ciclo, sem causar trancos na trajetória do drone. Nos casos em que o bloqueio visual ultrapassou o limite de 4,0 segundos, o sistema de segurança acionou a reinicialização automática (\textit{reset}) em $100\%$ dos testes, garantindo a proteção contra estimativas sem visão por tempo indeterminado.
 
-Em paralelo, o estimador foi avaliado em malha fechada durante um voo autônomo completo no simulador Gazebo Sim com injeção de uma oclusão de $3,76\text{ segundos}$ na descida intermediária (entre as cotas de 1,29 m e 0,88 m). Os registros de telemetria comprovaram atenuação de \textit{jitter} de \textbf{$85,0\%$} no plano horizontal e de \textbf{$91,2\%$} em guinada durante o regime terminal de baixa altitude. O deslocamento sofrido pela aeronave durante o blecaute visual foi de $12,53\text{ mm}$, e o veículo completou a aproximação pós-reaquisição pousando com erro terminal absoluto de $\text{RMSE} = 1,75\text{ mm}$ no ambiente físico do Gazebo.
+Em paralelo, o filtro foi testado em voo simulado completo no Gazebo Sim, aplicando um corte proposital de visão de $3,76\text{ segundos}$ durante a descida intermediária (entre 1,29 m e 0,88 m de altura). Os dados gravados pela telemetria mostraram uma redução de oscilações (\textit{jitter}) de $85,0\%$ na posição horizontal e de $91,2\%$ no ângulo de giro durante a aproximação final em baixa altitude. O desvio acumulado pelo drone durante o período sem câmera foi de apenas $12,53\text{ mm}$, e a aeronave retomou a visão normalmente, concluindo o pouso com um erro final real de apenas $\text{RMSE} = 1,75\text{ mm}$ no simulador Gazebo.
+
+Os gráficos de comportamento dinâmico e estatístico do filtro são mostrados na Fig.~\ref{fig:validacao_ekf_4segundos}, destacando o acompanhamento nos eixos horizontais, a resposta contínua de ângulo na volta completa ($S^1$) e a recuperação da trajetória logo após o retorno da imagem.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	\caption{Desempenho dinâmico do Filtro EKF sob ruído visual, descontinuidade em $S^1$ e oclusão de 4,0 segundos}
+	\label{fig:validacao_ekf_4segundos}
+	\includegraphics[width=0.85\linewidth]{figuras/validacao_ekf_4segundos.png}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+\end{figure}
 
 \subsubsecao{Discussão Crítica sobre o Desempenho do EKF}
 
-A redução de ruído observada fundamenta-se na adequação do modelo cinemático de velocidade constante adotado na formulação do filtro. Como o multirrotor opera manobras amortecidas governadas por controladores PD, a aceleração relativa entre a câmera e o alvo no solo varia suavemente a cada passo de amostragem de $\Delta t = 0,05\text{ s}$. Dessa forma, o EKF atua como um integrador natural que atenua perturbações estocásticas de alta frequência sem introduzir atrasos de fase prejudiciais à malha de controle.
+A redução de ruído alcançada explica-se pelo bom ajuste do modelo matemático de velocidade constante usado na criação do filtro. Como o drone executa movimentos suaves e amortecidos pelos controladores PD, a aceleração relativa entre a câmera e a armadilha no chão muda pouco a cada intervalo de leitura de $\Delta t = 0,05\text{ s}$. Assim, o EKF funciona como um suavizador natural que filtra as oscilações rápidas e aleatórias da detecção sem causar atrasos de resposta que pudessem prejudicar o controle de voo.
 
-Por outro lado, a deriva observada durante a janela de oclusão ($127,55\text{ mm}$ em 4 s) evidencia uma característica da predição puramente cinemática: na ausência de observações visuais, o erro de propagação cresce com a velocidade residual registrada no instante anterior à perda do alvo. Caso a aeronave sofra perturbações aerodinâmicas externas durante esse intervalo (como rajadas de vento ou esteiras turbulentas dos rotores), o modelo de velocidade constante não incorpora a aceleração não modelada, acumulando desvios em intervalos superiores a 4 segundos.
+Por outro lado, o desvio acumulado durante o bloqueio da câmera ($127,55\text{ mm}$ em 4 s) mostra uma limitação natural da previsão baseada apenas no movimento anterior: quando não há imagens da câmera, o erro de estimativa aumenta de acordo com a velocidade em que o drone estava no momento exato em que perdeu o alvo de vista. Se a aeronave sofrer perturbações externas do ar durante esse intervalo sem visão (como rajadas de vento ou turbulência gerada pelas próprias hélices), o cálculo de velocidade constante não consegue perceber essas acelerações imprevistas, acumulando desvios maiores se o bloqueio passar de 4 segundos.
 
-Como oportunidade de aprimoramento, sugere-se a implementação de uma fusão sensorial fortemente acoplada (\textit{Tightly-Coupled Visual-Inertial EKF}), na qual as leituras instantâneas dos acelerômetros e giroscópios da unidade IMU do piloto automático sejam integradas diretamente na etapa de predição do filtro de visão. Com isso, acelerações externas seriam integradas em tempo real mesmo sob oclusão da câmera, estendendo a tolerância a perdas visuais para além de 6 segundos com deriva contida.
+Como oportunidade de melhoria, sugere-se implementar uma fusão de sensores fortemente integrada (\textit{Tightly-Coupled Visual-Inertial EKF}), baseada no método MSCKF de Mourikis e Roumeliotis~\cite{mourikis2007mscfk}, em que as leituras instantâneas dos acelerômetros e giroscópios (unidade IMU) do piloto automático são usadas diretamente na etapa de previsão do filtro de visão. Dessa forma, o sistema conseguiria medir em tempo real qualquer aceleração externa mesmo com a câmera tampada, aumentando a tolerância a perdas de imagem para mais de 6 segundos com um desvio acumulado bem menor.
 
-\subsecao{Teste 3 --- Retenção no Campo de Visão e Histerese Óptica (Objetivo 4)}
+\subsecao{Teste 3: Retenção no Campo de Visão e Histerese Óptica (Objetivo 4)}
 
-O terceiro ensaio investigou o comportamento da histerese visual de zona dupla e a capacidade do sistema em garantir a presença ininterrupta do alvo no enquadramento da câmera durante a aproximação da Fase 1 ($20,0\text{ m} \to 2,0\text{ m}$). Para atender ao Objetivo 4, estipulou-se como meta a taxa de retenção de \textbf{$100\%$ no FOV}, com afastamento contido na fronteira de segurança de $60\%$ da meia-tela.
+O terceiro teste avaliou o funcionamento da margem de segurança dividida em duas áreas na tela (histerese visual) e a capacidade do sistema de manter a armadilha sempre visível dentro da imagem da câmera durante a descida da Fase 1 ($20,0\text{ m} \to 2,0\text{ m}$). Para cumprir o Objetivo 4, definiu-se como meta manter o alvo visível $100\%$ do tempo dentro do campo de visão (FOV), sem ultrapassar o limite de segurança de $60\%$ da distância entre o centro e as bordas da tela.
 
-Ao longo das 60 missões autônomas de Monte Carlo executadas no Gazebo Sim com dispersão inicial de GPS sorteada entre 1,0 m e 4,5 m de erro radial:
+Ao longo das 60 missões autônomas de Monte Carlo realizadas no simulador Gazebo Sim, com o erro inicial de GPS sorteado entre 1,0 m e 4,5 m de distância:
 \begin{enumerate}
-    \item A taxa de retenção no campo de visão foi de \textbf{$100,0\%$}, sem ocorrências de perda do objeto para fora das bordas do sensor óptico;
-    \item O afastamento radial médio observado foi de \textbf{$29,1\%$} em relação à meia-largura e meia-altura da imagem, confirmando a convergência para o interior da Zona Segura ($< 40\%$);
-    \item A quantidade de bloqueios verticais de descida ativados pela regra de histerese foi de \textbf{$0,0$ por voo}.
+	\item A taxa de permanência do alvo no campo de visão foi de $100,0\%$, sem nenhum caso em que a armadilha tenha saído para fora das bordas da câmera;
+	\item A distância média do alvo em relação ao centro da tela foi de $29,1\%$ (considerando a metade da largura e da altura da imagem), confirmando que o drone manteve o objeto bem centralizado dentro da área segura ($< 40\%$);
+	\item O número de pausas na descida acionadas pela regra de segurança visual (histerese) foi de $0,0$ por voo.
 \end{enumerate}
 
 \subsubsecao{Discussão Crítica sobre a Histerese e a Dinâmica Descendente}
 
-A constatação de zero bloqueios verticais durante as missões nominais decorre da sintonia da \textbf{rampa linear de desaceleração vertical} implementada entre 6,0 m e 2,0 m de altitude. Conforme modelado na Equação~\eqref{eq:fator_frenagem}, a velocidade de descida foi atenuada de $1,50\text{ m/s}$ para $0,15\text{ m/s}$ à medida que o multirrotor se aproximava da cota de transição. Essa dissipação gradual do momento inercial vertical conferiu ao controlador PD horizontal tempo de resposta suficiente para centralizar a aeronave sobre o alvo com folga, mantendo o erro normalizado na imagem confinado na faixa de $29,1\%$, sem ultrapassar o limiar de fuga de $60\%$.
+O fato de não ter ocorrido nenhuma pausa na descida durante os voos normais é resultado direto do bom ajuste da desaceleração vertical aplicada entre 6,0 m e 2,0 m de altura. Conforme definido na Eq.~\eqref{eq:fator_frenagem}, a velocidade de descida foi reduzida gradualmente de $1,50\text{ m/s}$ para $0,15\text{ m/s}$ à medida que o drone se aproximava da altura de troca de fase. Essa redução suave do embalo vertical deu ao controlador horizontal PD tempo suficiente para centralizar o drone sobre a armadilha com folga, mantendo o desvio na tela na faixa média de $29,1\%$, sem nunca cruzar o limite de fuga de $60\%$.
 
-A ausência de disparos da histerese em voos nominais confirma que a estratégia opera como salvaguarda preventiva: em condições estáveis, ela não introduz atrasos na descida; contudo, caso uma rajada lateral ou erro inicial severo deslocasse o alvo para além de $60\%$, o corte temporário da velocidade vertical $v_z$ impediria a perda do alvo até o restabelecimento da centralização.
+O fato de a regra de histerese não precisar ser acionada em voos normais confirma que ela funciona como uma proteção preventiva, ou seja, em condições estáveis, ela não atrasa a descida do drone, porém, se uma rajada de vento lateral ou um erro inicial muito grande empurrasse o alvo para além da margem de $60\%$, a pausa temporária da velocidade vertical $v_z$ evitaria que a câmera perdesse a armadilha de vista até que o drone voltasse a se centralizar.
 
-Para cenários futuros sob turbulências mais severas, propõe-se como refinamento uma \textbf{histerese dinâmica adaptativa}, cujas fronteiras de zona segura e fuga variem proporcionalmente à velocidade horizontal instantânea e ao ângulo de arfagem/rolagem (\textit{pitch/roll}) do chassi, expandindo a margem de segurança em manobras rápidas.
+Para cenários futuros com ventos e turbulências mais fortes, sugere-se como melhoria implementar uma histerese dinâmica adaptativa, ampliando as técnicas de controle com limite de campo de visão estudadas por Thuilot \textit{et al.}~\cite{thuilot2002}. Nesse modelo aprimorado, os limites da área segura e da borda de fuga se ajustariam automaticamente conforme a velocidade horizontal do drone e os ângulos de inclinação para frente, para trás e para os lados (\textit{pitch/roll}) da estrutura, aumentando a margem de segurança durante manobras mais rápidas.
 
-\subsecao{Teste 4 --- Controle em Cascata e Alinhamento Autônomo de Guinada (Objetivo 5)}
+\subsecao{Teste 4: Controle em Cascata e Alinhamento Autônomo de Guinada (Objetivo 5)}
 
-O quarto teste avaliou a estabilidade da arquitetura de controle cinemático multi-taxa (400 Hz no ArduPilot e 20 Hz no nó ROS 2) e a exatidão do alinhamento autônomo de guinada (\textit{Yaw}) na cota de 1,50 m da Fase 2. A meta definida no Objetivo 5 exigia que o erro angular absoluto residual em malha fechada fosse inferior a $1,0^\circ$ ($|e_\psi| \le 1,0^\circ$).
+O quarto teste avaliou a estabilidade do sistema de controle que opera em diferentes velocidades de resposta (400 Hz no piloto automático ArduPilot e 20 Hz no módulo do ROS 2) e a precisão do alinhamento automático de giro horizontal (\textit{Yaw}) na altura de 1,50 m durante a Fase 2. A meta estabelecida no Objetivo 5 exigia que o erro angular final em voo controlado fosse menor que $1,0^\circ$ ($|e_\psi| \le 1,0^\circ$).
 
-A consolidação das 60 missões autônomas de Monte Carlo revelou:
+A análise conjunta das 60 missões autônomas de Monte Carlo mostrou os seguintes resultados:
 \begin{itemize}
-    \item \textbf{Erro angular médio absoluto de guinada:} $|e_\psi| = 0,46^\circ$;
-    \item \textbf{Desvio padrão:} $\sigma_\psi = \pm 0,54^\circ$;
-    \item \textbf{Atendimento ao critério de trava:} $100,0\%$ dos voos satisfizeram a sustentação ininterrupta de $|e_\psi| \le 1,00^\circ$ durante $\Delta t \ge 0,30\text{ s}$ (6 passos consecutivos a 20 Hz).
+	\item \textbf{Erro angular médio absoluto de guinada:} $|e_\psi| = 0,46^\circ$;
+	\item \textbf{Desvio padrão:} $\sigma_\psi = \pm 0,54^\circ$;
+	\item \textbf{Cumprimento do critério de estabilização:} $100,0\%$ dos voos mantiveram o erro dentro da margem de $|e_\psi| \le 1,00^\circ$ sem interrupções por pelo menos $\Delta t \ge 0,30\text{ s}$ (6 ciclos seguidos a 20 Hz).
 \end{itemize}
 
 \subsubsecao{Discussão Crítica do Alinhamento Angular}
 
-A obtenção de um erro médio de menos de meio grau ($0,46^\circ$) sob atitude inicial estocástica arbitrária ($\psi_{\text{inicial}} \sim \mathcal{U}(0^\circ; 360^\circ)$) comprova a precisão da abordagem geométrica baseada na identificação do arranjo triangular das alças. A decisão de realizar o alinhamento de guinada em voo pairado a 1,50 m de altitude foi um critério importante de projeto: ao estabilizar as translações horizontais e a descida durante a manobra de rotação, desacoplou-se o torque de guinada das forças de sustentação, permitindo que a malha interna de atitude do ArduPilot amortecesse oscilações residuais.
+Alcançar um erro médio menor que meio grau ($0,46^\circ$), mesmo com o drone começando cada teste apontado para uma direção inicial aleatória qualquer ($\psi_{\text{inicial}} \sim \mathcal{U}(0^\circ; 360^\circ)$), comprova a precisão do método geométrico baseado no formato triangular das três alças. A decisão de fazer esse ajuste de giro com o drone parado no ar (voo pairado) a 1,50 m de altura foi feita já que ao pausar os deslocamentos laterais e a descida durante a rotação, separou-se a força de giro das forças de sustentação vertical, permitindo que o controle interno de estabilidade do ArduPilot amortecesse qualquer balanço restante. Vale ressaltar que a escolha da altitude de 1,50 m para ajustar o \textit{Yaw} se deu devido ao fato de a rede neural do YOLO detectar melhor as alças a essa altura por conta do dataset utilizado.
 
-Além disso, o cálculo da rotação pelo arco mais curto no círculo trigonométrico ($S^1$) no estimador `FiltroAnguloEKF` evitou descontinuidades angulares. Em missões onde a proa do drone iniciava com orientação próxima a $-180^\circ$ e a meta situava-se em $+93,37^\circ$, o algoritmo convergiu pelo percurso mais curto, prevenindo giros desnecessários de $360^\circ$.
+Além disso, o cálculo do giro pelo caminho angular mais curto no círculo completo ($S^1$), realizado pelo filtro \textit{FiltroAnguloEKF}, evitou saltos bruscos nos números dos ângulos. Nos voos em que a frente do drone começava apontada perto de $-180^\circ$ e o ângulo desejado estava em $+93,37^\circ$, o algoritmo girou pelo trajeto mais curto, evitando voltas completas desnecessárias de $360^\circ$.
 
-Como fator de melhoria, nota-se que a abordagem geométrica requer a detecção das três alças triangulares. Em cenários reais onde a carcaça apresente deformações mecânicas ou acúmulo de sujeira sobre uma das alças, o isolamento dos vértices pode sofrer ruído. Para contornar essa situação, sugere-se a investigação de modelos com regressão direta de pose 6D baseados em pontos-chave (*Keypoint Detection*), que estimam o vetor de orientação a partir da textura global do objeto.
+Como ponto de melhoria futura, observa-se que esse método geométrico depende da identificação simultânea das três alças triangulares. Em situações reais em campo, caso a estrutura da armadilha sofra algum amassado ou tenha sujeira cobrindo uma das alças, a marcação das pontas do triângulo pode apresentar falhas. Para contornar esse problema, sugere-se testar modelos de inteligência artificial que estimam diretamente a posição e a inclinação 3D do objeto (pose 6D) por meio de pontos-chave visuais (\textit{Keypoint Detection}). Essa técnica já foi aplicada com sucesso por Ubellacker \textit{et al.}~\cite{ubellacker2024} em sistemas de captura aérea com câmera embarcada, permitindo calcular a orientação espacial do alvo a partir da aparência geral de toda a sua superfície.
 
-\subsecao{Teste 5 --- Bateria de Monte Carlo da Missão Completa e Acoplamento Milimétrico (Objetivos 6 e 7)}
+\subsecao{Teste 5: Bateria de Monte Carlo da Missão Completa e Acoplamento (Objetivos 6 e 7)}
 
-O quinto ensaio avaliou o desempenho integrado de ponta a ponta do sistema por meio de uma bateria estocástica de Monte Carlo composta por \textbf{$N = 60$ missões autônomas completas} no simulador físico Gazebo Sim integrado ao ArduPilot SITL. Cada missão iniciou com perturbações aleatórias em altitude de cruzeiro ($16,0\text{ m a } 20,0\text{ m}$), erro radial de GPS ($1,0\text{ m a } 4,5\text{ m}$) e orientação inicial de guinada ($0,0^\circ\text{ a } 360,0^\circ$).
+O quinto teste avaliou o desempenho completo do sistema, do início ao fim da operação, por meio de uma bateria estatística de Monte Carlo com $N = 60$ missões autônomas completas no simulador físico Gazebo Sim conectado ao piloto automático ArduPilot SITL. Cada voo começou com variações aleatórias na altura inicial de cruzeiro ($16,0\text{ m a } 20,0\text{ m}$), na margem de erro radial do GPS ($1,0\text{ m a } 4,5\text{ m}$) e na direção inicial para onde o drone estava apontado ($0,0^\circ\text{ a } 360,0^\circ$).
 
-A Tabela~\ref{tab:consolidado_monte_carlo} sintetiza os indicadores de desempenho físico e temporal extraídos do relatório consolidado e da telemetria de voo.
+A Tabela~\ref{tab:consolidado_monte_carlo} reúne os principais resultados de precisão física e tempo de voo extraídos do relatório geral e dos registros de telemetria.
 
 \begin{table}[H]
-    \centering
-    \small
-    \setlength{\tabcolsep}{6pt}
-    \captionsetup{justification=centering}
-    \caption{Consolidação estatística das baterias de voo autônomo (Monte Carlo) no simulador}
-    \label{tab:consolidado_monte_carlo}
-    \vspace{0.2cm}
-    \begin{tabular}{lccc}
-        \hline
-        \textbf{Métrica de Desempenho} & \textbf{Valor Obtido} & \textbf{Meta Estabelecida} & \textbf{Status} \\
-        \hline
-        Total de missões autônomas executadas & 60 & $\ge 20$ voos & Concluído \\
-        Taxa de retenção no FOV (Teste 3) & 100,0\% & 100,0\% & Atendido \\
-        Afastamento médio da borda útil (FOV) & 29,1\% & $< 60,0\%$ (fuga) & Atendido \\
-        Bloqueios médios de histerese & 0,0 por voo & N/A & Atendido \\
-        Erro médio absoluto de Yaw (Teste 4) & $0,46^\circ \pm 0,54^\circ$ & $\le 1,00^\circ$ & Atendido \\
-        Erro médio pré-\textit{Blind Drop} (visão em 0,20 m) & $3,13 \pm 1,12\text{ mm}$ & $\le 5,00\text{ mm}$ & Atendido \\
-        \textbf{RMSE médio terminal pós-pouso (Gazebo)} & $\mathbf{5,25\text{ mm}}$ & $\mathbf{\le 8,00\text{ mm}}$ & \textbf{Atendido} \\
-        Faixa de dispersão do erro terminal (RMSE) & $[0,65; 11,04]\text{ mm}$ & $\le 8,00\text{ mm}$ & Avaliar \\
-        \textbf{Taxa Real de Acoplamento Mecânico} & \textbf{76,7\%} (46/60) & $\mathbf{> 60,0\%}$ & \textbf{Superado} \\
-        Tempo médio total de missão & $111,1\text{ s}$ & $< 90,0\text{ s}$ & Avaliar \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{4pt}
+	\captionsetup{justification=centering}
+	\caption{Consolidação estatística das baterias de voo autônomo (Monte Carlo) no simulador}
+	\label{tab:consolidado_monte_carlo}
+	\vspace{0.2cm}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{6.0cm}ccc}
+		\hline
+		\textbf{Métrica de Desempenho} & \textbf{Valor Obtido} & \textbf{Meta Estabelecida} & \textbf{Status} \\
+		\hline
+		Total de missões autônomas executadas & 60 & $\ge 20$ voos & Concluído \\
+		Taxa de retenção no FOV (Teste 3) & 100,0\% & 100,0\% & Atendido \\
+		Afastamento médio da borda útil (FOV) & 29,1\% & $< 60,0\%$ (fuga) & Atendido \\
+		Bloqueios médios de histerese & 0,0 por voo & N/A & Atendido \\
+		Erro médio absoluto de Yaw (Teste 4) & $0,46^\circ \pm 0,54^\circ$ & $\le 1,00^\circ$ & Atendido \\
+		Erro médio pré-\textit{Blind Drop} (visão em 0,20 m) & $3,13 \pm 1,12\text{ mm}$ & $\le 5,00\text{ mm}$ & Atendido \\
+		\textbf{RMSE médio terminal pós-pouso (Gazebo)} & $\mathbf{5,25\text{ mm}}$ & $\mathbf{\le 8,00\text{ mm}}$ & \textbf{Atendido} \\
+		Faixa de dispersão do erro terminal (RMSE) & $[0,65; 11,04]\text{ mm}$ & $\le 8,00\text{ mm}$ & Avaliar \\
+		\textbf{Taxa Real de Acoplamento Mecânico} & \textbf{76,7\%} (46/60) & $\mathbf{> 60,0\%}$ & \textbf{Superado} \\
+		Tempo médio total de missão & $111,1\text{ s}$ & $< 90,0\text{ s}$ & Avaliar \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
 \end{table}
 
-A taxa real de acoplamento terminal alcançada foi de \textbf{$76,7\%$} (46 acoplamentos com sucesso estrito em 60 missões), superando a meta de projeto de $> 60,0\%$ prevista no Objetivo 7. O erro radial médio apurado diretamente no referencial absoluto do mundo simulado (\textit{ground truth} físico do Gazebo Sim entre o chassi do drone e o centro da armadilha após o pouso e desarme dos motores) situou-se em \textbf{$5,25\text{ mm}$}, cumprindo com margem de segurança a tolerância sub-centimétrica do Objetivo 6 ($\text{RMSE} \le 8,00\text{ mm}$).
+A taxa real de encaixe bem-sucedido no final da missão chegou a $76,7\%$ (46 capturas concluídas dentro de todos os critérios rigorosos em 60 voos), superando com folga a meta mínima de $> 60,0\%$ definida no Objetivo 7. O erro radial médio medido diretamente pelas coordenadas exatas do mundo simulado (\textit{ground truth} físico do Gazebo Sim entre o corpo do drone e o centro da armadilha depois do pouso e do desligamento dos motores) ficou em $5,25\text{ mm}$, atendendo com boa margem de segurança ao limite exigido no Objetivo 6 ($\text{RMSE} \le 8,00\text{ mm}$).
+
+A distribuição dos erros finais de posição $(e_x, e_y)$ ao redor do centro da armadilha é mostrada no gráfico de dispersão da Fig.~\ref{fig:dispersao_pousos_monte_carlo}, destacando como a maioria dos pousos ficou concentrada dentro do círculo de tolerância máxima ($\le 8,0\text{ mm}$).
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	\caption{Diagrama de dispersão métrica dos pontos terminais de pouso nos 60 ensaios de Monte Carlo}
+	\label{fig:dispersao_pousos_monte_carlo}
+	\includegraphics[width=0.85\linewidth]{figuras/dispersao_pousos_monte_carlo.png}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+\end{figure}
 
 \subsubsecao{Discussão Crítica sobre a Discrepância de Erro e o Efeito Solo}
 
-Um dos achados da análise comparativa reside na discrepância entre o erro medido em voo antes da descida cega e o erro final aferido no solo após o pouso:
+Um ponto importante observado na análise dos resultados foi a diferença entre o erro medido no ar, logo antes da descida final sem câmera, e o erro real medido no chão depois do pouso:
 \begin{itemize}
-    \item \textbf{Erro pré-\textit{Blind Drop} (em voo a 0,20 m de altitude):} média de $3,13\text{ mm} \pm 1,12\text{ mm}$;
-    \item \textbf{Erro terminal pós-pouso (no solo após modo \texttt{LAND}):} média de $5,25\text{ mm}$, com desvios alcançando até $11,04\text{ mm}$ nas 14 missões limítrofes ($23,3\%$).
+	\item \textbf{Erro pré-\textit{Blind Drop} (em voo a 0,20 m de altitude):} média de $3,13\text{ mm} \pm 1,12\text{ mm}$;
+	\item \textbf{Erro terminal pós-pouso (no solo após modo \texttt{LAND}):} média de $5,25\text{ mm}$, com alguns desvios chegando a $11,04\text{ mm}$ nos 14 voos que ficaram no limite ($23,3\%$).
 \end{itemize}
 
-Essa degradação métrica de aproximadamente 2 milímetros decorre do fenômeno aerodinâmico do \textbf{Efeito Solo (\textit{Ground Effect})}. Quando o multirrotor de configuração coaxial OctaQuad aproxima-se a menos de 25 cm da superfície rígida da armadilha e do solo, o fluxo descendente gerado pelas oito pás colide com o plano horizontal e gera vórtices turbulentos de recirculação ascendente. Essa esteira turbulenta cria um "colchão de ar" assimétrico que exerce forças laterais aleatórias sobre a fuselagem da aeronave. 
+Esse aumento de cerca de 2 milímetros no erro acontece por causa de um fenômeno aerodinâmico chamado Efeito Solo (\textit{Ground Effect}), bastante estudado em drones multirrotores por Sanchez-Cuevas, Heredia e Ollero~\cite{sanchezcuevas2017ground}. Quando o drone coaxial OctaQuad chega a menos de 25 cm do topo rígido da armadilha e do chão, o vento empurrado para baixo pelas oito hélices bate contra a superfície e volta para cima formando redemoinhos turbulentos. Essa turbulência empurra o corpo do drone para os lados de forma imprevisível.
 
-A introdução da manobra de descida vertical firme a $0,80\text{ m/s}$ (\textit{Blind Drop}) com coordenadas inerciais congeladas em \texttt{LOCAL\_NED} foi projetada exatamente para mitigar esse efeito, utilizando o momento inercial descendente do veículo para furar a camada de turbulência até o toque físico. Ainda assim, no instante do contato entre o trem de pouso e o topo da tampa, ocorrem pequenas acomodações elásticas e deslizamentos mecânicos microscópicos de 1 a 2 milímetros até que o piloto automático confirme o toque estático e execute o corte eletrônico de potência (\texttt{disarm}). 
+A manobra de descida vertical firme a $0,80\text{ m/s}$ (\textit{Blind Drop}), mantendo a posição horizontal travada no sistema fixo do terreno (\texttt{LOCAL\_NED}), foi criada justamente para reduzir esse problema, usando o próprio peso e embalo da descida para atravessar essa camada de turbulência até tocar o alvo. Mesmo assim, após encostar no chão demora um pouco até que o piloto automático detecte que o drone está no solo e mande ele desarmar e nesse tempo acontecem pequenos deslizamentos mecânicos de 1 a 2 milímetros já que as hélices continuam girando.
 
-Nas 14 missões em que o erro pós-pouso situou-se na faixa entre $8,1\text{ mm}$ e $11,0\text{ mm}$, a interface de acoplamento atingiu a borda externa da abertura das alças. Na concepção física da garra motorizada, mandíbulas dotadas de acionamento ativo por servomotor ou extremidades com complacência elástica seriam capazes de fechar e tracionar a alça mesmo sob pequenos desvios laterais residuais, consumando a captura com sucesso. No entanto, sob o critério rigoroso de validação geométrica estrita ($\le 8,0\text{ mm}$) adotado na simulação para o mecanismo sem atuação ativa, essas aproximações foram computadas conservadoramente como insucessos.
+Nos 14 voos em que o erro final ficou entre $8,1\text{ mm}$ e $11,0\text{ mm}$, a base do mecanismo de captura encostou na borda externa das alças. E como a simulação utilizou um critério geométrico muito rigoroso ($\le 8,0\text{ mm}$) para representar o mecanismo sem movimento ativo, esses 14 casos foram identificados como falhas e contabilizados nos testes.
+
+O resultado físico dessa etapa final no ambiente simulado é mostrado na Fig.~\ref{fig:acoplamento_terminal_gazebo}, que exibe o drone pousado sobre a armadilha com o mecanismo de captura encaixado na alça.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	\caption{Registro do acoplamento terminal entre a interface ventral do VANT e a alça da armadilha no simulador}
+	\label{fig:acoplamento_terminal_gazebo}
+	\vspace{0.2cm}
+	\includegraphics[width=0.85\linewidth]{figuras/acoplamento_terminal_gazebo.png}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+\end{figure}
 
 \subsubsecao{Discussão sobre o Tempo Médio de Missão e o Compromisso de Engenharia}
 
-O tempo médio registrado para a missão autônoma completa foi de $111,1\text{ segundos}$, superando a estimativa teórica preliminar de 90 segundos. Esse acréscimo temporal de cerca de 21 segundos traduz um compromisso de engenharia (\textit{trade-off}) plenamente justificado entre rapidez operacional e segurança estocástica:
+O tempo médio medido para concluir a missão inteira foi de $111,1\text{ segundos}$, um pouco acima da previsão inicial de 90 segundos. Essa diferença de cerca de 21 segundos representa uma escolha consciente de projeto (\textit{trade-off}) que prioriza a segurança e a precisão no lugar da pressa:
 \begin{enumerate}
-    \item Na Fase 1, a rampa de desaceleração entre 6,0 m e 2,0 m consumiu em média 8 segundos adicionais para amortecer suavemente a descida;
-    \item Na Fase 2, a estabilização em voo pairado a 1,50 m para atender à trava contínua de guinada ($|e_\psi| \le 1,0^\circ$ por $\ge 0,30\text{ s}$) despendeu entre 6 e 10 segundos;
-    \item Na Fase 3, o patamar de \textbf{ancoragem milimétrica em voo pairado a 0,20 m} exigiu estritamente a sustentação contínua de $\|e_{xy}\| \le 5\text{ mm}$ durante $2,50\text{ segundos}$ ininterruptos (50 quadros sucessivos a 20 Hz). Caso uma oscilação residual de $5,2\text{ mm}$ ocorresse no 48º quadro, o temporizador era reinicializado do zero por salvaguarda algorítmica.
+	\item Na Fase 1, a rampa de desaceleração entre 6,0 m e 2,0 m ajudou na suavidade da frenagem mas exigiu mais tempo.
+	\item Na Fase 2, a parada no ar (\textit{hover}) a 1,50 m para garantir o alinhamento firme de giro ($|e_\psi| \le 1,0^\circ$ por pelo menos $0,30\text{ s}$) também consumiu bastante tempo para garantir a angulação correta;
+	\item Na Fase 3, a etapa de \textbf{ancoragem milimétrica em voo pairado a 0,20 m} exigiu que o drone mantivesse o erro horizontal dentro de $\|e_{xy}\| \le 5\text{ mm}$ durante $2,50\text{ segundos}$ seguidos sem interrupções (50 quadros consecutivos a 20 Hz). Se uma pequena oscilação de $5,2\text{ mm}$ acontecesse no 48º quadro, o contador de tempo zerava e recomeçava do início como medida de segurança.
 \end{enumerate}
 
-Essa rigidez temporal aumentou a duração total da missão, mas foi precisamente a responsável por garantir que o multirrotor disparasse a descida terminal somente quando a probabilidade estocástica de erro fosse minimizada. Em operações autônomas reais de captura de vetores biológicos, a prioridade absoluta reside na prevenção de quedas e na precisão de acoplamento, sendo o atraso de 20 segundos perfeitamente tolerável do ponto de vista prático.
+Essa exigência rigorosa de estabilidade aumentou a duração total do voo, mas foi exatamente o que garantiu que o drone só iniciasse a descida final quando a chance de erro fosse mínima. Em operações reais de recolhimento, evitar colisões e garantir um encaixe seguro é muito mais importante do que economizar alguns segundos, tornando esse tempo extra totalmente aceitável na prática.
 
 \subsubsecao{Fatores de Melhoria para a Taxa de Acoplamento}
 
-Para elevar a taxa de sucesso terminal de $76,7\%$ para patamares superiores a $90\%$, duas intervenções complementares são recomendadas:
+Para aumentar a taxa de sucesso nas capturas de $76,7\%$ para mais de $90\%$, recomendam-se duas melhorias complementares:
 \begin{enumerate}
-    \item \textbf{Aprimoramento Mecânico (Atuação Ativa e Geometria Autocentrante):} A implementação física do atuador com servomotor ativo e mandíbulas autocentrantes dotadas de afunilamento cônico ou flexibilidade passiva elástica permitirá que desvios residuais de até $25\text{ mm}$ causados pelo efeito solo sejam absorvidos e canalizados mecanicamente para o centro de travamento no instante do fechamento;
-    \item \textbf{Controle Avançado Antidistúrbio:} Substituir o controlador PD no trecho terminal de 0,20 m por uma lei de controle por Modos Deslizantes (\textit{Sliding Mode Control} --- SMC) ou Controle Preditivo Baseado em Modelo (MPC). Esses controladores modernos possuem formulação matemática explícita para rejeição de distúrbios limitados no tempo, sendo capazes de combater ativamente as forças estocásticas do efeito solo nos 250 milissegundos anteriores ao toque.
+	\item \textbf{Aprimoramento Mecânico (Aumento da Abertura e Geometria Autocentrante):} Além da construção física da garra com servomotor ativo e pontas afuniladas ou flexíveis (\textit{soft gripper}), conforme discutido nas revisões sobre manipulação aérea de Bonyan Khamseh, Janabi-Sharifi e Abdessameud~\cite{bonyan2018} e comprovado na prática por Ubellacker \textit{et al.}~\cite{ubellacker2024}, recomenda-se aumentar a abertura física das mandíbulas da garra. No projeto atual, a folga mecânica aceita desvios de até cerca de 8 a 10 mm; ampliar esse vão de entrada aumentará a margem de tolerância do sistema justamente durante a descida final sem câmera (\textit{Blind Drop}), garantindo que os pequenos desvios laterais de até $20\text{ a } 25\text{ mm}$ causados pelo efeito solo continuem dentro da área de captura e sejam guiados mecanicamente para o centro da trava no momento do fechamento;
+	
+	\item \textbf{Controle Avançado Antidistúrbio:} A troca do controlador PD no trecho final a 0,20 m por algoritmos de controle projetados especificamente para compensar perturbações externas, como o Controle por Modos Deslizantes (SMC), usado por Carvajal \textit{et al.}~\cite{carvajal2024} em sistemas visuais de drones, ou o Controle Preditivo Baseado em Modelo (MPC) aplicado a acoplamentos autônomos~\cite{pramono2025}, garantindo reação rápida contra os empurrões do efeito solo nos últimos 250 milissegundos antes do toque.
 \end{enumerate}
 
 \subsecao{Síntese Global e Validação dos Objetivos Específicos}
 
-A Tabela~\ref{tab:sintese_geral_objetivos} consolida o atendimento formal a todos os sete objetivos específicos estabelecidos na Introdução deste trabalho, confrontando as metas propostas com os valores quantitativos alcançados.
+A Tabela~\ref{tab:sintese_geral_objetivos} reúne o resumo final do cumprimento de todos os sete objetivos específicos definidos na Introdução deste trabalho, comparando as metas previstas com os resultados numéricos obtidos nos experimentos.
 
 \begin{table}[H]
-    \centering
-    \footnotesize
-    \setlength{\tabcolsep}{3pt}
-    \captionsetup{justification=centering}
-    \caption{Quadro de consolidação final e atendimento aos objetivos específicos da pesquisa}
-    \label{tab:sintese_geral_objetivos}
-    \vspace{0.2cm}
-    \begin{tabular}{>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.8cm}c}
-        \hline
-        \textbf{Objetivo Específico} & \textbf{Critério de Projeto} & \textbf{Meta Estipulada} & \textbf{Resultado Alcançado} & \textbf{Status} \\
-        \hline
-        1. Acurácia dos modelos YOLO & $mAP@50$ nos 3 regimes & $> 90,0\%$ em todas as fases & $> 99,2\%$ em todas as 3 fases & Superado \\
-        2. Latência e taxa de quadros & Inferência unitária (batch = 1) & $> 20\text{ FPS}$ ($< 50\text{ ms}$) & 28,6 a 51,8 FPS ($19,3$ a $35\text{ ms}$) & Superado \\
-        3. Filtragem EKF e oclusão & Redução ruído e deriva 4 s & Redução $\ge 40\%$; deriva $\le 250$ mm & Red. $51,98\%$; deriva $127,55$ mm & Superado \\
-        4. Retenção no campo de visão & Histerese dual-zone 3D & 100,0\% de retenção no FOV & 100,0\% retido (afast. 29,1\%) & Atendido \\
-        5. Alinhamento de Yaw & Controle em cascata na Fase 2 & $|e_\psi| \le 1,00^\circ$ & $|e_\psi| = 0,46^\circ \pm 0,54^\circ$ & Superado \\
-        6. Precisão métrica de captura & RMSE terminal no Gazebo & $\text{RMSE} \le 8,00\text{ mm}$ & $\text{RMSE} = 5,25\text{ mm}$ (3,13 mm pré-drop) & Atendido \\
-        7. Taxa de sucesso integrada & Bateria de Monte Carlo ($N=60$) & Sucesso global $> 60,0\%$ & \textbf{76,7\%} (46/60 acoplamentos) & Superado \\
-        \hline
-    \end{tabular}
-    \vspace{0.2cm}
-    \begin{flushleft}
-        \footnotesize Fonte: elaboração própria.
-    \end{flushleft}
+	\centering
+	\footnotesize
+	\setlength{\tabcolsep}{3pt}
+	\captionsetup{justification=centering}
+	\caption{Quadro de consolidação final e atendimento aos objetivos específicos da pesquisa}
+	\label{tab:sintese_geral_objetivos}
+	\vspace{0.2cm}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.8cm}c}
+		\hline
+		\textbf{Objetivo Específico} & \textbf{Critério de Projeto} & \textbf{Meta Estipulada} & \textbf{Resultado Alcançado} & \textbf{Status} \\
+		\hline
+		1. Acurácia dos modelos YOLO & $mAP@50$ nos 3 regimes & $> 90,0\%$ em todas as fases & $> 99,2\%$ em todas as 3 fases & Superado \\
+		2. Latência e taxa de quadros & Inferência unitária (batch = 1) & $> 20\text{ FPS}$ ($< 50\text{ ms}$) & 28,6 a 51,8 FPS ($19,3$ a $35\text{ ms}$) & Superado \\
+		3. Filtragem EKF e oclusão & Redução ruído e deriva 4 s & Redução $\ge 40\%$; deriva $\le 250$ mm & Red. $51,98\%$; deriva $127,55$ mm & Superado \\
+		4. Retenção no campo de visão & Histerese dual-zone 3D & 100,0\% de retenção no FOV & 100,0\% retido (afast. 29,1\%) & Atendido \\
+		5. Alinhamento de Yaw & Controle em cascata na Fase 2 & $|e_\psi| \le 1,00^\circ$ & $|e_\psi| = 0,46^\circ \pm 0,54^\circ$ & Superado \\
+		6. Precisão métrica de captura & RMSE terminal no Gazebo & $\text{RMSE} \le 8,00\text{ mm}$ & $\text{RMSE} = 5,25\text{ mm}$ (3,13 mm pré-drop) & Atendido \\
+		7. Taxa de sucesso integrada & Bateria de Monte Carlo ($N=60$) & Sucesso global $> 60,0\%$ & \textbf{76,7\%} (46/60 acoplamentos) & Superado \\
+		\hline
+	\end{tabular}
+	\vspace{0.2cm}
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
 \end{table}
 
 \subsubsecao{Confronto com a Literatura Correlata}
 
-Em confronto com o estado da arte revisado no Capítulo~2, os resultados obtidos destacam-se pelo equilíbrio entre simplicidade arquitetural e exatidão posicional:
+Ao comparar os resultados obtidos com os estudos apresentados no Capítulo~2, destacam-se avanços práticos importantes:
 \begin{itemize}
-    \item Em comparação com Barisic \textit{et al.}~\cite{barisic2019}, que empregaram YOLOv3-Tiny com filtro linear para perseguição de outro VANT atingindo redução de ruído de 60\% a 20 FPS, este trabalho alcançou taxas de até 51,8 FPS com redes de arquitetura moderna (YOLO26n e YOLOv10n), garantindo adicionalmente a sustentação estocástica sob oclusão de 4,0 segundos e a preservação angular na variedade circular $S^1$;
-    \item Em relação aos trabalhos clássicos de aproximação e pouso autônomo (como Vidal e Casanova~\cite{vidal2007} e Lopez-Franco \textit{et al.}~\cite{lopezfranco2017}), que operaram em escalas de precisão centimétrica (erros típicos entre 30 mm e 100 mm), o presente trabalho atingiu escala milimétrica ($\text{RMSE} = 5,25\text{ mm}$ e alinhamento angular de $0,46^\circ$), viabilizando o acoplamento físico em estruturas com folgas severamente restritas;
-    \item Por fim, em contraste com abordagens dependentes de marcadores fiduciários artificiais tipo AprilTag ou ArUco (como em Thomas \textit{et al.}~\cite{thomas2014} e Bauer \textit{et al.}~\cite{bauer2023}), a estratégia desenvolvida operou de forma $100\%$ autônoma sem exigir qualquer modificação estrutural na armadilha real de vetores biológicos, comprovando a viabilidade do aprendizado profundo embarcado para tarefas de manipulação aérea de alta precisão.
+	\item Em comparação com Bari\v{s}i\'c \textit{et al.}~\cite{barisic2019}, que usaram a rede YOLOv3-Tiny com um filtro linear para perseguir outro drone e alcançaram 60\% de redução de ruído a 20 FPS, este trabalho atingiu velocidades de até 51,8 FPS com arquiteturas mais modernas (YOLO26n e YOLOv10n). Além disso, o sistema desenvolvido manteve a previsão da trajetória mesmo durante bloqueios de visão de 4,0 segundos e evitou saltos bruscos nos ângulos na transição completa de volta ($S^1$);
+	\item Em relação aos estudos clássicos de aproximação e pouso autônomo (como Vidal e Casanova~\cite{vidal2007} e Lopez-Franco \textit{et al.}~\cite{lopezfranco2017}), que trabalharam com precisão na casa dos centímetros (erros típicos entre 30 mm e 100 mm), o método proposto neste trabalho alcançou precisão milimétrica ($\text{RMSE} = 5,25\text{ mm}$ e erro médio de giro de $0,46^\circ$). Esse nível de exatidão torna possível o encaixe mecânico mesmo com folgas muito pequenas na garra;
+	\item Ao contrário de soluções que dependem de câmeras externas de captura de movimento em laboratório (MOCAP, como em Thomas \textit{et al.}~\cite{thomas2014}) ou de etiquetas visuais artificiais coladas no alvo, e avançando sobre as técnicas de reconhecimento direto sem marcadores (como em Bauer \textit{et al.}~\cite{bauer2023}), o sistema desenvolvido funcionou de forma totalmente autônoma sem precisar alterar a estrutura física da armadilha real. Isso comprova que é viável usar redes de visão computacional embarcadas no próprio drone para realizar tarefas de encaixe aéreo com precisão de milímetros.
 \end{itemize}

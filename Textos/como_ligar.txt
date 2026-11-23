@@ -35,7 +35,11 @@ ros2 run ros_gz_bridge parameter_bridge /camera/image@sensor_msgs/msg/Image@gz.m
 cd ~/Projetos/Projeto-de-Pesquisa-1-IDP/Code/missao
 python3 main.py
 
-ou
+ou (modo demonstração/apenas voo, mostrando a câmera sem gravar nenhum dado):
+
+python3 main.py --apenas-voo
+
+ou (execução em lote headless gravando no CSV do Monte Carlo):
 
 python3 main.py --sem-gui --auto
 

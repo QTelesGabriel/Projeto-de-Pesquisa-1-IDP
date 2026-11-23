@@ -15,45 +15,45 @@ Warning--entry type for "tcc_mariahelena" isn't style-file defined
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 
 Done.
-You've used 48 entries,
+You've used 52 entries,
             4087 wiz_defined-function locations,
-            1093 strings with 17241 characters,
-and the built_in function-call counts, 37020 in all, are:
-= -- 2987
-> -- 918
-< -- 291
-+ -- 506
-- -- 177
-* -- 1771
-:= -- 5435
-add.period$ -- 108
-call.type$ -- 48
-change.case$ -- 54
-chr.to.int$ -- 654
-cite$ -- 48
-duplicate$ -- 2714
-empty$ -- 2991
-format.name$ -- 205
-if$ -- 8661
+            1115 strings with 18373 characters,
+and the built_in function-call counts, 40427 in all, are:
+= -- 3260
+> -- 1014
+< -- 314
++ -- 556
+- -- 196
+* -- 1928
+:= -- 5911
+add.period$ -- 118
+call.type$ -- 52
+change.case$ -- 58
+chr.to.int$ -- 702
+cite$ -- 52
+duplicate$ -- 2973
+empty$ -- 3270
+format.name$ -- 228
+if$ -- 9475
 int.to.chr$ -- 0
-int.to.str$ -- 48
-missing$ -- 494
-newline$ -- 167
-num.names$ -- 49
-pop$ -- 1145
+int.to.str$ -- 52
+missing$ -- 542
+newline$ -- 179
+num.names$ -- 53
+pop$ -- 1263
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 2
-skip$ -- 2828
+skip$ -- 3099
 stack$ -- 0
-substring$ -- 1666
-swap$ -- 2236
-text.length$ -- 73
+substring$ -- 1802
+swap$ -- 2443
+text.length$ -- 80
 text.prefix$ -- 0
 top$ -- 5
-type$ -- 48
+type$ -- 52
 warning$ -- 0
-while$ -- 155
-width$ -- 50
-write$ -- 485
+while$ -- 169
+width$ -- 54
+write$ -- 524
 (There was 1 warning)

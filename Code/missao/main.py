@@ -61,6 +61,12 @@ def parsear_argumentos(argv=None):
         default=3.8,
         help='Duração da oclusão total simulada na Etapa 3 em segundos (padrão: 3.8s, dentro do limite de 4.0s).',
     )
+    parser.add_argument(
+        '--sem-salvar', '--apenas-voo', '--demo',
+        dest='sem_salvar',
+        action='store_true',
+        help='Executa a missão completa exibindo a câmera/janelas OpenCV, mas sem gravar arquivos de telemetria nem atualizar o relatório CSV do Monte Carlo.',
+    )
     return parser.parse_args(argv)
 
 
@@ -70,6 +76,8 @@ def main():
     mostrar_janela = not (args.sem_gui or sem_display)
     if args.teste_oclusao:
         print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | MODO ISOLADO: TESTE 2 EKF + OCLUSAO ({args.duracao_oclusao:.2f}s) [sem impacto no Teste 5]")
+    elif args.sem_salvar:
+        print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | MODO APENAS VOO / DEMONSTRACAO (Gravação de telemetria e CSV: DESATIVADOS)")
     else:
         print(f"[i] Modo interface OpenCV: {'ATIVA' if mostrar_janela else 'DESATIVADA (headless)'} | Registro CSV: {'AUTOMATICO (--auto)' if args.auto else 'CONFIRMACAO MANUAL [S/N/D]'}")
     print(f"Conectando ao drone em: {CONEXAO}")
@@ -162,6 +170,8 @@ def main():
                 'duracao_oclusao_cfg_s': args.duracao_oclusao,
             })
             print(f"[+] [TESTE 2 ISOLADO] Gravando dados exclusivos em: {teste2_logger.caminho_csv}")
+        elif args.sem_salvar:
+            print("[i] Modo apenas voo (--apenas-voo / --sem-salvar): gravação de telemetria desativada.")
         else:
             from telemetria_logger import TelemetriaLogger
             telemetria = TelemetriaLogger()
@@ -292,8 +302,9 @@ def main():
                 else:
                     print("   -> (Ref. Gazebo pré-Blind Drop: indisponível)")
                 print("-" * 68)
-                # Fechamento do logger de telemetria
-                telemetria.fechar()
+                # Fechamento do logger de telemetria (se ativo)
+                if telemetria is not None:
+                    telemetria.fechar()
                 
                 # Avaliação analítica de critérios do TCC
                 criterio_t3 = (t3_fov_retido == 'SIM')
@@ -308,6 +319,12 @@ def main():
                 print(f"   -> [T5] RMSE <= 8.0 mm      : {'ATENDIDO' if criterio_t5 else 'NAO ATENDIDO'} ({rmse_mm:.2f} mm)")
                 print(f"   => Classificação Automática: {status_sugerido}")
                 print("-" * 68)
+
+                if args.sem_salvar:
+                    print("\n[i] MODO APENAS VOO (--apenas-voo / --sem-salvar):")
+                    print("    Missão executada com sucesso! Nenhum dado de telemetria ou registro no CSV de testes foi salvo.")
+                    print("=" * 68 + "\n")
+                    return
                 if args.auto:
                     status_str = status_sugerido
                     print(f"[+] Registro automático (--auto): voo classificado como {status_str} pelos critérios T3/T4/T5.")

@@ -60,7 +60,7 @@ A.~B. Amjoud and M.~Amrouch, ``Object detection using deep learning, cnns and
 V.~Afifah and S.~Erniwati, ``Yolov8 for object detection: A comprehensive
   review of advances, techniques, and applications,'' \emph{IJACI:
   International Journal of Advanced Computing and Informatics}, vol.~2, no.~1,
-  pp. 53--61, 7 2025.
+  pp. 53--61, 7 2026.
 
 \bibitem{adegun2024}
 A.~A. Adegun, J.~V. Fonou-Dombeu, S.~Viriri, and J.~Odindi, ``Ontology-based
@@ -284,5 +284,30 @@ L.~Shen, B.~Lang, and Z.~Song, ``Ds-yolov8-based object detection method for
 Y.~Zhang, J.~Wang, J.~Chen, D.~Shi, and X.~Chen, ``A space non-cooperative
   target recognition method for multi-satellite cooperative observation
   systems,'' \emph{Remote Sensing}, vol.~16, no.~18, p. 3368, 9 2024.
+
+\bibitem{tobin2017domain}
+J.~Tobin, R.~Fong, A.~Ray, J.~Schneider, P.~van Wyk, W.~Zaremba, and P.~Abbeel,
+  ``Domain randomization for transferring deep neural networks from simulation
+  to the real world,'' in \emph{Proceedings of the 2017 IEEE/RSJ International
+  Conference on Intelligent Robots and Systems (IROS)}.\hskip 1em plus 0.5em
+  minus 0.4em\relax IEEE, 2017, pp. 23--30.
+
+\bibitem{rey2025performance}
+L.~Rey, A.~M. Bernardos, A.~D. Dobrzycki, D.~Carrami{\~n}ana, L.~Bergesio,
+  J.~A. Besada, and J.~R. Casar, ``A performance analysis of you only look once
+  models for deployment on constrained computational edge devices in drone
+  applications,'' \emph{Electronics}, vol.~14, no.~3, p. 638, 2025.
+
+\bibitem{mourikis2007mscfk}
+A.~I. Mourikis and S.~I. Roumeliotis, ``A multi-state constraint kalman filter
+  for vision-aided inertial navigation,'' in \emph{Proceedings of the 2007 IEEE
+  International Conference on Robotics and Automation (ICRA)}.\hskip 1em plus
+  0.5em minus 0.4em\relax IEEE, 2007, pp. 3565--3572.
+
+\bibitem{sanchezcuevas2017ground}
+P.~J. Sanchez-Cuevas, G.~Heredia, and A.~Ollero, ``Characterization of the
+  aerodynamic ground effect and its influence in multirotor control,''
+  \emph{International Journal of Aerospace Engineering}, vol. 2017, p. 1820976,
+  2017.
 
 \end{thebibliography}

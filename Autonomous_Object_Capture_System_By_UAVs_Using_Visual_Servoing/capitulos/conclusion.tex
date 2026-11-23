@@ -1,148 +1,75 @@
-\subsecao{Retomada do Tema e do Problema de Pesquisa}
+\subsecao{Considerações Iniciais e Síntese da Proposta}
 
-A presente pesquisa dedicou-se ao desenvolvimento, à implementação e à validação empírica de um sistema autônomo de captura aérea de alvos não cooperativos baseado em servovisão monocular de posição (\textit{Position-Based Visual Servoing} --- PBVS), aplicado especificamente ao recolhimento e monitoramento de armadilhas terrestres de vetores biológicos por veículos aéreos não tripulados (VANTs). O combate eficaz a arboviroses endêmicas --- como a dengue, a febre amarela, a febre chikungunya e a zika --- depende criticamente da distribuição regular, da inspeção entomológica e do resgate periódico de armadilhas de campo em áreas remotas, periurbanas ou de topografia acidentada. A realização manual dessas tarefas por agentes de saúde pública expõe equipes a riscos operacionais significativos e impõe restrições de escala logística, justificando a automação robótica do ciclo de recolhimento aéreo.
+Esta pesquisa teve como objetivo desenvolver, implementar e validar na prática um sistema autônomo de captura aérea de alvos sem marcadores (não cooperativos) baseado em servovisão de posição (\textit{Position-Based Visual Servoing}, PBVS). A aplicação focou no recolhimento de armadilhas terrestres usadas no monitoramento de vetores biológicos por meio de veículos aéreos não tripulados (VANTs), buscando reduzir os riscos operacionais e as dificuldades logísticas do manejo manual desses equipamentos em locais remotos ou de terreno acidentado.
 
-O problema central investigado residiu na complexidade de guiar um VANT de forma totalmente autônoma até o acoplamento físico com um alvo desprovido de qualquer marcador artificial fiduciário (como etiquetas ArUco ou AprilTag), emissores eletromagnéticos ativos ou infraestrutura geodésica auxiliar (como GPS RTK). Nessa classe de missões com alvos não cooperativos, a navegação depende exclusivamente dos dados visuais adquiridos por uma câmera digital monocular voltada para o nadir. Esse arranjo impõe severos desafios físicos e algorítmicos ao sistema embarcado:
-\begin{enumerate}
-    \item \textbf{Ruído estocástico e flutuação temporal de detecção:} As caixas delimitadoras (\textit{bounding boxes}) geradas por redes neurais profundas sofrem micro-oscilações espaciais (\textit{jitter}) decorrentes de variações de contraste e textura, as quais, se injetadas diretamente na malha de realimentação, saturam os atuadores e desestabilizam o voo;
-    \item \textbf{Ambiguidade de escala geométrica e atrasos de amostragem:} A projeção perspectiva bidimensional da câmera monocular carece de informação direta de profundidade métrica, exigindo modelos analíticos de transformação geométrica para converter coordenadas em pixels para o referencial cartesiano métrico do corpo do drone;
-    \item \textbf{Vulnerabilidade de retenção no campo de visão (\textit{Field of View} --- FOV):} Em manobras de aproximação vertical rápida, inclinações atitudinais da fuselagem em resposta a comandos de velocidade horizontal podem provocar a perda irreversível do alvo na periferia da imagem;
-    \item \textbf{Alinhamento azimutal sub-grau:} A geometria assimétrica da garra de captura e das alças de sustentação da armadilha demanda uma convergência angular de guinada (\textit{Yaw}) de precisão estrita para garantir a penetração axial e o engate do dispositivo de acoplamento;
-    \item \textbf{Deslocamento físico entre sensor e atuador (\textit{Lever-Arm Offset}):} A lente da câmera de navegação e a interface de engate da garra encontram-se fisicamente separadas por um braço de alavanca estrutural de $+42,16\text{ mm}$ no eixo longitudinal, impedindo a descida direta sobre o centroide visual do objeto em baixíssima altitude;
-    \item \textbf{Turbulência aerodinâmica do efeito solo (\textit{Ground Effect}):} Nos últimos $20\text{ cm}$ de altitude que antecedem a captura mecânica, o fluxo de ar descendente das hélices (\textit{downwash}) colide contra a superfície do terreno e o teto da armadilha, gerando um campo incompressível de vórtices e recirculações turbulentas que induzem forças e momentos perturbadores sobre a fuselagem no momento mais crítico da missão.
-\end{enumerate}
-
-\subsecao{Síntese dos Resultados Alcançados}
-
-Para solucionar os desafios delineados, concebeu-se e implementou-se um pipeline de servovisão estruturado em três fases operacionais complementares, dotado de comutação autônoma de detectores neurais leves, filtragem estocástica de estados e uma máquina de estados finitos hierárquica. Os experimentos conduzidos no ambiente simulado Gazebo Sim acoplado ao ArduPilot SITL e os testes estocásticos em conjuntos de dados dedicados forneceram evidências conclusivas sobre a viabilidade e a robustez da arquitetura proposta:
+O principal desafio do projeto foi guiar o drone até o encaixe físico com a armadilha sem usar etiquetas visuais artificiais (como ArUco ou AprilTag) e sem depender de sistemas de posicionamento de alta precisão (como GPS RTK). Nesse cenário, toda a navegação acontece apenas com base nas imagens de uma única câmera apontada diretamente para baixo (nadir). Essa configuração trouxe vários obstáculos técnicos importantes: 
 
 \begin{itemize}
-    \item \textbf{Desempenho da Detecção Neural Multi-Estágio:}
-    \begin{itemize}
-        \item Na \textbf{Fase 1} (aproximação macroscópica em funil, de 20,0 m a 2,0 m), o modelo YOLO26n atingiu $mAP@50 = 99,23\%$, $mAP@50\text{--}95 = 75,68\%$ e precisão de $98,39\%$, processando imagens a uma taxa de $51,8\text{ FPS}$ (latência de $19,3\text{ ms}$), garantindo aquisição e acompanhamento contínuo da armadilha a longas distâncias;
-        \item Na \textbf{Fase 2} (alinhamento angular de guinada, de 2,0 m a 0,35 m), o modelo YOLOv10n com arquitetura de atribuição dual livre de supressão de não-máximos (\textit{NMS-free}) obteve $mAP@50 = 99,43\%$, $mAP@50\text{--}95 = 89,08\%$ e frequência de inferência de $44,6\text{ FPS}$ ($22,4\text{ ms}$), permitindo a discriminação das alças metálicas e o cálculo atitudinal em tempo real;
-        \item Na \textbf{Fase 3} (alinhamento fino de posição e compensação de \textit{offset} em ultra-baixa altitude, $< 0,35\text{ m}$), o modelo YOLOv10n focado no anel de ancoragem de 72 mm superou os problemas de corte óptico (\textit{clipping}) das bordas da imagem e a oclusão por sombras próprias do VANT, alcançando $mAP@50 = 99,50\%$, $mAP@50\text{--}95 = 99,50\%$ e $28,6\text{ FPS}$ ($35,0\text{ ms}$), atendendo a todos os requisitos de tempo real da malha de controle.
-    \end{itemize}
-    
-    \item \textbf{Atenuação de Ruído e Resiliência a Oclusões pelo EKF:}
-    \begin{itemize}
-        \item Em ensaios estocásticos de Monte Carlo ($N=50$), o Filtro de Kalman Estendido reduziu a variância e o ruído da detecção visual em $51,98\%$ nos eixos translacionais ($X, Y$) e em $52,23\%$ no ângulo azimutal de guinada;
-        \item Em voo dinâmico em malha fechada, com oclusão deliberada da visão monocular durante $3,76\text{ s}$, o filtro assegurou reduções de ruído de $85,0\%$ no plano cartesiano e de $91,2\%$ na atitude angular, sustentando a trajetória por propagação cinemática inercial pura e reacquirendo o alvo com um erro de rastreamento de apenas $23,37\text{ mm}$, culminando em pouso de precisão milimétrica ($1,75\text{ mm}$ de erro);
-        \item A extração analítica de velocidades lineares e angulares pelo estimador possibilitou alimentar o termo derivativo do controlador PD em cascata com sinais contínuos e desprovidos de ruído de alta frequência, prevenindo o fenômeno de sobreelevação (\textit{overshoot}) e dispensando termos integrais saturáveis.
-    \end{itemize}
-    
-    \item \textbf{Integridade do Campo de Visão e Alinhamento Atitudinal:}
-    \begin{itemize}
-        \item O algoritmo de histerese óptica de zona dupla combinado com a desaceleração vertical proporcional assegurou que em $100\%$ das missões o alvo permanecesse estavelmente contido no campo de visão, preservando uma margem de segurança média de $29,1\%$ em relação às bordas limítrofes do sensor e registrando zero paradas emergenciais de histerese;
-        \item A malha de controle de atitude alcançou uma convergência angular média com erro residual de apenas $0,46^\circ \pm 0,54^\circ$, garantindo o alinhamento axial rigoroso entre a garra de captura e a estrutura de ancoragem da armadilha.
-    \end{itemize}
-    
-    \item \textbf{Campanha Estatística de Captura e Validação de Ground Truth:}
-    \begin{itemize}
-        \item Em uma bateria abrangente de 60 missões completas de Monte Carlo no simulador físico Gazebo Sim com posições e orientações aleatórias da armadilha, o sistema registrou um erro médio quadrático (RMSE) de alinhamento tridimensional a $0,20\text{ m}$ de altitude de $3,13\text{ mm} \pm 1,12\text{ mm}$;
-        \item O RMSE terminal no momento do contato físico com a armadilha, aferido via \textit{Ground Truth} absoluto, foi de $5,25\text{ mm}$, com $95\%$ dos voos apresentando dispersão horizontal estritamente inferior a $9,80\text{ mm}$;
-        \item Essa precisão sub-centimétrica traduziu-se em uma taxa de acoplamento de $76,7\%$ ($46$ capturas bem-sucedidas em $60$ lançamentos) sob critério de validação geométrica estrita no simulador físico.
-    \end{itemize}
+	\item As pequenas oscilações rápidas (\textit{jitter}) nas detecções das redes neurais; 
+	\item A falta de leitura direta de distância (profundidade) em uma imagem comum 2D; 
+	\item O risco de a armadilha sair do campo de visão (\textit{Field of View}, FOV) durante ajustes laterais; 
+	\item A exigência de alinhar o giro horizontal (\textit{Yaw}) com erro menor que um grau para encaixar a garra nas alças; 
+	\item A distância física (\textit{lever-arm} ou \textit{offset}) de $+42,16\text{ mm}$ entre a lente da câmera e o centro da garra;
+	\item A turbulência causada pelo efeito solo nos instantes logo antes do toque no alvo.
 \end{itemize}
 
-\subsecao{Avaliação do Cumprimento dos Objetivos}
+Para superar essas limitações, foi desenvolvida uma arquitetura integrada dividida em três fases de voo, combinando redes neurais leves especializadas (YOLO26n e YOLOv10n), filtragem com Filtro de Kalman Estendido (EKF) ajustado para transições angulares completas ($S^1$), margem de segurança visual de duas zonas (histerese óptica) e uma máquina de estados finitos organizada por etapas. Com isso, o sistema guiou o VANT desde a aproximação inicial em grande altitude ($20,0\text{ m}$) até o encaixe final com precisão de milímetros.
 
-Para avaliar o cumprimento das metas estabelecidas, apresenta-se a seguir a análise do objetivo geral e dos objetivos específicos definidos para a pesquisa.
+\subsecao{Conclusões sobre os Resultados e Cumprimento dos Objetivos}
 
-\subsubsecao{Objetivo Geral}
+O objetivo geral deste trabalho foi desenvolver e validar um sistema autônomo de captura de objetos usando VANTs e servovisão, capaz de buscar, se aproximar e se alinhar a um alvo sem marcadores para realizar o recolhimento em ambiente simulado. 
 
-O objetivo geral deste trabalho consistiu em:
-\begin{quote}
-    \textit{Desenvolver e validar um sistema autônomo de captura de objetos utilizando VANTs e servovisão, visando à busca, à aproximação e ao alinhamento com um objeto não cooperativo para a realização da captura em ambiente simulado.}
-\end{quote}
+Com base nos testes feitos no simulador físico Gazebo Sim conectado ao piloto automático ArduPilot SITL, conclui-se que o objetivo geral foi plenamente atingido. O sistema mostrou-se capaz de executar a missão inteira, do início ao fim, sem nenhuma intervenção humana, descendo de forma estável desde a altura inicial até o encaixe físico com a armadilha.
 
-\textbf{Avaliação: Plenamente Alcançado.} O sistema desenvolvido comprovou sua capacidade operacional completa de executar missões autônomas de ponta a ponta sem intervenção humana externa ou auxílio de marcadores artificiais. Partindo da decolagem e busca em alta altitude ($20,0\text{ m}$), o sistema convergiu em funil tridimensional, alinhou sua atitude com a geometria assimétrica da armadilha em média altitude ($1,50\text{ m}$), transferiu o ponto de referência virtual para o anel superior compensando os $+42,16\text{ mm}$ do braço de alavanca da câmera em ultra-baixa altitude ($0,20\text{ m}$) e consumou o alinhamento de captura no simulador com erro quadrático médio terminal de $5,25\text{ mm}$ e taxa de sucesso mecânico de $76,7\%$.
+Em relação aos objetivos específicos, cujos resultados e métricas foram detalhados e comparados na Tab.~\ref{tab:sintese_geral_objetivos} do Capítulo~4, destacam-se as seguintes conclusões:
 
-\subsubsecao{Atendimento dos Objetivos Específicos}
+\begin{itemize}
+	\item \textbf{Especialização dos detectores neurais (Objetivos 1 e 2):} A divisão da aproximação visual em três fases com modelos treinados especificamente para cada altura superou as metas estabelecidas. O YOLO26n (Fase 1) e o YOLOv10n (Fases 2 e 3) alcançaram índices de $mAP@50$ acima de $99,2\%$ e velocidades de processamento entre $28,6$ e $51,8\text{ FPS}$ em computador com GPU dedicada. Esses números garantiram a taxa de atualização necessária para alimentar o controle de voo sem atrasos perceptíveis.
+	
+	\item \textbf{Filtragem estocástica e resiliência a oclusões (Objetivo 3):} O filtro EKF teve papel central na estabilização do voo, reduzindo as oscilações das detecções da câmera em mais de $51\%$ nos movimentos horizontais e em até $91,2\%$ no ângulo de giro sob perturbação. Em testes com bloqueio total da visão por até $4,0\text{ segundos}$, a previsão baseada na inércia manteve a trajetória e permitiu retomar o rastreamento com erro residual de apenas $23,37\text{ mm}$, garantindo que os controladores PD recebessem sinais suaves e livres de ruídos rápidos.
+	
+	\item \textbf{Retenção contínua no campo de visão (Objetivo 4):} A combinação da margem de segurança visual de duas zonas (histerese óptica) com a desaceleração gradual da descida evitou a perda do alvo em $100\%$ das simulações, mantendo o centro da armadilha com uma folga média de segurança de $29,1\%$ em relação às bordas da câmera.
+	
+	\item \textbf{Alinhamento angular e precisão de aproximação (Objetivos 5 e 6):} O alinhamento de giro horizontal alcançou erro médio de $0,46^\circ \pm 0,54^\circ$, cumprindo com folga a meta de ficar abaixo de um grau ($< 1,0^\circ$). Nos deslocamentos horizontais, o erro médio (RMSE) a $0,20\text{ m}$ de altura foi de $3,13\text{ mm}$, chegando a um RMSE final de $5,25\text{ mm}$ no momento do toque no solo, atendendo ao limite estabelecido de $8,0\text{ mm}$.
+	
+	\item \textbf{Validação integrada da captura (Objetivo 7):} Na bateria de 60 missões de Monte Carlo com condições iniciais aleatórias no Gazebo Sim, o sistema obteve $76,7\%$ de capturas bem-sucedidas (46 encaixes completos em 60 voos), superando o mínimo de $60\%$ definido no projeto.
+\end{itemize}
 
-A Tabela~\ref{tab:avaliacao_objetivos_especificos_conclusao} sintetiza a confrontação entre as metas estipuladas e as métricas experimentais consolidadas ao longo dos capítulos precedentes.
+Quanto ao tempo médio total de missão, os testes registraram uma duração média de $111,1\text{ s} \pm 16,8\text{ s}$, um pouco acima da previsão inicial de $90\text{ s}$. Essa diferença veio de uma escolha consciente de projeto: para garantir um encaixe seguro, o Estado 6 da máquina de estados exige que o drone fique parado no ar (\textit{hover}) por pelo menos $2,5\text{ s}$ seguidos dentro de uma margem rigorosa de erro horizontal ($\le 5\text{ mm}$) antes de liberar a descida final. Qualquer pequena oscilação acima desse limite zerava o contador de tempo, priorizando a precisão e a segurança mecânica em vez da rapidez.
 
-\begin{table}[H]
-    \centering
-    \footnotesize
-    \setlength{\tabcolsep}{3pt}
-    \captionsetup{justification=centering}
-    \caption{Avaliação sistemática do atendimento aos objetivos específicos da pesquisa}
-    \label{tab:avaliacao_objetivos_especificos_conclusao}
-    \vspace{0.2cm}
-    \begin{tabular}{p{0.06\textwidth}p{0.34\textwidth}p{0.23\textwidth}p{0.23\textwidth}>{\centering\arraybackslash}p{0.08\textwidth}}
-        \hline
-        \textbf{Obj.} & \textbf{Descrição do Objetivo Específico} & \textbf{Meta Estipulada} & \textbf{Resultado Obtido} & \textbf{Status} \\
-        \hline
-        1 & Treinamento e seleção de redes YOLO em 3 fases operacionais de voo & $mAP@50 > 90\%$ em todas as fases & Fase 1: $99,23\%$; Fase 2: $99,43\%$; Fase 3: $99,50\%$ & Atendido \\
-        2 & Manutenção da taxa de inferência neural para controle em tempo real & Taxa $> 20\text{ FPS}$ (latência $< 50\text{ ms}$) & Fase 1: $51,8\text{ FPS}$; Fase 2: $44,6\text{ FPS}$; Fase 3: $28,6\text{ FPS}$ & Atendido \\
-        3 & Atenuação de ruído e sustentação em oclusão visual via filtro de Kalman & Redução de ruído e sustentação estável por até $4,0\text{ s}$ & Jitter: $-52\%$ a $-91\%$; deriva $127,5\text{ mm}$ e reaquisição $23,4\text{ mm}$ aos $4,0\text{ s}$ & Atendido \\
-        4 & Retenção contínua da armadilha no campo de visão (FOV) da câmera & Permanência em $100\%$ do tempo de aproximação & $100\%$ de retenção (margem média $29,1\%$; 0 paradas) & Atendido \\
-        5 & Alinhamento angular autônomo de guinada (\textit{Yaw}) em relação à alça & Erro angular de guinada $< 1,0^\circ$ & Erro médio: $0,46^\circ \pm 0,54^\circ$ ($91,7\%$ das missões $< 1,0^\circ$) & Atendido \\
-        6 & Alinhamento fino de posição sobre o ponto de captura do alvo & RMSE horizontal $< 8,0\text{ mm}$ no alinhamento & RMSE pré-descida: $3,13\text{ mm}$; RMSE terminal: $5,25\text{ mm}$ & Atendido \\
-        7 & Validação da missão completa de captura em ambiente simulado & Taxa de sucesso de acoplamento $> 60\%$ & Taxa de sucesso de $76,7\%$ ($46/60$ missões) via \textit{Ground Truth} & Atendido \\
-        \hline
-    \end{tabular}
-\end{table}
+Além disso, a análise dos 14 voos que não foram contabilizados como captura ($23,3\%$) mostrou que os erros horizontais ficaram entre $8,1\text{ mm}$ e $11,0\text{ mm}$. Como a garra foi representada na simulação como uma peça rígida sem movimento motorizado nas mandíbulas, pequenos desvios de $3$ a $5\text{ mm}$ causados pelo efeito solo impediram o encaixe exato dentro do critério rigoroso do simulador. Em um protótipo físico real, garras com pontas flexíveis ou fechamento motorizado absorvem naturalmente desalinhamentos desse tamanho.
 
-A análise detalhada de cada objetivo específico revela que:
+\subsecao{Contribuições Principais}
+
+Este trabalho trouxe contribuições práticas e metodológicas relevantes para o desenvolvimento de drones autônomos guiados por visão computacional (servovisão):
+
 \begin{enumerate}
-    \item \textbf{Objetivo 1 (Especialização e Precisão dos Detectores YOLO):} A estratégia de fragmentar o desafio óptico em três modelos neurais especialistas superou a meta mínima de $90\%$, alcançando pontuações superiores a $99,2\%$ em todas as fases. O isolamento de um modelo exclusivo para a Fase 3 permitiu contornar as severas distorções geométricas e de iluminação que ocorrem em distâncias inferiores a $0,35\text{ m}$;
-    \item \textbf{Objetivo 2 (Latência e Frequência de Inferência):} Todas as arquiteturas operaram com folga acima de $20\text{ FPS}$ em regime de inferência unitária com \textit{batch} = 1. A adoção da rede YOLOv10n na Fase 2 e na Fase 3 proporcionou tempos de processamento de $22,4\text{ ms}$ e $35,0\text{ ms}$, viabilizando uma taxa de atualização contínua que eliminou atrasos de amostragem na malha fechada;
-    \item \textbf{Objetivo 3 (Filtragem Estocástica e Tolerância a Oclusão):} O EKF comprovou sua eficácia como elo amortecedor entre a visão computacional e o controle de voo. A redução de até $91,2\%$ nas oscilações angulares e a estabilização do voo por até $4,0\text{ s}$ sob perda forçada de imagem comprovaram a segurança preditiva do algoritmo cinemático de velocidade constante;
-    \item \textbf{Objetivo 4 (Retenção Óptica no FOV):} A integração entre a modelagem geométrica de projeção perspectiva Pinhole e o perfil de histerese de zona dupla preveniu integralmente a perda do alvo, mantendo o centroide da armadilha confortavelmente afastado das bordas do sensor óptico durante toda a trajetória descendente;
-    \item \textbf{Objetivo 5 (Alinhamento Angular de Guinada):} O erro residual de $0,46^\circ \pm 0,54^\circ$ demonstrou a capacidade do sistema em orientar o drone no espaço tridimensional com precisão sub-grau, pré-requisito indispensável para guiar as mandíbulas da garra em direção às alças de ancoragem;
-    \item \textbf{Objetivo 6 (Alinhamento Fino Sub-Centimétrico):} O erro quadrático médio de $3,13\text{ mm}$ registrado na estabilização a $0,20\text{ m}$ e o RMSE terminal de $5,25\text{ mm}$ no solo cumpriram com folga o teto de tolerância estipulado de $8,0\text{ mm}$;
-    \item \textbf{Objetivo 7 (Taxa Global de Captura):} A execução de 60 voos consecutivos com inicialização estocástica e validação por colisão física no simulador Gazebo Sim estabeleceu uma taxa de acoplamento de $76,7\%$, superando expressivamente o limiar mínimo de aceitação de $60\%$.
+	\item \textbf{Fluxo de visão em três fases sem marcadores artificiais:} comprovação prática de que redes neurais leves e treinadas para cada etapa de altura conseguem substituir com precisão etiquetas visuais artificiais (fiduciais) em missões de aproximação e encaixe aéreo;
+	\item \textbf{Compensação matemática da distância entre câmera e garra (\textit{lever-arm}):} criação de um cálculo que corrige a diferença física de posição ($+42,16\text{ mm}$) entre o centro da lente da câmera e o ponto de encaixe da garra, guiando o controle por um ponto de mira virtual ajustado automaticamente, sem precisar de motores extras para mover a câmera;
+	\item \textbf{Controle PBVS em cascata com dados filtrados:} uso direto das velocidades calculadas pelo filtro EKF na parte derivativa do controlador PD, o que elimina ruídos gerados por cálculos numéricos simples e dispensa termos integrais que poderiam causar acúmulo de erro e instabilidade (saturação);
+	\item \textbf{Margem de segurança visual (histerese óptica) com ajuste de descida:} implementação de uma regra que ajusta a velocidade vertical de descida de acordo com a posição do alvo na tela, evitando que a armadilha saia do campo de visão da câmera durante movimentos horizontais mais rápidos;
+	\item \textbf{Protocolo de testes com simulação física realista e referência exata (\textit{Ground Truth}):} execução de uma bateria estatística de voos de Monte Carlo no Gazebo Sim integrado ao ArduPilot SITL, comparando o desempenho do controle de voo com o encaixe físico real da garra no simulador.
 \end{enumerate}
 
-\subsubsecao{Análise de Objetivos Parcialmente Alcançados e Ressalvas de Engenharia}
+\subsecao{Limitações da Pesquisa}
 
-A partir da análise detalhada dos resultados empíricos, identificam-se dois aspectos operacionais observados no comportamento do sistema que merecem contextualização de engenharia:
+Embora os resultados obtidos tenham cumprido todas as metas definidas, existem algumas limitações no escopo deste trabalho que devem ser consideradas:
 
 \begin{enumerate}
-    \item \textbf{Tempo Médio Total de Execução da Missão ($111,1\text{ s}$ versus expectativa preliminar de $90\text{ s}$):}
-    Durante as etapas iniciais de concepção do trabalho, estimava-se que a aproximação completa, da cota de 20 metros até a ancoragem, pudesse ser executada em um intervalo temporal em torno de $90\text{ segundos}$. Todavia, a campanha estatística de 60 missões registrou uma duração média real de $111,1\text{ s} \pm 16,8\text{ s}$. 
-    
-    \textit{Justificativa de Engenharia:} Esse acréscimo temporal de aproximadamente 23\% não representa uma falha de controle, mas sim o resultado de uma decisão deliberada de projeto implementada no Estado 6 da máquina de estados finitos. Para garantir que a descida cega final de $0,20\text{ m}$ ocorresse sem oscilações pendulares ou velocidades laterais residuais, o algoritmo impõe um critério estrito de permanência (\textit{hover}) por pelo menos $2,5\text{ segundos}$ consecutivos dentro de uma janela de erro horizontal estritamente inferior a $15\text{ mm}$. Em cenários onde oscilações residuais ou vórtices de ar perturbavam brevemente a fuselagem, o temporizador de convergência era reiniciado preventivamente. Optou-se, portanto, por priorizar a estabilidade e a integridade física do acoplamento sobre a velocidade total da missão.
-
-    \item \textbf{Dispersão Residual Terminal e Insucessos na Simulação em 23,3\% dos Voos:}
-    Embora a taxa de acoplamento de $76,7\%$ ($46$ de $60$ missões) tenha superado com folga a meta de projeto de $60\%$, verificou-se que em $14$ voos o acoplamento geométrico estrito não foi computado, registrando-se aproximações limítrofes onde o erro horizontal situou-se entre $8,1\text{ mm}$ e $11,0\text{ mm}$.
-    
-    \textit{Justificativa de Engenharia:} O projeto conceitual do protótipo físico prevê uma garra motorizada acionada por servomotor ou atuador elétrico sob o chassi. Em um mecanismo físico com dedos atuados ou complacência elástica, desvios residuais de $8$ a $11\text{ mm}$ são naturalmente absorvidos pelo fechamento ativo das mandíbulas, que tracionam e conduzem a alça para o ponto de travamento. Contudo, em decorrência das restrições de prazo do projeto, a dinâmica ativa de abertura e fechamento motorizado das articulações não foi implementada no simulador Gazebo Sim; adotou-se a indução de que o alinhamento com erro $\le 8\text{ mm}$ e de guinada $\le 1^\circ$ garante a captura, modelando-se o envelope da garra como uma interface rígida. Assim, sob esse critério puramente geométrico e sem complacência, as deflexões terminais provocadas pelo efeito solo (\textit{Ground Effect}) na descida cega final de $0,20\text{ m}$ (onde o fluxo de ar das hélices colide com o topo da armadilha e induz perturbações laterais de $3$ a $5\text{ mm}$) fizeram com que esses 14 voos fossem conservadoramente classificados como insucessos no simulador.
+	\item \textbf{Validação restrita ao ambiente simulado:} todos os testes foram feitos apenas no simulador Gazebo Sim, sem incluir condições climáticas reais adversas, como rajadas repentinas de vento, mudanças bruscas na luz do sol, reflexos fortes no plástico da armadilha e poeira;
+	\item \textbf{Modelo de velocidade constante no filtro EKF:} o estimador não foi conectado diretamente aos sensores de aceleração e giro (unidade IMU) do piloto automático (\textit{tight coupling}), funcionando apenas com um modelo matemático independente baseado na velocidade anterior;
+	\item \textbf{Representação rígida da garra no simulador:} o movimento de abertura e fechamento dos servomotores e a flexibilidade mecânica das pontas da garra não foram simulados na prática, avaliando-se o sucesso apenas por limites geométricos rigorosos de encaixe;
+	\item \textbf{Banco de imagens limitado a condições durante o dia:} o treinamento das redes neurais usou apenas cenas com iluminação diurna e sombras projetadas, não abrangendo operações ao entardecer, à noite ou em ambientes com baixa visibilidade.
 \end{enumerate}
 
-\subsecao{Contribuições Científicas e Tecnológicas}
+\subsecao{Trabalhos Futuros}
 
-O desenvolvimento deste trabalho resultou em um conjunto de contribuições teóricas e aplicadas para a área de robótica aérea autônoma e servovisão monocular:
-
-\begin{enumerate}
-    \item \textbf{Pipeline Tri-Fásico de Servovisão Sem Marcadores Fiduciários:} Demonstrou-se a viabilidade prática de substituir etiquetas sintéticas cooperativas (ArUco/AprilTag) por redes neurais convolucionais leves especializadas, dividindo a aproximação em regimes ópticos discretos (macro-detecção, desacoplamento de alças para atitude e rastreamento local de anel), mantendo alta acurácia e cadência de controle em tempo real;
-    \item \textbf{Compensação Cinemática Analítica de Braço de Alavanca (\textit{Lever-Arm}):} Desenvolveu-se a formulação analítica que desacopla o centro óptico da câmera monocular do ponto físico de contato da garra mecânica ($+42,16\text{ mm}$ no eixo longitudinal), permitindo que o controlador persiga um ponto virtual tridimensional dinâmico e anule o erro de acoplamento em baixíssima altitude sem demandar articulações motorizadas na câmera;
-    \item \textbf{Arquitetura de Controle PBVS em Cascata com Realimentação de Estados Filtrados:} A utilização das velocidades estimadas pelo Filtro de Kalman Estendido para alimentar o ganho derivativo do controlador PD eliminou o ruído de alta frequência das caixas delimitadoras e suprimiu os efeitos nocivos de atrasos de transporte e sobrelevação (\textit{overshoot}), garantindo trajetórias suaves sem a necessidade de sintonia de termos integrais propensos à saturação (\textit{windup});
-    \item \textbf{Estratégia de Histerese Óptica com Desaceleração Proporcional:} Estabeleceu-se uma lei de guiamento vertical acoplada ao erro no plano da imagem que impede formalmente a fuga do alvo do cone de visada do sensor sob acelerações atitudinais abruptas;
-    \item \textbf{Metodologia Rigorosa de Validação com \textit{Ground Truth} em Simulação Física:} Estruturou-se um protocolo experimental estocástico com 60 missões de Monte Carlo no simulador Gazebo Sim e ArduPilot SITL, correlacionando o comportamento cinemático com a física de colisão e contato mecânico.
-\end{enumerate}
-
-\subsecao{Limitações do Trabalho}
-
-A despeito dos resultados amplamente favoráveis obtidos, reconhecem-se as seguintes limitações do estudo:
+Para dar continuidade a esta pesquisa, sugerem-se as seguintes frentes de desenvolvimento e investigação:
 
 \begin{enumerate}
-    \item \textbf{Validação Exclusivamente em Ambiente de Simulação:} Embora o Gazebo Sim reproduza com alta fidelidade a dinâmica de corpos rígidos, a gravidade e o contato mecânico, o sistema não foi submetido a fatores atmosféricos imprevisíveis do mundo real, tais como rajadas de vento turbulento com gradiente de cisalhamento, variações bruscas de iluminação natural com ofuscamento solar direto, reflexos especulares em superfícies molhadas e presença de poeira ou folhagem;
-    \item \textbf{Modelo Cinemático do EKF com Hipótese de Velocidade Constante:} O estimador de estados assumiu um modelo cinemático translacional desacoplado, sem incorporar uma fusão sensorial fortemente integrada (\textit{tight coupling}) com a unidade de medição inercial (IMU) do piloto automático ArduPilot, dependendo exclusivamente da projeção Pinhole e do altímetro para a propagação e atualização de estados;
-    \item \textbf{Abstração da Atuação Ativa da Garra no Simulador:} Em função do cronograma de desenvolvimento, a cinemática de fechamento motorizado das mandíbulas da garra não foi simulada ativamente no Gazebo Sim, restringindo a validação da captura à verificação de critérios geométricos estritos de alinhamento ($\le 8\text{ mm}$ e $\le 1^\circ$). Em um protótipo físico real, a ação dos servomotores sobre mandíbulas complacentes aumentaria a tolerância a desvios milimétricos residuais;
-    \item \textbf{Restrição do Treinamento Neural a Cenários Diurnos:} Os conjuntos de dados utilizados contemplaram variações de sombras e penumbras projetadas pela fuselagem, mas não englobaram regimes operacionais noturnos, crepusculares ou sob neblina densa, o que restringe a generalização dos detectores a condições de boa iluminação difusa.
-\end{enumerate}
-
-\subsecao{Sugestões para Trabalhos Futuros}
-
-Como desdobramentos naturais desta pesquisa e propostas para a continuidade do desenvolvimento da robótica de captura autônoma, recomendam-se as seguintes frentes de investigação:
-
-\begin{enumerate}
-    \item \textbf{Implementação Física Embarcada e Ensaios de Voo em Campo Aberto:} Embarcar o pipeline de visão e controle em um computador de bordo de alto desempenho (como a plataforma NVIDIA Jetson Orin Nano ou Orin NX), aplicando técnicas de otimização como quantização de pesos em precisão INT8 e compilação via NVIDIA TensorRT, conduzindo ensaios de voo real com armadilhas biológicas em ambientes externos;
-    \item \textbf{Fusão Sensorial Inercial-Visual Fortemente Acoplada (\textit{Tightly-Coupled VIO}):} Integrar diretamente as leituras em alta frequência da IMU do piloto automático ($400\text{ Hz}$) ao laço do Filtro de Kalman Estendido, eliminando a dependência do modelo de velocidade constante e permitindo estender a sustentação de voo cego por oclusão para intervalos superiores a $10\text{ segundos}$ sob manobras atitudinais agressivas;
-    \item \textbf{Modelagem da Cinemática Ativa da Garra e Validação Física:} Implementar a cinemática de fechamento dos servomotores da garra no simulador Gazebo Sim e validar o mecanismo em bancada física, avaliando o comportamento dinâmico de mandíbulas ativas ou com complacência elástica capazes de absorver tolerâncias de acoplamento superiores a $\pm 20\text{ mm}$;
-    \item \textbf{Controle Não Linear Avançado para Rejeição do Efeito Solo:} Desenvolver e implementar algoritmos de Controle por Modos Deslizantes (\textit{Sliding Mode Control} --- SMC) ou Controle Preditivo Baseado em Modelo (\textit{Model Predictive Control} --- MPC) capazes de estimar e rejeitar ativamente as forças e momentos aerodinâmicos gerados pela recirculação do ar na fase terminal de descida;
-    \item \textbf{Fusão Sensorial Multimodal para Operação em Condições Adversas:} Incorporar câmeras de profundidade estéreo ou sensores térmicos/infravermelhos ao sistema de visão, conferindo robustez operacional contra variações bruscas de luminosidade, penumbras densas e ambientes com cobertura vegetal espessa.
+	\item \textbf{Embarque em hardware real e ensaios em campo:} integrar o sistema de visão e controle a um computador de bordo compacto (como a linha NVIDIA Jetson Orin) utilizando otimização INT8 e aceleração TensorRT, validando o voo autônomo em ambiente externo real;
+	\item \textbf{Odometria inercial-visual fortemente acoplada (\textit{Tightly-Coupled VIO}):} integrar diretamente as leituras rápidas dos sensores de aceleração e giro (unidade IMU) do piloto automático ao cálculo do filtro de Kalman, melhorando a manutenção da trajetória quando a câmera ficar bloqueada por períodos mais longos;
+	\item \textbf{Implementação e teste da garra motorizada:} simular o movimento real de abertura e fechamento das mandíbulas e validar protótipos físicos com pontas flexíveis (complacentes), avaliando a capacidade da garra de absorver desalinhamentos mecânicos maiores que $\pm 15\text{ mm}$;
+	\item \textbf{Controle não linear para rejeição do efeito solo:} testar controladores avançados baseados em modos deslizantes (SMC) ou controle preditivo baseado em modelo (MPC) para compensar ativamente os empurrões causados pela turbulência de recirculação do ar nos instantes finais da descida;
+	\item \textbf{Sensoriamento multimodal:} adicionar câmeras com medição de profundidade (estéreo) ou sensores infravermelhos para permitir a execução de missões em horários com pouca luz ou sob condições climáticas desfavoráveis.
 \end{enumerate}

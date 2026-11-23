@@ -28,6 +28,7 @@ headheight=1.8cm]{geometry}
 \RequirePackage[english, brazilian]{babel}
 
 \onehalfspacing
+\setlength{\emergencystretch}{2em}
 
 
 
@@ -364,6 +365,7 @@ headheight=1.8cm]{geometry}
   \vspace{2em}
 
 
+  \normalsize
   \input{#2}
 }
 
@@ -471,6 +473,8 @@ headheight=1.8cm]{geometry}
 
 
 
+
+\contentsmargin{2.5em}
 
 % Estilo dos itens da lista de figuras
 \titlecontents{figure}[0pt]
