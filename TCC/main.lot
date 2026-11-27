@@ -1,0 +1,14 @@
+\babel@toc {brazilian}{}\relax 
+\contentsline {table}{\numberline {1}{\ignorespaces Análise Comparativa dos Trabalhos Correlatos}}{34}{table.1}%
+\contentsline {table}{\numberline {3}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1 (150 épocas)}}{55}{table.caption.42}%
+\contentsline {table}{\numberline {4}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (300 épocas)}}{55}{table.caption.43}%
+\contentsline {table}{\numberline {5}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m, 200 épocas)}}{56}{table.caption.44}%
+\contentsline {table}{\numberline {6}{\ignorespaces Ganhos e limites de saturação do controle cinemático PD por fase operacional}}{62}{table.caption.48}%
+\contentsline {table}{\numberline {7}{\ignorespaces Síntese do protocolo experimental de validação vinculado aos sete objetivos específicos do trabalho}}{72}{table.caption.55}%
+\contentsline {table}{\numberline {8}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção macroscópica da armadilha na Fase 1}}{75}{table.caption.59}%
+\contentsline {table}{\numberline {9}{\ignorespaces Comparativo de desempenho entre arquiteturas da família YOLO na detecção multi-classe da Fase 2 (alças e tampa)}}{76}{table.caption.60}%
+\contentsline {table}{\numberline {10}{\ignorespaces Comparativo de desempenho entre arquiteturas YOLO no treinamento da Fase 3 (alinhamento fino a 0,20 m)}}{76}{table.caption.61}%
+\contentsline {table}{\numberline {11}{\ignorespaces Métricas estatísticas consolidadas da validação estocástica do Filtro EKF ($N = 50$ ensaios de Monte Carlo)}}{79}{table.caption.65}%
+\contentsline {table}{\numberline {12}{\ignorespaces Consolidação estatística das baterias de voo autônomo (Monte Carlo) no simulador}}{84}{table.caption.73}%
+\contentsline {table}{\numberline {13}{\ignorespaces Quadro de consolidação final e atendimento aos objetivos específicos da pesquisa}}{88}{table.caption.80}%
+\contentsfinish 

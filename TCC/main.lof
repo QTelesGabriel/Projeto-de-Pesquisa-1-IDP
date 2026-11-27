@@ -1,0 +1,34 @@
+\babel@toc {brazilian}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Eixos de rotação e convenção de atitude angular (rolagem, arfagem e guinada) em um multirrotor}}{9}{figure.caption.5}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Disposição motopropulsora e sentidos de rotação das hélices na configuração coaxial \textit {Octaquad X}}}{10}{figure.caption.6}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Diagrama em blocos da arquitetura de hardware e malha inercial de baixo nível do VANT}}{12}{figure.caption.7}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Arquitetura conceitual da família YOLO}}{14}{figure.caption.9}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Exemplo de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}}{17}{figure.caption.10}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}}{19}{figure.caption.11}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Exemplo de \textit {gimbal} motorizado de três eixos para estabilização de câmeras}}{21}{figure.caption.13}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Comparação qualitativa entre os esquemas clássicos de Servovisão Baseada em Imagem (IBVS) e Servovisão Baseada em Posição (PBVS): (a) trajetória das características no plano da imagem no IBVS; (b) trajetória tridimensional da câmera no IBVS; (c) trajetória das características no plano da imagem no PBVS, evidenciando a saída pela borda da imagem; e (d) trajetória tridimensional retilínea da câmera no PBVS}}{22}{figure.caption.14}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Representação geométrica da projeção em perspectiva baseada no modelo de câmera \textit {Pinhole}}}{23}{figure.caption.15}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Classificação dos espaços operacionais e zonas de contato em sistemas de manipulação aérea}}{25}{figure.caption.17}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Exemplo de sistema de manipulação e captura aérea acoplado diretamente sob o \textit {frame} de um multirrotor}}{26}{figure.caption.18}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Sequência de captura dinâmica e empoleiramento (\textit {perching}) sobre alvo cilíndrico por manobra descendente rápida (\textit {swooping})}}{27}{figure.caption.21}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Sequência temporal da aproximação e captura aérea dinâmica em voo livre utilizando garra macia e flexível}}{28}{figure.caption.22}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Comparação entre a estimativa do Filtro de Kalman e a saída direta da detecção de objetos para largura e altura da caixa delimitadora}}{30}{figure.caption.24}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Comparação do erro de rastreamento entre controlador PID convencional e PID Neural sob perturbação}}{33}{figure.caption.26}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Arquitetura geral em malha fechada e fluxo operacional em três fases do sistema}}{41}{figure.caption.30}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Visão geral do ambiente de simulação no Gazebo apresentando o VANT em altitude de busca e o alvo no solo}}{43}{figure.caption.31}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Representação tridimensional renderizada do VANT \textit {OctaQuad X8}}}{45}{figure.caption.33}%
+\contentsline {figure}{\numberline {19}{\ignorespaces Vista inferior do VANT evidenciando o deslocamento geométrico (\textit {offset}) entre a câmera e a garra}}{48}{figure.caption.34}%
+\contentsline {figure}{\numberline {20}{\ignorespaces Modelo tridimensional renderizado da armadilha com as três alças de captura}}{49}{figure.caption.35}%
+\contentsline {figure}{\numberline {21}{\ignorespaces Vista superior da armadilha no simulador evidenciando o arranjo das alças e a inclinação de $93{,}37^\circ $}}{50}{figure.caption.36}%
+\contentsline {figure}{\numberline {22}{\ignorespaces Representação tridimensional do acoplamento mecânico entre o VANT e a armadilha}}{51}{figure.caption.37}%
+\contentsline {figure}{\numberline {23}{\ignorespaces Amostras representativas dos \textit {datasets} sintéticos gerados no Gazebo Sim para as Fases 1, 2 e 3}}{54}{figure.caption.40}%
+\contentsline {figure}{\numberline {24}{\ignorespaces Curvas de aprendizado dos modelos selecionados nas três fases ao longo das épocas de treinamento}}{57}{figure.caption.45}%
+\contentsline {figure}{\numberline {25}{\ignorespaces Interface de monitoramento em OpenCV nas três fases de aproximação}}{63}{figure.caption.49}%
+\contentsline {figure}{\numberline {26}{\ignorespaces Diagrama da máquina de estados e fluxo operacional da missão autônoma}}{64}{figure.caption.51}%
+\contentsline {figure}{\numberline {27}{\ignorespaces Trajetória tridimensional de busca adotada em contingência de perda do alvo}}{67}{figure.caption.52}%
+\contentsline {figure}{\numberline {28}{\ignorespaces Perfil de altitude e transição dos estados operacionais ao longo da missão}}{69}{figure.caption.53}%
+\contentsline {figure}{\numberline {29}{\ignorespaces Exemplos de inferência e caixas delimitadoras preditas pelos detectores selecionados nas três fases}}{77}{figure.caption.62}%
+\contentsline {figure}{\numberline {30}{\ignorespaces Desempenho dinâmico do Filtro EKF sob ruído visual, descontinuidade em $S^1$ e oclusão de 4,0 segundos}}{80}{figure.caption.66}%
+\contentsline {figure}{\numberline {31}{\ignorespaces Diagrama de dispersão métrica dos pontos terminais de pouso nos 60 ensaios de Monte Carlo}}{85}{figure.caption.74}%
+\contentsline {figure}{\numberline {32}{\ignorespaces Registro do acoplamento terminal entre a interface ventral do VANT e a alça da armadilha no simulador}}{86}{figure.caption.76}%
+\contentsfinish 

@@ -1,0 +1,90 @@
+\documentclass{configs/idp-model}
+\input{pacotes/pacotes}
+
+
+%PREENCHER TODOS OS CAMPOS ABAIXO
+\autor{Gabriel Queiroz Teles}
+
+
+% Utilizar um dos dois cursos abaixo
+\cienciadacomputacao
+%\engenhariadesoftware
+
+
+\titulo{SISTEMA AUTÔNOMO DE CAPTURA DE OBJETOS NÃO COOPERATIVOS POR VANTs UTILIZANDO SERVOVISÃO}
+\ano{2026}
+
+% Usar orientador ou orientadora
+% - Argumento opcional caso o orientador seja de uma instituição diferente
+\orientadora[IDP]{Ma. Patrícia da Silva Oliveira}
+%\orientador[IDP]{Prof. Dr. Fulano de Tal}
+
+% Para membros da banca, são três argumentos obrigatórios:
+% 1 - Nome do membro avaliador
+% 2 - Se o mesmo é membro interno ou externo à instituição
+% 3 - Instituição a qual o membro está vinculado
+\membrobancai{Dr. Luís Felipe Serra Cadiz}{Avaliador Interno}{IDP}
+\membrobancaii{Me. Gilberto de Oliveira Costa}{Avaliador Externo}{UnB}
+
+\palavraschave{Veículos aéreos não tripulados, servovisão, YOLO, filtro de Kalman, manipulação aérea}
+\keywords{Unmanned aerial vehicles, visual servoing, YOLO, Kalman filter, aerial manipulation}
+
+\dataaprovacao{08/05/2025}
+
+
+
+\begin{document}
+
+\setcounter{secnumdepth}{3} 
+\setcounter{tocdepth}{3}
+
+% Não alterar
+\pagenumbering{roman}
+\capaprincipal
+\folharosto
+\folhaaprovacao
+
+% Opcional
+\dedicatoria
+\agradecimentos
+
+
+% Não alterar 
+% Resumo e abstract - alterar os arquivos na pasta "partes" NÃO ALTERAR O NOME DELES
+\resumo
+\abstract
+
+%List of Figures e Tables são optativos. Caso não esteja utilizando no seu projeto, comentar as linhas abaixo
+\listoffigures
+\listoftables
+
+\tableofcontents
+\pagenumbering{arabic}
+
+
+% Para as seções, o comando \secao deve ter a forma \secao{título}{arquivo .tex}
+
+% Os comandos \subsecao e \subsubsecao seguem a forma \comando{Título}, sem a necessidade de passar um arquivo .tex
+
+\secao{Introdução}{capitulos/introduction}
+\secao{Revisão de Literatura}{capitulos/literature-review}
+\secao{Metodologia}{capitulos/methodology}
+\secao{Resultados e Discussão}{capitulos/results}
+\secao{Conclusão}{capitulos/conclusion}
+
+% Não alterar
+\referencias
+
+% Opcionais
+% \apendice[ap:meuapendice]{Título do apêndice A}{capitulos/apendicei}
+% Alternativa sem o primeiro parâmetro também funciona
+% \apendice{Título do apêndice A}{partes/apendicei}
+
+% \anexo{Título do Anexo A}{capitulos/anexoi}
+
+
+% Não alterar
+\capafinal
+
+ 
+\end{document}

@@ -1,0 +1,825 @@
+\subsecao{Fundamentação Teórica}
+
+\subsubsecao{Veículos Aéreos Não Tripulados (VANTs)}
+
+Os Veículos Aéreos Não Tripulados (VANTs), popularmente conhecidos como drones, são aeronaves projetadas para operar sem a presença de um piloto a bordo. Seu controle pode ser realizado remotamente, por meio de uma estação de controle em solo (\textit{Ground Control Station} -- GCS), ou de forma totalmente autônoma, utilizando computadores de bordo e sensores de navegação \cite{bonyan2018}. Na literatura aeronáutica, essas aeronaves são geralmente classificadas de acordo com seu sistema de sustentação em três categorias: asa fixa, asas rotativas (multirrotores) e configurações híbridas \cite{carvajal2024}. Os VANTs de asa fixa possuem características semelhantes às de aviões convencionais, apresentando maior autonomia de voo e velocidade de deslocamento. Entretanto, precisam de pistas ou lançadores para operar e não conseguem permanecer parados no ar. Já os VANTs de asas rotativas utilizam a rotação de seus motores e hélices para gerar a força necessária à sustentação. Entre suas principais características estão a capacidade de decolagem e pouso vertical (VTOL, do inglês \textit{Vertical Take-Off and Landing}) e a possibilidade de manter uma posição estável no ar, capacidade conhecida como voo pairado (\textit{hovering}) \cite{cocuzza2021}. Por fim, as configurações híbridas combinam características de ambas as categorias anteriores (como aeronaves de asa fixa com capacidade VTOL ou rotores basculantes), unindo a decolagem e o pouso verticais em áreas restritas à maior eficiência aerodinâmica e ao alcance estendido em voo de cruzeiro \cite{carvajal2024}.
+
+Em missões que envolvem manipulação aérea e captura de objetos não cooperativos, a capacidade de manter um voo pairado estável e realizar movimentos precisos em baixas velocidades é fundamental. Essas características permitem alinhar os mecanismos de captura e aproximar a aeronave do objeto de maneira controlada e suave \cite{cocuzza2021, meng2020, bonyan2018}. Para descrever os movimentos e as forças que atuam nessas aeronaves, a literatura utiliza o formalismo de Newton--Euler, que representa o VANT como um corpo rígido em um espaço tridimensional. Essa modelagem considera dois referenciais cartesianos principais: um referencial inercial fixo à Terra ($F_0$) e outro associado ao centro de massa da aeronave ($F_b$) \cite{adriansyah2017}. O movimento da aeronave é descrito por seis Graus de Liberdade (6 DoF, do inglês \textit{Degrees of Freedom}), divididos em três movimentos de translação ($x, y, z$) e três movimentos de rotação, representados pelos ângulos de Euler: rolagem (\textit{roll}, $\phi$), arfagem (\textit{pitch}, $\theta$) e guinada (\textit{yaw}, $\psi$), conforme apresentado na Fig.~\ref{fig:uav_reference_frames} \cite{sciortino2018}.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	
+	\caption{Eixos de rotação e convenção de atitude angular (rolagem, arfagem e guinada) em um multirrotor}
+	\label{fig:uav_reference_frames}
+	
+	\vspace{0.1cm}
+	
+	\includegraphics[width=0.7\linewidth]{figuras/uav_pitch_roll_yaw.png}
+	
+	\vspace{0.1cm}
+	
+	\begin{flushleft}
+		\footnotesize Fonte: Stickman Physics~\cite{stickmanphysics2025}.
+	\end{flushleft}
+	
+\end{figure}
+
+A matriz de rotação direcional permite converter as coordenadas do referencial do corpo ($F_b$) para o referencial inercial ($F_0$), sendo importante para representar as forças de empuxo e os vetores de velocidade no espaço. Embora o quadricóptero convencional, apresentado na Fig.~\ref{fig:uav_reference_frames}, seja frequentemente utilizado como modelo de referência, missões que envolvem contato físico exigem maior capacidade de empuxo. Isso ocorre devido à necessidade de transportar sensores e mecanismos de captura, como garras robóticas. Nesse contexto, a literatura destaca o uso de configurações coaxiais contra-rotativas, especialmente o arranjo \textit{Octaquad X}, ilustrado na Fig.~\ref{fig:octaquad_schematic} \cite{cocuzza2021, meng2020}.
+
+Nessa configuração, oito motores sem escovas (\textit{brushless}) são dispostos em pares coaxiais, distribuídos pelos quatro braços da estrutura em X. Em cada par, as hélices superior e inferior giram em sentidos opostos: horário (\textit{Clockwise} -- CW) e anti-horário (\textit{Counter-Clockwise} -- CCW). Esse arranjo contra-rotativo permite compensar os torques de reação decorrentes do arrasto aerodinâmico das hélices, reduzindo a tendência de rotação indesejada em torno do eixo vertical ($z$) durante o voo pairado. A variação coordenada da velocidade de rotação dos motores permite controlar os torques de atitude da aeronave. O torque de guinada ($\tau_\psi$) é gerado pela diferença entre os torques de reação produzidos pelos conjuntos de hélices que giram em sentidos opostos, enquanto os torques de rolagem ($\tau_\phi$) e arfagem ($\tau_\theta$) são produzidos pela distribuição diferencial de empuxo entre os braços da estrutura \cite{sciortino2018}.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	
+	\caption{Disposição motopropulsora e sentidos de rotação das hélices na configuração coaxial \textit{Octaquad X}}
+	\label{fig:octaquad_schematic}
+	
+	\vspace{0.1cm}
+	
+	\includegraphics[width=0.7\linewidth]{figuras/octaquad_schematic.png}
+	
+	\vspace{0.1cm}
+	
+	\begin{flushleft}
+		\footnotesize Fonte: ArduPilot Development Team~\cite{ardupilot_octaquad_x}.
+	\end{flushleft}
+	
+\end{figure}
+
+Uma das principais dificuldades na modelagem e no controle de sistemas multirrotores está relacionada ao fato de serem sistemas subatuados. Embora possuam seis graus de liberdade de movimento no espaço, esses sistemas contam com apenas quatro entradas de controle independentes: a força de empuxo vertical total e os três torques de atitude ($\tau_\phi, \tau_\theta, \tau_\psi$). Como os vetores de empuxo gerados pelos motores atuam paralelamente ao eixo vertical ($z$) do corpo da aeronave \cite{sciortino2018}, o VANT não consegue gerar diretamente forças horizontais nos eixos globais $x$ e $y$. Dessa forma, para se deslocar para frente, trás ou lados durante a aproximação ao alvo, a aeronave precisa inclinar sua estrutura em rolagem ou arfagem. Essa inclinação altera a direção do vetor de empuxo total, fazendo com que parte da força seja direcionada horizontalmente e produza a aceleração necessária ao movimento \cite{sciortino2018, cocuzza2021}.
+
+Essa limitação faz com que as variáveis de movimento da aeronave estejam fortemente acopladas, tornando sua dinâmica altamente não linear \cite{zhang2021}. Esse comportamento exige atenção especial durante a aproximação final e descida vertical em direção ao alvo, etapa na qual o VANT precisa realizar correções translacionais contínuas em baixas velocidades para garantir o alinhamento da estrutura sobre o ponto de pouso \cite{cocuzza2021}. Como a aeronave precisa inclinar constantemente seu \textit{frame} em rolagem ou arfagem para efetuar esses deslocamentos horizontais, uma câmera rigidamente fixada ao chassi sofreria oscilações angulares recorrentes. Essas inclinações desviariam o eixo óptico da vertical, distorcendo o enquadramento do alvo e podendo ocasionar sua perda do campo de visão (\textit{Field of View} -- FOV). Por esse motivo, é recomendado o emprego do \textit{gimbal} de três eixos, cuja função é estabilizar ativamente a câmera e garantir o enquadramento ortogonal e contínuo do alvo durante toda a descida \cite{shang2016}.
+
+Ainda com o objetivo de lidar com essas não linearidades e distúrbios aerodinâmicos externos, como rajadas de vento e turbulências em baixas altitudes, a literatura adota estratégias de controle organizadas em cascata \cite{zhang2021}. Nesse tipo de arquitetura, a malha interna de controle atua em alta frequência, permitindo corrigir rapidamente pequenos desvios angulares e manter a plataforma inercialmente estável. Essa estabilização é essencial para mitigar vibrações transmitidas ao conjunto óptico, assegurando que a malha externa de servovisão e o modelo de aprendizado profundo recebam imagens nítidas ao longo da aproximação. Para operacionalizar esse esquema em cascata, a arquitetura de hardware e software do robô é dividida em controle inercial de baixo nível e navegação autônoma de alto nível \cite{shang2016, sciortino2018}.
+
+O controle inercial de baixo nível é realizado por uma Unidade Controladora de Voo (FCU -- \textit{Flight Control Unit}), sendo o ecossistema Pixhawk uma das plataformas de hardware de código aberto mais utilizadas na robótica aérea \cite{shang2016}. Essa controladora executa \textit{firmwares} especializados no controle de voo, entre os quais se destaca o ArduPilot \cite{sciortino2018}. Conforme apresentado no diagrama em blocos da Fig.~\ref{fig:pixhawk_architecture}, essa arquitetura funciona em malha fechada. A Unidade de Medição Inercial (IMU -- \textit{Inertial Measurement Unit}) mede a aceleração e a velocidade angular do \textit{frame} em altas taxas de amostragem. Com base nessas informações e nas referências de navegação recebidas do nível superior, a FCU calcula as correções necessárias e envia sinais de modulação por largura de pulso (PWM) aos Controladores Eletrônicos de Velocidade (ESCs -- \textit{Electronic Speed Controllers}). Esses controladores regulam a potência elétrica fornecida aos motores sem escovas (\textit{brushless}), ajustando suas velocidades de rotação. As forças de empuxo geradas pelos motores atuam sobre a estrutura do VANT, permitindo corrigir sua atitude (orientação angular nos eixos de rolagem, arfagem e guinada) e compensar as perturbações que afetam o voo \cite{sciortino2018}.
+
+\begin{figure}[H]
+	\centering
+	\captionsetup{justification=centering}
+	
+	\caption{Diagrama em blocos da arquitetura de hardware e malha inercial de baixo nível do VANT}
+	\label{fig:pixhawk_architecture}
+	
+	\vspace{0.3cm}
+	
+	\begin{tikzpicture}[
+		scale=0.86, transform shape,
+		>=Stealth,
+		blk_ref/.style={draw=blue!75!black, fill=blue!6, thick, rounded corners=4pt, align=center, text width=6.4cm, minimum height=1.25cm, font=\small, inner sep=6pt},
+		blk_fcu/.style={draw=orange!85!black, fill=orange!8, thick, rounded corners=4pt, align=center, text width=6.4cm, minimum height=1.35cm, font=\small, inner sep=6pt},
+		blk_act/.style={draw=teal!80!black, fill=teal!7, thick, rounded corners=4pt, align=center, text width=6.4cm, minimum height=1.25cm, font=\small, inner sep=6pt},
+		blk_dyn/.style={draw=purple!75!black, fill=purple!7, thick, rounded corners=4pt, align=center, text width=6.4cm, minimum height=1.25cm, font=\small, inner sep=6pt},
+		blk_imu/.style={draw=blue!75!black, fill=blue!6, thick, rounded corners=4pt, align=center, text width=3.5cm, minimum height=1.35cm, font=\small, inner sep=6pt},
+		sig/.style={fill=white, text=black!85, inner sep=2.5pt, font=\scriptsize, align=center},
+		line/.style={draw=black!85, thick, ->},
+		feedline/.style={draw=blue!75!black, thick, dashed, ->}
+	]
+		
+		\node[blk_ref] (ref) at (0, 0) {
+			\textbf{Comandos de Navegação / Referência}\\
+			{\footnotesize Atitude e empuxo desejados}
+		};
+		
+		\node[blk_fcu] (fcu) at (0, -2.5) {
+			\textbf{Controlador de Voo (FCU) / Pixhawk}\\
+			{\footnotesize \textit{Firmware} ArduPilot}\\
+			{\footnotesize Estimação de Estados e Malha de Atitude}
+		};
+		
+		\node[blk_act] (esc) at (0, -5.0) {
+			\textbf{ESCs (Controladores Eletrônicos)}\\
+			{\footnotesize Chaveamento eletrônico de potência}
+		};
+		
+		\node[blk_act] (motor) at (0, -7.5) {
+			\textbf{Motores \textit{Brushless} e Hélices}\\
+			{\footnotesize Geração de empuxo e torques}
+		};
+		
+		\node[blk_dyn] (corpo) at (0, -10.0) {
+			\textbf{Dinâmica do VANT (Corpo Rígido)}\\
+			{\footnotesize Movimentação e atitude angular no espaço}
+		};
+		
+		\node[blk_imu] (imu) at (-7.3, -2.5) {
+			\textbf{Sensores / IMU}\\
+			{\footnotesize Aceleração linear e}\\
+			{\footnotesize velocidade angular}
+		};
+		
+		\draw[line] (ref) -- node[sig] {\textit{Setpoints} de controle} (fcu);
+		\draw[line] (fcu) -- node[sig] {Sinais PWM / Modulação} (esc);
+		\draw[line] (esc) -- node[sig] {Potência elétrica trifásica} (motor);
+		\draw[line] (motor) -- node[sig] {Empuxo e torques} (corpo);
+		
+		\draw[feedline] (corpo.west) -| node[pos=0.25, below=4pt, font=\scriptsize] {Movimento inercial} (imu.south);
+		\draw[line] (imu.east) -- node[midway, above=4pt, font=\scriptsize, align=center] {Dados\\inerciais} (fcu.west);
+		
+	\end{tikzpicture}
+	
+	\vspace{0.2cm}
+	
+	\begin{flushleft}
+		\footnotesize Fonte: elaboração própria.
+	\end{flushleft}
+	
+\end{figure}
+
+\subsubsecao{Visão Computacional Aplicada a VANTs}
+
+Com o objetivo de viabilizar a aproximação autônoma e a captura de alvos não cooperativos, o sistema de percepção visual atua como o principal mecanismo de identificação e estimação de estados no ambiente. Tradicionalmente, a detecção de objetos baseava-se em métodos clássicos de visão computacional, como a segmentação por cor ou o reconhecimento de padrões geométricos pré-definidos \cite{zhao2019}. No espaço de cores HSV (\textit{Hue, Saturation, Value}), por exemplo, a imagem é decomposta em matiz, saturação e brilho para isolar o objeto por contraste de cor. Para o reconhecimento de padrões geométricos, outra abordagem clássica consiste em extrair características da cena, como bordas, cantos e texturas, utilizando descritores manuais tradicionais, entre eles SIFT (\textit{Scale-Invariant Feature Transform}), SURF (\textit{Speeded-Up Robust Features}) e HOG (\textit{Histogram of Oriented Gradients}) \cite{amjoud2023, zhao2019}.
+
+Com esses descritores geométricos tradicionais, a detecção geralmente utiliza a técnica de janela deslizante (\textit{sliding window}), que varre a imagem avaliando diversas regiões em diferentes escalas e posições \cite{amjoud2023, zhao2019}. Para cada sub-região amostrada, um classificador supervisionado, como as Máquinas de Vetores de Suporte (SVM, do inglês \textit{Support Vector Machines}), analisa os atributos extraídos e indica a probabilidade de presença do objeto \cite{amjoud2023, zhao2019}. O principal inconveniente dessa abordagem reside na rigidez das regras formuladas manualmente, que têm baixa capacidade de generalização diante de mudanças no ambiente. Além disso, avaliar exaustivamente milhares de janelas por quadro impõe um custo computacional muito alto, tornando essa técnica inviável para sistemas aéreos que precisam de respostas rápidas em tempo real \cite{zhao2019}.
+
+Em ambientes externos, esses métodos clássicos também sofrem com a chamada lacuna semântica (\textit{semantic gap}) \cite{zhao2019}. Como operam a partir de características de baixo nível (como pixels, linhas e gradientes locais), os algoritmos não conseguem construir representações conceituais robustas e invariantes do alvo. Em condições reais de voo, com variações constantes de iluminação solar, reflexos e sombras no solo, o sistema torna-se vulnerável a falsos positivos e à perda frequente do objeto rastreado \cite{zhao2019}.
+
+Para contornar as limitações da visão clássica, consolidou-se na literatura o uso de Aprendizado Profundo (\textit{Deep Learning}) por meio de Redes Neurais Convolucionais (CNNs -- \textit{Convolutional Neural Networks}). No campo da detecção de objetos, esses modelos se dividem em categoria de dois estágios (\textit{two-stage}), a exemplo da Faster R-CNN, e de estágio único (\textit{single-stage}) \cite{zhao2019, amjoud2023, terven2023}. Os detectores de dois estágios geram inicialmente regiões candidatas de interesse para depois classificá-las e ajustar suas coordenadas. Embora alcancem alta precisão geométrica, esse processamento em etapas consecutivas gera latência elevada, inviabilizando a execução em tempo real nos computadores embarcados de VANTs \cite{amjoud2023}.
+
+Buscando maior velocidade, surgiram detectores de estágio único como o SSD (\textit{Single Shot MultiBox Detector}) e a CenterNet. O SSD, contudo, apresenta dificuldades inerentes na detecção de alvos em escalas reduzidas \cite{amjoud2023}, enquanto a CenterNet, apesar de dispensar caixas âncora, perde robustez quando o fundo da imagem é muito texturizado \cite{xiuling2024}. Em paralelo, o emprego de \textit{Vision Transformers} (ViTs) e de arquiteturas como o DETR (\textit{Detection Transformer}) trouxe avanços importantes na compreensão global da cena \cite{amjoud2023}. Contudo, esses modelos exigem um poder computacional muito alto, o que derruba a taxa de quadros por segundo (fps) nos computadores compactos que vão a bordo do drone. Essa lentidão inviabiliza seu uso para guiar a aeronave em tempo real \cite{rawat2026}.
+
+Diante dessas restrições de processamento e da necessidade de rastreamento contínuo, a família de detectores de estágio único YOLO (\textit{You Only Look Once}) consolidou-se como a principal escolha na robótica aérea. Diferente dos detectores de dois estágios, o YOLO formula a detecção como um único problema de regressão espacial. Ou seja, em uma única passagem direta (\textit{forward pass}) pela rede, o modelo extrai mapas de características e prevê conjuntamente as coordenadas das caixas delimitadoras (\textit{bounding boxes}) e as probabilidades de cada classe \cite{amjoud2023, afifah2025}. O princípio conceitual dessa arquitetura é apresentado na Fig.~\ref{fig:yolo_architecture}, ilustrando a divisão da imagem de entrada em uma grade espacial regular ($S \times S$) para a regressão direta e paralela das caixas delimitadoras e de suas respectivas confianças \cite{redmon2016}.
+
+\begin{figure}[H]
+    \centering
+
+    \captionsetup{justification=centering}
+
+    \caption{Arquitetura conceitual da família YOLO}
+    \label{fig:yolo_architecture}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.8\linewidth]{figuras/yolo_architecture.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Redmon \textit{et al.}~\cite{redmon2016}.
+    \end{flushleft}
+
+\end{figure}
+
+Ao longo da evolução dessa família, o YOLOv8, desenvolvido pela Ultralytics, representou uma mudança importante ao adotar uma arquitetura totalmente livre de caixas âncora (\textit{anchor-free}) \cite{yolov8_ultralytics, terven2023}. Ao dispensar dimensões pré-fixadas de caixas candidatas, o modelo simplifica o treinamento e lida melhor com variações contínuas na escala do alvo, situação frequente durante a aproximação vertical descendente de um VANT \cite{afifah2025}. Além disso, a rede passou a separar a tarefa de classificação da regressão de coordenadas, o que melhora a convergência e a precisão das caixas estimadas \cite{yolov8_ultralytics, afifah2025}. Na versão compacta YOLOv8n (\textit{Nano}), o modelo conta com cerca de 3,2 milhões de parâmetros, permitindo taxas de inferência elevadas em computadores de bordo sem introduzir atrasos na malha de controle \cite{afifah2025, wang2025_hsv}.
+
+Buscando eliminar outros gargalos de processamento, o YOLOv10, proposto por Wang \textit{et al.}~\cite{wang2024_yolov10}, abordou a dependência do algoritmo de Supressão de Não-Máximos (NMS, do inglês \textit{Non-Maximum Suppression}) na etapa de pós-processamento. Tradicionalmente, o NMS é necessário para descartar caixas redundantes geradas pela rede, mas sua execução sequencial introduz uma latência variável que pode prejudicar a resposta temporal em sistemas embarcados. Para contornar essa etapa, o YOLOv10 implementou uma estratégia de atribuições duplas durante o treinamento (\textit{Consistent Dual Assignments}), treinando a rede para prever caixas diretas e exclusivas por objeto \cite{wang2024_yolov10}. Na inferência, o modelo opera de forma puramente ponta a ponta (\textit{end-to-end}) com latência NMS nula. Na versão leve YOLOv10n, a rede opera com cerca de 2,3 milhões de parâmetros em inferência (após o descarte da cabeça auxiliar utilizada no treino), garantindo tempos de ciclo visual constantes e previsíveis \cite{wang2024_yolov10}.
+
+Dando continuidade ao aprimoramento dessas redes, a Ultralytics desenvolveu o YOLO11 (também chamado de YOLOv11), com foco em eficiência computacional e no refinamento da detecção sob condições adversas \cite{yolo11_ultralytics}. Essa versão incorporou mecanismos de autoatenção espacial para orientar a rede a distinguir alvos pequenos contra fundos com padrões visuais complexos, algo típico em imagens capturadas do alto por drones \cite{yolo11_ultralytics, zhexebay2025}. Na versão ultraleve YOLO11n, a quantidade de parâmetros diminuiu para aproximadamente 2,6 milhões (redução superior a 15\% em relação ao modelo YOLOv8n), mantendo alta precisão com menor demanda de operações em ponto flutuante (FLOPs) \cite{yolo11_ultralytics, zhexebay2025}.
+
+Mais recentemente, a Ultralytics introduziu o YOLO26 (ou YOLOv26), concebido com foco direto em dispositivos de borda (\textit{edge-first optimization}) \cite{yolo26_ultralytics}. O modelo combina inferência nativa ponta a ponta sem NMS com uma simplificação significativa na sua cabeça de predição, eliminando o cálculo de distribuições discretas de probabilidade para a regressão dos limites das caixas. Com cerca de 2,4 milhões de parâmetros na versão YOLO26n, essa otimização arquitetural reduz acessos à memória e acelera a execução em processadores compactos (CPUs e NPUs), tornando o modelo vantajoso para aeronaves com restrições severas de tamanho, peso e consumo de energia (\textit{Low-SWaP}, do inglês \textit{Low Size, Weight, and Power}).
+
+Para comparar o desempenho de diferentes modelos de detecção de forma objetiva, a literatura e as documentações especializadas empregam métricas padronizadas derivadas da matriz de confusão e da sobreposição geométrica entre predições e anotações reais (\textit{ground truth}) \cite{padilla2021, ultralytics_metrics}. A métrica geométrica fundamental que define a validade de uma detecção é a Interseção sobre a União (IoU, do inglês \textit{Intersection over Union}), formulada pela Eq.~\ref{eq:iou}:
+
+\begin{equation}
+\text{IoU} = \frac{\text{Área}(B_p \cap B_{gt})}{\text{Área}(B_p \cup B_{gt})}
+\label{eq:iou}
+\end{equation}
+
+\noindent em que $B_p$ é a caixa delimitadora estimada pelo modelo e $B_{gt}$ representa a caixa de referência correspondente. Define-se então um limiar de corte $\tau$ (geralmente $\tau = 0{,}50$): se a detecção corresponder à classe correta e satisfizer $\text{IoU} \ge \tau$, ela é considerada um Verdadeiro Positivo ($TP$). Se o IoU for inferior a $\tau$ ou a caixa surgir em uma região de fundo, categoriza-se como Falso Positivo ($FP$). Já os alvos presentes na imagem que não foram detectados pelo algoritmo constituem os Falsos Negativos ($FN$) \cite{padilla2021}.
+
+A partir dessas quantidades, avalia-se a capacidade discriminatória da rede por meio da Precisão ($P$) e do \textit{Recall} ($R$, por vezes traduzido como revocação), expressos nas Eqs.~\ref{eq:precision} e~\ref{eq:recall}:
+
+\begin{equation}
+P = \frac{TP}{TP + FP}
+\label{eq:precision}
+\end{equation}
+
+\begin{equation}
+R = \frac{TP}{TP + FN}
+\label{eq:recall}
+\end{equation}
+
+\noindent A Precisão expressa a proporção de acertos em relação ao total de detecções sinalizadas pelo modelo (penalizando alarmes falsos), enquanto o \textit{Recall} avalia a sensibilidade da rede em identificar todos os objetos verdadeiramente presentes na cena (penalizando omissões) \cite{padilla2021}. O equilíbrio entre ambas as métricas sob determinado limiar de confiança é avaliado pela média harmônica denominada pontuação $F_1$ ($F_1$\textit{-score}), calculada pela Eq.~\ref{eq:f1_score}:
+
+\begin{equation}
+F_1 = 2 \cdot \frac{P \cdot R}{P + R}
+\label{eq:f1_score}
+\end{equation}
+
+Como os valores de Precisão e \textit{Recall} variam ao longo dos limiares de confiança da rede, gera-se a curva de Precisão--\textit{Recall} ($P \times R$). A Precisão Média ($AP$, do inglês \textit{Average Precision}) resume essa curva quantificando a área sob a curva por interpolação, conforme a Eq.~\ref{eq:ap}:
+
+\begin{equation}
+AP = \int_{0}^{1} p(r) \, dr
+\label{eq:ap}
+\end{equation}
+
+\noindent em que $p(r)$ representa o valor interpolado da Precisão em função do nível de \textit{Recall} $r$. Para generalizar o desempenho em cenários que envolvem $C$ classes de objetos, calcula-se a Média da Precisão Média ($mAP$, do inglês \textit{Mean Average Precision}) pela média aritmética dos valores de $AP$ de cada classe, de acordo com a Eq.~\ref{eq:map}:
+
+\begin{equation}
+mAP = \frac{1}{C} \sum_{c=1}^{C} AP_c
+\label{eq:map}
+\end{equation}
+
+\noindent Na literatura e nos padrões do \textit{benchmark} COCO (\textit{Common Objects in Context}), duas variações de $mAP$ são comumente comparadas \cite{padilla2021, ultralytics_metrics}:
+\begin{itemize}
+    \item $mAP@0.5$ (ou $mAP_{50}$): calcula o $AP$ médio fixando o limiar de sobreposição em $\text{IoU} \ge 0{,}50$, avaliando a capacidade geral de localização e categorização do alvo;
+    \item $mAP@0.5:0.95$ (ou $mAP_{50-95}$): computa a média do $mAP$ em 10 limiares sucessivos de IoU, variando de $0{,}50$ a $0{,}95$ com incrementos discretos de $0{,}05$. Por exigir grande rigor no alinhamento espacial dos limites da caixa sob limiares mais severos, o $mAP@0.5:0.95$ atua como o principal critério de fidelidade geométrica para tarefas robóticas em que a posição do centroide orienta o guiamento cinemático \cite{ultralytics_metrics}.
+\end{itemize}
+
+Além da acurácia de detecção, a comparação prática de modelos para plataformas aéreas considera parâmetros de eficiência computacional \cite{ultralytics_metrics}. Entre eles destacam-se o total de parâmetros da rede (\textit{Params}), o volume de cálculos em ponto flutuante (\textit{FLOPs}), a latência média de inferência por quadro ($\tau_{\text{inf}}$) e a correspondente taxa de quadros por segundo ($\text{fps} = 1000 / \tau_{\text{total}}$), fatores determinantes para viabilizar a execução embarcada sob as restrições \textit{Low-SWaP} do VANT.
+
+Em testes comparativos recentes voltados à visão computacional embarcada em drones, pesquisas como a conduzida por Zhexebay \textit{et al.}~\cite{zhexebay2025} mostram que essas gerações compactas do YOLO mantêm desempenho consistente na detecção de alvos aéreos. Os modelos atingem patamares de $mAP@0.5$ superiores a 90\% operando sob taxas de quadros estáveis, demonstrando maturidade tecnológica para guiamento robótico autônomo. A aplicação desses detectores no isolamento e rastreamento de alvos a partir da perspectiva de uma câmera aérea é ilustrada na Fig.~\ref{fig:yolo_detection_example} \cite{zhexebay2025}.
+
+\begin{figure}[H]
+    \centering
+
+    \captionsetup{justification=centering}
+
+    \caption{Exemplo de detecção de alvos em imagens aéreas obtidas por VANT utilizando modelos YOLO}
+    \label{fig:yolo_detection_example}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.7\linewidth]{figuras/yolo_detection_example.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Zhexebay \textit{et al.}~\cite{zhexebay2025}.
+    \end{flushleft}
+
+\end{figure}
+
+Apesar da alta capacidade de reconhecimento das redes convolucionais, a inferência visual durante o voo expõe o sistema a perturbações dinâmicas próprias da operação aérea. O rastreamento contínuo no plano da imagem fica sujeito a ruídos frequentes, observados na forma de oscilações espúrias na posição do centroide e no tamanho da caixa delimitadora estimada. Esses distúrbios decorrem de vibrações mecânicas propagadas pelos motores, variações residuais de atitude da aeronave e oclusões transitórias provocadas por sombras ou pela passagem de hélices no campo de visão \cite{barisic2019}. Uma vez que os controladores de voo exigem sinais de referência contínuos e suaves para evitar sobre-sinais (\textit{overshoot}) e desgastes nos atuadores, os dados brutos de detecção não devem ser aplicados diretamente à malha cinemática.
+
+Para contornar esse problema, a literatura utiliza estimadores estocásticos em cascata temporal com o modelo de aprendizado profundo, destacando-se o Filtro de Kalman. O filtro de Kalman convencional, no entanto, é restrito a sistemas puramente lineares, o que limita sua aplicação direta em robótica aérea, já que a cinemática relativa entre a câmera do VANT e o alvo envolve projeções de perspectiva geométrica e dinâmicas não lineares no espaço tridimensional. Para contemplar essas características, adota-se o Filtro de Kalman Estendido (EKF, do inglês \textit{Extended Kalman Filter}), que lineariza as equações do sistema a cada instante de amostragem por meio de aproximações em série de Taylor de primeira ordem, utilizando matrizes Jacobianas avaliadas em torno da estimativa corrente \cite{tcc_mariahelena, kalman_beginners, kordic2010}.
+
+O ciclo de estimação do EKF desenvolve-se em duas etapas recursivas principais: a predição e a correção (ou atualização) \cite{kalman_beginners, tcc_mariahelena}. A modelagem dinâmica parte de um sistema descrito por um modelo de transição de estados e por um modelo de observação, expressos nas Eqs.~\ref{eq:state_transition} e~\ref{eq:observation_model}:
+
+\begin{equation}
+x_k = M(x_{k-1}) + w_k
+\label{eq:state_transition}
+\end{equation}
+
+\begin{equation}
+z_k = h(x_k) + v_k
+\label{eq:observation_model}
+\end{equation}
+
+\noindent em que $x_k$ é o vetor de estado no instante $k$; $M(\cdot)$ representa a função não linear que descreve a cinemática do sistema; $w_k$ é o vetor de ruído de processo, considerado branco e de média nula; $z_k$ denota o vetor de medições fornecido pelo detector visual; $h(\cdot)$ é a função não linear de observação, responsável por relacionar as variáveis do espaço de estados às coordenadas medidas no plano da imagem; e $v_k$ define o ruído de medição visual associado.
+
+Na etapa de predição, o modelo projeta o comportamento do sistema para o instante seguinte a partir do estado anterior estimado. As equações de predição para o estado \textit{a priori} ($\hat{x}_{k|k-1}$) e para a covariância do erro predita ($P_{k|k-1}$) são formuladas pelas Eqs.~\ref{eq:ekf_state_prediction} e~\ref{eq:ekf_cov_prediction}:
+
+\begin{equation}
+\hat{x}_{k|k-1} = M(\hat{x}_{k-1|k-1})
+\label{eq:ekf_state_prediction}
+\end{equation}
+
+\begin{equation}
+P_{k|k-1} = A_{k-1} P_{k-1|k-1} A_{k-1}^{T} + Q_{k-1}
+\label{eq:ekf_cov_prediction}
+\end{equation}
+
+\noindent nas quais $\hat{x}_{k-1|k-1}$ e $P_{k-1|k-1}$ representam, respectivamente, o estado e a covariância estimados no passo anterior; $A_{k-1}$ é a matriz Jacobiana associada à função não linear $M(\cdot)$, obtida pelo cálculo das derivadas parciais avaliadas em $\hat{x}_{k-1|k-1}$, e $A_{k-1}^{T}$ corresponde à sua matriz transposta; e $Q_{k-1}$ é a matriz de covariância do ruído de processo, calibrada para quantificar incertezas na modelagem cinemática e distúrbios externos \cite{kalman_beginners}.
+
+Em seguida, na etapa de correção, o filtro incorpora a medição sensorial gerada pela rede neural para refinar a predição e reduzir a incerteza do estado. A dinâmica em malha fechada desse processo cíclico está sintetizada no fluxograma da Fig.~\ref{fig:ekf_flowchart} \cite{kalman_beginners}.
+
+\begin{figure}[H]
+\centering
+
+\captionsetup{justification=centering}
+
+\caption{Fluxograma do algoritmo do Filtro de Kalman Estendido (EKF)}
+\label{fig:ekf_flowchart}
+
+\vspace{0.3cm}
+
+\begin{tikzpicture}[
+	scale=0.82, transform shape,
+	>=Stealth,
+	blk_init/.style={draw=gray!75!black, fill=gray!8, thick, rounded corners=4pt, align=center, text width=6.2cm, minimum height=1.15cm, font=\small, inner sep=5pt},
+	blk_pred/.style={draw=blue!75!black, fill=blue!6, thick, rounded corners=4pt, align=center, text width=8.6cm, minimum height=1.75cm, font=\small, inner sep=5pt},
+	blk_gain/.style={draw=teal!80!black, fill=teal!7, thick, rounded corners=4pt, align=center, text width=8.6cm, minimum height=1.35cm, font=\small, inner sep=5pt},
+	blk_upd/.style={draw=orange!85!black, fill=orange!8, thick, rounded corners=4pt, align=center, text width=8.6cm, minimum height=1.35cm, font=\small, inner sep=5pt},
+	blk_cov/.style={draw=purple!75!black, fill=purple!7, thick, rounded corners=4pt, align=center, text width=8.6cm, minimum height=1.35cm, font=\small, inner sep=5pt},
+	blk_io/.style={draw=gray!65!black, fill=gray!6, thick, rounded corners=4pt, align=center, text width=2.0cm, minimum height=1.0cm, font=\footnotesize, inner sep=4pt},
+	line/.style={draw=black!85, thick, ->},
+	feedline/.style={draw=blue!75!black, thick, dashed, ->}
+]
+
+% Contêiner do ciclo recursivo (Etapas I a IV)
+\draw[dashed, thick, draw=blue!45!black, fill=blue!2, rounded corners=6pt]
+(-5.0,-10.25) rectangle (5.0,-0.2);
+
+% BLOCO 0
+\node[blk_init] (b0) at (0, 1.45) {
+	\textbf{0. Inicialização de valores}\\
+	$\hat{x}_{0|0},\; P_{0|0}$
+};
+
+% BLOCO I
+\node[blk_pred] (b1) at (0, -1.4) {
+	\textbf{I. Predição do estado e da covariância}\\[0.15cm]
+	$\hat{x}_{k|k-1} = M(\hat{x}_{k-1|k-1})$\\[0.1cm]
+	$P_{k|k-1} = A_{k-1} P_{k-1|k-1} A_{k-1}^T + Q_{k-1}$
+};
+
+% BLOCO II
+\node[blk_gain] (b2) at (0, -3.95) {
+	\textbf{II. Cálculo do ganho de Kalman}\\[0.12cm]
+	$K_k = P_{k|k-1} H_k^T (H_k P_{k|k-1} H_k^T + R_k)^{-1}$
+};
+
+% BLOCO III
+\node[blk_upd] (b3) at (0, -6.25) {
+	\textbf{III. Atualização da estimativa}\\[0.12cm]
+	$\hat{x}_{k|k} = \hat{x}_{k|k-1} + K_k \left( z_k - h(\hat{x}_{k|k-1}) \right)$
+};
+
+% BLOCO IV
+\node[blk_cov] (b4) at (0, -8.55) {
+	\textbf{IV. Atualização da covariância do erro}\\[0.12cm]
+	$P_{k|k} = (I - K_k H_k) P_{k|k-1}$
+};
+
+% ENTRADA E SAÍDA
+\node[blk_io] (meas) at (-7.7, -6.25) {
+	Medição\\
+	($z_k$)
+};
+
+\node[blk_io, draw=orange!85!black, fill=orange!8] (est) at (7.3, -6.25) {
+	Estimativa\\
+	($\hat{x}_{k|k}$)
+};
+
+% SETAS VERTICAIS
+\draw[line] (b0.south) -- (b1.north);
+\draw[line] (b1.south) -- (b2.north);
+\draw[line] (b2.south) -- (b3.north);
+\draw[line] (b3.south) -- (b4.north);
+
+% REALIMENTAÇÃO (passando à esquerda do contêiner sem colisão com b0->b1)
+\draw[feedline] (b4.west) -- (-5.65, -8.55) |- node[pos=0.35, left=4pt, font=\scriptsize, align=right, text=blue!75!black] {Próxima\\iteração} (b1.west);
+
+% ENTRADA E SAÍDA (com halo branco na travessia da realimentação)
+\draw[line, preaction={draw=white, line width=4.5pt}] (meas.east) -- (b3.west);
+\draw[line] (b3.east) -- (est.west);
+
+\end{tikzpicture}
+
+\vspace{0.2cm}
+
+\begin{flushleft}
+\footnotesize Fonte: adaptado de Kim~\cite{kalman_beginners}.
+\end{flushleft}
+
+\end{figure}
+
+Na Figura~\ref{fig:ekf_flowchart}, o cálculo do Ganho de Kalman ($K_k$), a correção da estimativa \textit{a posteriori} ($\hat{x}_{k|k}$) e a atualização da covariância do erro ($P_{k|k}$) são definidos, respectivamente, pelas Eqs.~\ref{eq:kalman_gain}, \ref{eq:state_update} e~\ref{eq:covariance_update}:
+
+\begin{equation}
+K_k =
+P_{k|k-1}
+H_k^T
+\left(
+H_k
+P_{k|k-1}
+H_k^T
++
+R_k
+\right)^{-1}
+\label{eq:kalman_gain}
+\end{equation}
+
+\begin{equation}
+\hat{x}_{k|k}
+=
+\hat{x}_{k|k-1}
++
+K_k
+\left(
+z_k-h(\hat{x}_{k|k-1})
+\right)
+\label{eq:state_update}
+\end{equation}
+
+\begin{equation}
+P_{k|k}
+=
+(I-K_kH_k)
+P_{k|k-1}
+\label{eq:covariance_update}
+\end{equation}
+
+\noindent em que $K_k$ representa o Ganho de Kalman, responsável por balancear a contribuição entre o modelo predito e a nova medição; $R_k$ expressa a matriz de covariância do ruído de medição $v_k$, calibrada para refletir a dispersão associada à detecção visual; $H_k$ simboliza a matriz Jacobiana da função não linear de observação $h(\cdot)$, calculada a partir de suas derivadas parciais avaliadas em $\hat{x}_{k|k-1}$; $\hat{x}_{k|k}$ é a estimativa corrigida do estado; e $P_{k|k}$ corresponde à matriz de covariância do erro atualizada \cite{kalman_beginners}.
+
+Ao atuar como um estimador recursivo no plano da imagem, o EKF atenua oscilações ruidosas causadas por vibrações e suaviza o sinal fornecido ao controlador cinemático. Além disso, nos instantes em que a rede neural falha transitoriamente em detectar o alvo, seja por oclusões breves ou variações bruscas de iluminação, o filtro mantém a estimativa futura com base no histórico de movimento, garantindo a continuidade do guiamento do VANT sem descontinuidades abruptas na malha de servovisão \cite{barisic2019, vidal2007}.
+
+\subsubsecao{Servovisão (\textit{Visual Servoing})}
+
+Na robótica autônoma, a servovisão (\textit{Visual Servoing}) destaca-se como a técnica fundamental para guiar a movimentação de um robô por meio da realimentação visual extraída de uma ou mais câmeras em malha fechada \cite{thuilot2002}. Em sistemas baseados em VANTs, nos quais a navegação pode ocorrer em ambientes sem sinal de GPS ou onde a interação física exige rigor milimétrico, a servovisão atua como o elo direto entre a percepção exteroceptiva e a atuação cinemática da aeronave \cite{shang2016, lopezfranco2017}.
+
+A premissa da servovisão baseia-se na minimização contínua de um vetor de erro $e(t)$, definido pela diferença entre o estado atual das características visuais do alvo $s(t)$ e um estado de referência desejado $s^{*}$ \cite{lopezfranco2017, pramono2025}. Na formulação analítica clássica, a taxa de variação dessas características relaciona-se à velocidade espacial da câmera por meio da Matriz de Interação, também conhecida como Jacobiano da Imagem ($L_s$) \cite{luo2020}. Tradicionalmente, leis de controle diferencial recorrem à pseudo-inversa dessa matriz ($L_s^{+}$) para calcular velocidades que assegurem um decaimento exponencial do erro visual à medida que a aeronave se aproxima do objeto \cite{lopezfranco2017, luo2020}.
+
+A literatura consolida os esquemas de servovisão em duas arquiteturas principais, diferenciadas pelo domínio espacial em que o vetor de erro $e(t)$ é computado: a Servovisão Baseada em Imagem (\textit{Image-Based Visual Servoing}, ou IBVS) e a Servovisão Baseada em Posição (\textit{Position-Based Visual Servoing}, ou PBVS) \cite{hutchinson1996, chaumette2016, thuilot2002, hafez2013}.
+
+Na abordagem IBVS (modelo bidimensional), a malha de controle atua diretamente no plano da imagem utilizando coordenadas em pixels \cite{pramono2025}. Embora o IBVS dispense um modelo tridimensional prévio do alvo e apresente boa robustez a incertezas de calibração intrínseca, ele introduz desvantagens importantes na robótica aérea. Devido ao subatuamento típico dos multirrotores, o VANT precisa variar sua inclinação em rolagem ou arfagem para realizar qualquer deslocamento horizontal \cite{thuilot2002}. Em uma câmera fixada rigidamente ao corpo do drone, essas inclinações geram um efeito de pêndulo óptico que desloca bruscamente a imagem e faz com que o alvo escape com facilidade do campo de visão (\textit{Field of View}, ou FoV) \cite{hafez2013}. Para mitigar essa oscilação, a literatura comumente adota suportes mecânicos estabilizados com atuadores independentes (\textit{gimbals}), conforme exemplificado na Fig.~\ref{fig:gimbal_camera}, frequentemente orientados em visada nadir (apontados verticalmente para baixo) \cite{keipour2022}. Contudo, a estabilização mecânica por si só não resolve as limitações de trajetória do IBVS, já que, por operar a malha de controle puramente em pixels, o caminho percorrido pelo robô no espaço tridimensional permanece imprevisível, gerando ultrapassagens (\textit{overshoots}) na fase de alinhamento final \cite{hafez2013, pramono2025}.
+
+\begin{figure}[H]
+    \centering
+
+    \captionsetup{justification=centering}
+
+    \caption{Exemplo de \textit{gimbal} motorizado de três eixos para estabilização de câmeras}
+    \label{fig:gimbal_camera}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.45\linewidth]{figuras/gimbal_camera_z15.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Adorama~\cite{adorama2017}.
+    \end{flushleft}
+
+\end{figure}
+
+Diante disso, a Servovisão Baseada em Posição (PBVS, com reconstrução tridimensional) surge como uma abordagem mais consistente para aproximações que demandam precisão geométrica. No PBVS, o objetivo de controle não consiste apenas em analisar variações em pixels, mas em estimar a pose métrica (distância e orientação) do alvo em relação à câmera antes de gerar o esforço de controle \cite{thuilot2002, hafez2013}. A Figura~\ref{fig:ibvs_pbvs_comparison} ilustra o contraste qualitativo entre os dois métodos. Enquanto o IBVS tende a preservar caminhos regulares no plano da imagem ao custo de movimentos espaciais indiretos, o PBVS atua no espaço cartesiano métrico, favorecendo trajetórias retilíneas e previsíveis no ambiente físico \cite{pramono2025, fagundes2025, chaumette2016}. Em contrapartida, como não há restrição direta sobre as coordenadas de pixel, o alvo pode descrever trajetórias mais amplas no plano focal, elevando o risco de escape pelas bordas do campo de visão durante manobras horizontais rápidas \cite{pramono2025, hafez2013}.
+
+\begin{figure}[H]
+    \centering
+
+    \captionsetup{justification=centering}
+
+    \caption{Comparação qualitativa entre os esquemas clássicos de Servovisão Baseada em Imagem (IBVS) e Servovisão Baseada em Posição (PBVS): (a) trajetória das características no plano da imagem no IBVS; (b) trajetória tridimensional da câmera no IBVS; (c) trajetória das características no plano da imagem no PBVS, evidenciando a saída pela borda da imagem; e (d) trajetória tridimensional retilínea da câmera no PBVS}
+    \label{fig:ibvs_pbvs_comparison}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.75\linewidth]{figuras/ibvs_pbvs_comparison_adaptado.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: adaptado de Hafez \textit{et al.}~\cite{hafez2013}.
+    \end{flushleft}
+
+\end{figure}
+
+A reconstrução tridimensional no PBVS fundamenta-se inicialmente no modelo analítico de projeção perspectiva da câmera \textit{Pinhole}, ilustrado na Fig.~\ref{fig:pinhole_camera_model}. Esse modelo correlaciona as coordenadas da imagem a um vetor métrico no referencial óptico da câmera a partir da matriz de calibração intrínseca, que reúne a distância focal e o centro óptico \cite{lopezfranco2017, fagundes2025, pramono2025}. Conhecendo-se a altitude ou a profundidade relativa em relação ao plano do solo, a projeção inversa do modelo \textit{Pinhole} permite determinar diretamente a posição métrica lateral e longitudinal do alvo no espaço cartesiano \cite{fagundes2025}.
+
+\begin{figure}[H]
+    \centering
+
+    \captionsetup{justification=centering}
+
+    \caption{Representação geométrica da projeção em perspectiva baseada no modelo de câmera \textit{Pinhole}}
+    \label{fig:pinhole_camera_model}
+
+    \vspace{0.3cm}
+
+    \begin{tikzpicture}[
+        scale=0.92, transform shape,
+        >=Stealth,
+        pt_o/.style={circle, fill=black, inner sep=2pt},
+        pt_img/.style={circle, fill=orange!85!black, inner sep=2pt},
+        pt_scene/.style={circle, fill=blue!75!black, inner sep=2pt}
+    ]
+        % Linhas auxiliares de cota
+        \draw[thin, gray!70, densely dashed] (0, 0) -- (0, -2.45);
+        \draw[thin, gray!70, densely dashed] (3.2, 0) -- (3.2, -1.75);
+        \draw[thin, gray!70, densely dashed] (9.6, 0) -- (9.6, -2.45);
+
+        % Plano virtual da imagem (em frente ao centro de projeção)
+        \draw[draw=orange!85!black, fill=orange!6, thick]
+            (2.45, -1.2) -- (3.95, -0.9) -- (3.95, 1.85) -- (2.45, 1.55) -- cycle;
+        \node[above=4pt, font=\footnotesize, text=orange!75!black] at (3.2, 1.75) {\textbf{Plano da imagem}};
+
+        % Eixo óptico
+        \draw[thick, ->] (-0.4, 0) -- (11.1, 0) node[below left=4pt and 2pt, font=\footnotesize] {Eixo óptico ($Z$)};
+
+        % Projeções verticais
+        \draw[dashed, thick, blue!70!black] (9.6, 0) -- (9.6, 2.85);
+        \draw[dashed, thick, orange!85!black] (3.2, 0) -- (3.2, 0.95);
+
+        % Raio projetivo
+        \draw[thick, blue!75!black] (0, 0) -- (9.6, 2.85);
+
+        % Pontos principais
+        \node[pt_o] (O) at (0, 0) {};
+        \node[above=5pt, font=\footnotesize, align=center] at (-0.1, 0.15) {Centro de\\projeção ($O$)};
+
+        \fill[black!75] (3.2, 0) circle (1.5pt);
+        \node[below right=2pt, font=\scriptsize, text=black!80] at (3.2, 0) {$(c_x, c_y)$};
+
+        \node[pt_img] (pimg) at (3.2, 0.95) {};
+        \node[above=4pt, font=\footnotesize, text=orange!75!black] at (3.05, 1.0) {$(x, y)$};
+
+        \node[pt_scene] (P) at (9.6, 2.85) {};
+        \node[above=4pt, font=\footnotesize, align=center, text=blue!75!black] at (9.6, 2.95) {Ponto da cena\\ $(X, Y, Z)$};
+
+        % Cotas f e Z
+        \draw[<->, thick, black!80] (0, -1.6) -- node[fill=white, inner sep=2.5pt, font=\footnotesize] {Distância focal $f$} (3.2, -1.6);
+        \draw[<->, thick, black!80] (0, -2.3) -- node[fill=white, inner sep=2.5pt, font=\footnotesize] {Profundidade $Z$} (9.6, -2.3);
+    \end{tikzpicture}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: elaboração própria.
+    \end{flushleft}
+
+\end{figure}
+
+Ao operar com a visada nadir estabilizada pelo \textit{gimbal}, o plano focal da câmera permanece continuamente paralelo ao plano do solo, neutralizando o efeito de pêndulo óptico durante as manobras \cite{keipour2022}. Sob essa geometria perpendicular, a projeção inversa do modelo \textit{Pinhole} decompõe as discrepâncias visuais diretamente nos eixos ortogonais de translação do corpo do VANT \cite{fagundes2025}. Associando a distância vertical fornecida pela telemetria de altitude aos deslocamentos horizontais métricos ($X, Y$) e à orientação angular de guinada (\textit{yaw}) extraída do formato do alvo, o sistema recupera a pose relativa completa necessária para a malha de controle, dispensando o cálculo de matrizes complexas de transformação angular em tempo real.
+
+Para conciliar a previsibilidade cartesiana do PBVS com a garantia de visibilidade contínua, a literatura recorre a esquemas de servovisão comutada ou particionada sob restrições de campo de visão (\textit{FoV constraints}) \cite{hafez2013, pramono2025}. Nessa estratégia, o avanço translacional ou a taxa de descida vertical é condicionado à permanência do erro visual dentro de uma região delimitada no plano focal. Caso manobras horizontais aproximem o alvo das bordas da imagem, a aproximação vertical é pausada para priorizar a centralização no plano, retomando a descida assim que o enquadramento for restabelecido \cite{hafez2013}.
+
+Por fim, a integração computacional de inferência visual, filtragem de estados e reconstrução métrica introduz atrasos de processamento que inviabilizam o fechamento da malha diretamente no microcontrolador de baixo nível do piloto automático \cite{lopezfranco2017}. Como solução de engenharia consolidada, adota-se uma arquitetura de controle em cascata com separação temporal \cite{shang2016, sciortino2018}:
+\begin{enumerate}
+    \item \textbf{Malha Externa (Cinemática):} Executada em um computador de bordo auxiliar (\textit{companion computer}) integrado ao ecossistema ROS, operando a uma taxa moderada compatível com a visão (tipicamente entre 15 e 30 Hz) \cite{sciortino2018}. Essa camada calcula o erro cartesiano reconstruído e emprega controladores cinemáticos lineares. Para compensar o atraso de transporte introduzido pela aquisição de imagem e inferência, controladores Proporcionais-Derivativos (PD) são amplamente adotados, conferindo amortecimento ativo e evitando a saturação e as oscilações cíclicas (\textit{overshoots}) provocadas pelo acúmulo de atraso do termo integrativo \cite{shang2016, carvajal2024}.
+    \item \textbf{Malha Interna (Dinâmica):} Os sinais de velocidade linear e de taxa angular calculados na malha externa são enviados via protocolo de comunicação serial (como MAVLink/MAVROS) ao piloto automático de baixo nível (como a placa Pixhawk operando ArduPilot) \cite{shang2016, sciortino2018}. O \textit{firmware}, operando em alta frequência ($\approx 400$~Hz), encarrega-se da estabilização inercial rápida de atitude (rolagem, arfagem e guinada) e da distribuição de comandos aos motores.
+\end{enumerate}
+Essa estrutura consolida a servovisão como o sistema de guiamento de alto nível da aeronave, combinando a precisão espacial da visão tridimensional com a robustez e a estabilidade inercial do piloto automático.
+
+\subsubsecao{Sistemas de Captura e Manipulação Aérea}
+
+Historicamente, a atuação dos Veículos Aéreos Não Tripulados concentrou-se em missões de sensoriamento e observação remota passiva. A necessidade de interagir fisicamente com o ambiente impulsionou o desenvolvimento dos Manipuladores Aéreos Não Tripulados (\textit{Unmanned Aerial Manipulators}, ou UAMs), plataformas compostas por uma aeronave acoplada a mecanismos projetados para prender, transportar e posicionar cargas (\textit{pick-and-place}) \cite{bonyan2018, meng2020, abuzayed2020}. No contexto de missões de captura de dispositivos no solo, como armadilhas e sensores autônomos em áreas remotas ou de difícil acesso, a captura aérea exige a transição rápida do voo livre para o contato físico com alvos estáticos e não cooperativos \cite{bonyan2018, cocuzza2021}.
+
+Na literatura de manipulação aérea, diferentes configurações mecânicas são investigadas para viabilizar essa interação, desde cabos suspensos e guinchos até braços robóticos articulados de múltiplos graus de liberdade (multi-DoF) \cite{bonyan2018, ladig2021}. Contudo, para aeronaves multirrotores operando sob restrições severas de carga útil (\textit{payload}), esses sistemas introduzem complexidades críticas. Braços articulados pesados deslocam dinamicamente o centro de gravidade (CoG) do robô a cada movimento de junta, gerando torques inerciais acoplados que sobrecarregam os controladores de atitude da aeronave \cite{meng2020, bonyan2018}. Por sua vez, mecanismos suspensos por cabos mitigam a interferência aerodinâmica do fluxo descendente (\textit{downwash}), mas induzem oscilações pendulares na carga e são incapazes de transmitir torque em guinada (\textit{yaw}), inviabilizando o alinhamento angular com alvos que demandam encaixe em uma orientação geométrica específica \cite{ladig2021}.
+
+Diante dessas limitações, a literatura classifica o espaço de trabalho da manipulação aérea em três zonas operacionais principais de contato~\cite{ladig2021}, conforme ilustrado na Fig.~\ref{fig:interaction_zones}:
+\begin{enumerate}
+    \item \textbf{Captura Ventral (\textit{Underside}):} Configuração padrão para a recuperação de cargas situadas no solo ou em plataformas horizontais abaixo do nível de voo do VANT \cite{ladig2021};
+    \item \textbf{Captura Dorsal (\textit{Upper-side}):} Mecanismos instalados no topo da aeronave para interagir com estruturas elevadas, tetos ou operações de fixação e pouso invertido (\textit{perching}) sob pontes e vigas, onde os rotores representariam um obstáculo mecânico \cite{ladig2021, meng2020};
+    \item \textbf{Captura Lateral (\textit{Lateral-side}):} Projetada para atuar em superfícies verticais, como fachadas de edifícios, exigindo hastes extensoras que mantenham os rotores afastados da parede para prevenir colisões \cite{ladig2021}.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Classificação dos espaços operacionais e zonas de contato em sistemas de manipulação aérea}
+    \label{fig:interaction_zones}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.42\linewidth]{figuras/interaction_zones.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Ladig \textit{et al.}~\cite{ladig2021}.
+    \end{flushleft}
+\end{figure}
+
+Como o objetivo deste trabalho concentra-se no resgate de armadilhas pousadas no solo, a abordagem mais eficiente consiste na adoção da zona ventral (\textit{underside}), empregando garras mecânicas ou interfaces de engate posicionadas diretamente sob o \textit{frame} da aeronave \cite{ladig2021, meng2020}. Um exemplo representativo dessa classe de manipulação acoplada diretamente à base do VANT \cite{ubellacker2024} é ilustrado na Fig.~\ref{fig:attached_grippers}. Posicionar o mecanismo de contato próximo ao Centro de Massa (CoM) e acomodar a carga simetricamente entre os trens de pouso minimiza as variações nos momentos de inércia durante o voo \cite{meng2020, ubellacker2024}. Enquanto garras ativas dependem de servomotores elétricos ou atuadores pneumáticos para fechar mandíbulas sobre o objeto \cite{bauer2023, ubellacker2024}, interfaces mecânicas de engate passivo ou guiado (\textit{latches} e guias cônicas) dispensam atuadores dedicados, aproveitando a própria descida controlada da aeronave para travar o acoplamento \cite{thomas2014, meng2020}. Essa abordagem elimina peso morto na aeronave e transfere a responsabilidade do sucesso da captura para a precisão milimétrica da malha de servovisão.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Exemplo de sistema de manipulação e captura aérea acoplado diretamente sob o \textit{frame} de um multirrotor}
+    \label{fig:attached_grippers}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.58\linewidth]{figuras/ubellacker_ventral_gripper.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Ubellacker \textit{et al.}~\cite{ubellacker2024}.
+    \end{flushleft}
+\end{figure}
+
+A fase terminal de acoplamento sobre o solo impõe restrições aerodinâmicas particulares. À medida que o multirrotor se aproxima da superfície a altitudes inferiores ao diâmetro de seus rotores, manifesta-se o efeito solo (\textit{Ground Effect}), no qual o fluxo de ar descendente acelerado pelas hélices (\textit{downwash}) rebate no solo e no topo da carga, gerando recirculações turbulentas e sustentação assimétrica \cite{ladig2021, bonyan2018}. Essas correntes ascendentes podem empurrar alvos mais leves ou induzir perturbações de atitude na aeronave instantes antes do contato \cite{ladig2021, thomas2014}. Para assegurar o acoplamento sem sofrer derivas induzidas pela turbulência de solo, a literatura recomenda conduzir o alinhamento fino em uma altitude de espera (\textit{hover}) controlada e realizar a aproximação terminal por meio de uma descida contínua e firme, reduzindo o tempo de exposição à camada de recirculação de ar \cite{meng2020, ubellacker2024}.
+
+Por fim, a aproximação milimétrica introduz desafios práticos para o sistema de visão. Ao chegar muito perto da armadilha, o alvo passa a ocupar quase todo o campo de visão da câmera e pode sofrer com a sombra projetada pelo próprio drone e pelos trens de pouso \cite{bauer2023, ubellacker2024}. Para contornar essa perda de visibilidade, o sistema precisa coordenar a aproximação em etapas, utilizando a servovisão para garantir o alinhamento fino em translação ($X, Y, Z$) e em guinada (\textit{yaw}) ainda a uma distância segura, para então concluir o acoplamento físico por meio de uma descida vertical guiada pela estabilidade da aeronave \cite{thomas2014, ubellacker2024}.
+
+\subsecao{Trabalhos Relacionados}
+
+\subsubsecao{Captura Autônoma de Objetos por VANTs}
+
+Thomas \textit{et al.}~\cite{thomas2014} investigaram manobras dinâmicas de aproximação e empoleiramento (\textit{perching}) de microveículos aéreos sobre estruturas cilíndricas elevadas. Em vez de utilizar braços robóticos articulados (que costumam ser pesados e consomem muita energia da bateria), os autores projetaram um mecanismo passivo inspirado na forma como aves de rapina capturam presas, aproveitando o próprio impacto e a aceleração da descida para travar a garra no objeto. A plataforma de teste utilizou um quadrirrotor leve de 866~g com carga útil, equipado com mandíbulas flexíveis na base que disparam o travamento mecânico instantâneo sem precisar de atuadores elétricos dedicados. Para o guiamento terminal, o sistema empregou servovisão baseada em imagem (IBVS) sobre a silhueta do cilindro vista pela câmera frontal, auxiliada por câmeras externas de laboratório (MOCAP) para a estabilização inercial de atitude. A Figura~\ref{fig:thomas_swooping_grasp} ilustra a sequência dessa manobra descendente e rápida (\textit{swooping}) realizada pelo drone \cite{thomas2014}.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Sequência de captura dinâmica e empoleiramento (\textit{perching}) sobre alvo cilíndrico por manobra descendente rápida (\textit{swooping})}
+    \label{fig:thomas_swooping_grasp}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.75\linewidth]{figuras/thomas_swooping_grasp.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Thomas \textit{et al.}~\cite{thomas2014}.
+    \end{flushleft}
+\end{figure}
+
+Nos ensaios em voo livre, o protótipo capturou tubos de 77~g em velocidades de 1,0~m/s a 3,0~m/s com 100\% de sucesso mecânico, permitindo desligar os quatro motores após o pouso para economizar energia. Contudo, os autores apontam como principal limitação a dependência do sistema MOCAP externo, o que restringe o uso direto dessa abordagem em ambientes externos não instrumentados \cite{thomas2014}.
+
+Bauer \textit{et al.}~\cite{bauer2023} abordaram a captura dinâmica de objetos no solo sem o uso de marcadores fiduciais. Em aproximações em alta velocidade, pequenos desalinhamentos na posição estimada ou rajadas de vento podem fazer o mecanismo colidir fora do ponto ideal, o que em garras rígidas costuma quebrar peças ou desestabilizar o voo.
+
+Como alternativa, os autores equiparam um quadrirrotor com uma garra macia e flexível (\textit{soft gripper}) feita de polímero sob o chassi. A percepção visual utilizou uma câmera Intel RealSense embarcada para transmitir imagens coloridas e de profundidade a um computador de solo equipado com GPU NVIDIA GeForce RTX 3070. Nessa estação, uma rede neural Mask R-CNN segmentava o objeto em tempo real, gerando nuvens de pontos para estimar a geometria 3D e guiar o drone \cite{bauer2023}. A Figura~\ref{fig:bauer_aerial_grasping} apresenta a sequência dessa aproximação e o fechamento passivo da garra durante o voo.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Sequência temporal da aproximação e captura aérea dinâmica em voo livre utilizando garra macia e flexível}
+    \label{fig:bauer_aerial_grasping}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.65\linewidth]{figuras/bauer_aerial_grasping.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Bauer \textit{et al.}~\cite{bauer2023}.
+    \end{flushleft}
+\end{figure}
+
+Nos testes com alvos de diferentes formas e massas (garrafas plásticas de 220~g, peças de isopor e bichos de pelúcia), a segmentação e a estimativa de pose operaram a 23,8~fps (latência média de 42~ms), alcançando 89\% de sucesso em voo autônomo. A flexibilidade da garra absorveu o choque mecânico e tolerou erros de alinhamento de até $\pm 25$~mm no instante do toque, sem danificar o \textit{frame}. Como ressalva operacional, a dependência de enlace sem fio com uma estação de solo de alta potência limita missões autônomas em campo aberto onde o sinal pode sofrer interferências \cite{bauer2023}.
+
+Buscando eliminar a dependência de computadores em solo, Ubellacker \textit{et al.}~\cite{ubellacker2024} desenvolveram o \textit{Soft Drone}, um quadrirrotor capaz de capturar objetos com processamento puramente embarcado. A aeronave utilizava uma garra macia com tendões elásticos e uma câmera estéreo frontal conectada ao computador de bordo. Uma rede convolucional estimava pontos-chave (\textit{keypoints}) do objeto para obter sua pose tridimensional, repassando essas coordenadas para um planejador de trajetória polinomial que ajustava as acelerações do drone sem permitir que o alvo escapasse do campo de visão durante manobras rápidas de descida.
+
+Em ensaios externos a 0,5~m/s de velocidade terminal, o sistema alcançou 100\% de sucesso na captura de garrafas plásticas e 90\% para caixas de kits médicos, mantendo 80\% de êxito com a carga em movimento sobre um robô terrestre a 0,3~m/s. Entretanto, ao elevar a velocidade de interceptação para 2,0~m/s, o índice de sucesso caiu para 30\%. A análise dos autores revelou que essa perda decorreu do acúmulo de atrasos no processamento dos pontos-chave pela rede neural: em velocidades elevadas, a latência de inferência gerou derivas de posição superiores à largura útil da garra, comprovando que a velocidade de descida deve ser rigorosamente compatibilizada com o tempo de resposta da malha visual embarcada \cite{ubellacker2024}.
+
+Em uma abordagem distinta, Luo \textit{et al.}~\cite{luo2020} propuseram desacoplar o alinhamento fino da dinâmica da aeronave utilizando um braço robótico articulado leve de 6 graus de liberdade (0,9~kg) instalado sob um hexarrotor. A estratégia de controle foi particionada em três fases: aproximação global por GPS até 3,0~m; parada em voo pairado a 40~cm do solo; e acionamento do braço robótico guiado por uma câmera monocular na ponta da ferramenta (\textit{eye-in-hand}), acompanhando feições naturais de textura da carga pelo extrator ORB combinado a RANSAC.
+
+Nos ensaios com caixas dispostas no chão, o braço robótico completou a aproximação de 40~cm para 20~cm com erro cartesiano final inferior a 5,0~mm, acionando uma ventosa de sucção com 100\% de êxito na fixação. Apesar da alta precisão milimétrica, os autores destacaram que o manipulador articulado adicionou inércia e consumo elétrico ao drone, e que o extrator de texturas ORB perdeu confiabilidade em superfícies reflexivas ou com cores uniformes, o que reforça a relevância de detectores baseados em redes neurais profundas para o reconhecimento de objetos não texturizados \cite{luo2020}.
+
+\subsubsecao{Detecção e Rastreamento de Alvos em VANTs}
+
+Barisic \textit{et al.}~\cite{barisic2019} investigaram um problema muito comum ao usar redes neurais em drones: as vibrações mecânicas dos motores e a passagem das hélices no campo visual fazem a caixa delimitadora oscilar e variar de tamanho de um quadro para o outro. Se esses dados ruidosos forem enviados diretamente para a malha de controle, a aeronave responde com comandos bruscos e instabilidade de voo.
+
+Para reduzir essa oscilação, os autores associaram uma rede neural leve (YOLOv3-Tiny, treinada com 10.000 imagens aéreas) a um Filtro de Kalman Discreto linear. Enquanto a rede detectava o alvo a 20~fps a bordo do computador do drone, o filtro estimava conjuntamente o centro ($x_c, y_c$), largura, altura e suas velocidades no plano da imagem, amortecendo os saltos de detecção \cite{barisic2019}. A Figura~\ref{fig:kalman_barisic_results} mostra a comparação entre a saída direta da rede e a curva suavizada pelo filtro.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Comparação entre a estimativa do Filtro de Kalman e a saída direta da detecção de objetos para largura e altura da caixa delimitadora}
+    \label{fig:kalman_barisic_results}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.8\linewidth]{figuras/kalman_barisic_results.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Barisic \textit{et al.}~\cite{barisic2019}.
+    \end{flushleft}
+\end{figure}
+
+Nos ensaios em voo, a filtragem estocástica reduziu o ruído de alta frequência nas dimensões da caixa em mais de 60\%. Mesmo quando o alvo era temporariamente encoberto pelas pás da hélice ou em trajetórias complexas em forma de oito, a predição contínua do Filtro de Kalman manteve o rastreamento estável, demonstrando que estimadores recursivos são indispensáveis para alimentar o controle cinemático a partir de saídas visuais ruidosas \cite{barisic2019}.
+
+Outro desafio frequente em vídeo é a perda momentânea do alvo por sombras ou oclusões, situação estudada por Vidal e Casanova~\cite{vidal2007}. Quando o algoritmo visual perde o objeto de vista por alguns quadros, ele tende a travar em elementos do fundo da cena (como texturas do solo ou bordas de sombras móveis), gerando uma deriva acumulada (\textit{drift}) que desorienta a malha de controle. Para resolver esse problema, os autores acoplaram um Filtro de Kalman recursivo ao rastreador visual. Apoiando-se no modelo dinâmico de velocidade, o filtro projeta onde o objeto deve estar no instante seguinte, restringindo a área de busca da imagem a janelas menores ($15 \times 15$ e $50 \times 50$ pixels) e evitando saltos espúrios para o fundo caso o alvo fique encoberto. Em testes com pedestres e veículos sob iluminação variável, enquanto o método puramente visual perdia o alvo em menos de 10 quadros consecutivos devido a variações locais de contraste, o sistema integrado com o Filtro de Kalman suportou até 25 quadros sucessivos de oclusão total sem perder o alvo, mantendo o erro médio abaixo de 3,2 pixels e confirmando que a estimação estocástica é essencial para sustentar a trajetória durante falhas temporárias na câmera \cite{vidal2007}.
+
+O desafio de identificar objetos pequenos vistos do alto por drones foi investigado por Shen \textit{et al.}~\cite{shen2023}. Em altitudes elevadas, o alvo ocupa poucas dezenas de pixels na imagem, e os detectores convolucionais convencionais têm dificuldade nesses cenários porque as sucessivas camadas de agrupamento (\textit{pooling}) diluem os detalhes visuais de alvos compactos na matriz de características.
+
+Para contornar essa perda sem sobrecarregar o hardware, os autores desenvolveram o modelo DS-YOLOv8, modificando a espinha dorsal (\textit{backbone}) com divisões em canais densos (\textit{Dense Channel Splitting}). Essa estrutura cria ramificações dedicadas a preservar mapas de características de alta resolução sem provocar uma explosão no número de parâmetros. Na validação com imagens aéreas de sensoriamento remoto, o modelo atingiu 91,0\% de $mAP@50$ e pontuação $F_1$ de 90,4\%. Em alvos com área inferior a $16 \times 16$ pixels, o DS-YOLOv8 superou o YOLOv8 padrão em 3,8\%, mantendo o tempo de processamento de 14,2~ms por quadro em computadores de borda e evidenciando que refinamentos estruturais aumentam a confiabilidade da detecção em altitudes de aproximação \cite{shen2023}.
+
+Em alvos compostos por múltiplas partes geométricas (como alças, baterias externas ou suportes salientes), as redes neurais podem cometer o erro de fragmentar a peça em várias detecções separadas, dispersando o cálculo do centroide. Esse problema foi analisado por Zhang \textit{et al.}~\cite{remotesensing2024} no contexto de aproximações com restrições severas de tamanho, peso e energia (\textit{Low-SWaP}). Para resolver essa fragmentação de forma leve, os autores criaram a rede LCNN-DMT, combinando uma base derivada da SqueezeNet com módulos de atenção espacial e um algoritmo para agrupar caixas redundantes (MBRT-D). O método analisa a conectividade visual da peça e funde as caixas parciais em um único invólucro circunscrito, garantindo que o ponto de referência coincida com o centro de massa geométrico real do objeto. Nos experimentos comparativos, o LCNN-DMT alcançou precisão média de 97,50\%, superando redes mais pesadas como a Faster R-CNN (89,17\%) com um perfil extremamente compacto: apenas 0,928 milhão de parâmetros, 0,464~GFLOPs e latência de inferência de 6,1~ms por quadro, reforçando que redes leves com atenção visual conseguem entregar alta precisão com baixo consumo computacional e energético em drones \cite{remotesensing2024}.
+
+\subsubsecao{Servovisão Aplicada a VANTs}
+
+Pramono~\cite{pramono2025} abordou o equilíbrio entre as duas formas clássicas de servovisão para acoplamento aéreo (\textit{docking}): a abordagem baseada em posição (PBVS), que gera trajetórias retilíneas e bem comportadas no espaço mas pode deixar o alvo sair da câmera, e a abordagem baseada em imagem (IBVS), que mantém o alvo enquadrado mas pode induzir trajetórias irregulares com ultrapassagens (\textit{overshoots}). O autor propôs um controle preditivo (MPC) híbrido: a aproximação em maior distância é feita no espaço cartesiano 3D (PBVS), mudando suavemente para restrições no plano da imagem (IBVS) à medida que o drone se aproxima da interface de engate. A percepção contou com uma câmera estéreo RGB-D a 30~Hz, gerando referências para o controlador preditivo a 15~Hz. Nos ensaios de bancada com aproximações iniciadas a 1,5~m, o sistema atingiu entre 80\% e 100\% de sucesso no acoplamento, terminando com erro residual de apenas 1,0~mm em posição e desvio angular de guinada (\textit{yaw}) menor que $0{,}25^\circ$, confirmando que estimativas métricas em metros produzem aproximações estáveis quando combinadas ao respeito dos limites visuais da lente \cite{pramono2025}.
+
+O impacto da lentidão no processamento visual foi investigado por Shang \textit{et al.}~\cite{shang2016}. Quando o processamento de imagem demora muito para entregar o resultado, os comandos chegam atrasados aos motores. Em controladores PID convencionais, esse atraso de transporte costuma provocar oscilações crescentes que desestabilizam a atitude da aeronave.
+
+Para lidar com esse problema, os autores demonstraram a eficácia de separar o controle em duas camadas em cascata: uma malha externa rodando no computador de bordo no ritmo da câmera, enviando comandos de velocidade, e uma malha interna no piloto automático rodando em alta frequência para manter o drone nivelado. Além disso, utilizaram um controlador Proporcional-Derivativo de Ordem Fracionária (FOPD) para aumentar o amortecimento do sistema. Ao impor um atraso proposital de 0,58~segundo por quadro (menos de 2~fps) durante voo pairado a 10~metros, o PID tradicional perdeu o controle com oscilações superiores a 68 pixels, enquanto o FOPD manteve o drone estável com desvio contido em até 58 pixels (melhoria de 20\% na estabilidade), comprovando que a hierarquia em cascata é indispensável sob latências visuais \cite{shang2016}.
+
+Carvajal \textit{et al.}~\cite{carvajal2024} analisaram o rastreamento de alvos terrestres em movimento sob a influência de ventos e rajadas aerodinâmicas. Em voos a baixa altitude, o tempo que o drone leva para reagir somado às rajadas de vento pode fazer a câmera perder o centroide do objeto se o controle não antecipar o movimento. Para compensar essa inércia, os pesquisadores utilizaram servovisão baseada em Modos Deslizantes (SMC) combinada a uma câmera operando a 50~fps. Um compensador de velocidade estimava a aceleração do alvo em tempo real, permitindo ao drone antecipar correções cinemáticas antes que as discrepâncias se transformassem em desvios no enquadramento. Em testes práticos de 120 segundos seguindo um veículo terrestre em trajetórias em forma de oito, o sistema rejeitou as rajadas de vento e manteve a distância de seguimento estabilizada em 2,5~m com o alvo sempre centralizado na lente, confirmando a importância de termos derivativos e preditivos diante de manobras rápidas \cite{carvajal2024}.
+
+No momento exato em que um drone agarra ou solta um objeto, seu peso total e centro de gravidade mudam de forma repentina. Lopez-Franco \textit{et al.}~\cite{lopezfranco2017} estudaram como essa mudança brusca de massa afeta a estabilidade do voo. Controladores PID comuns, configurados para um peso fixo, tendem a oscilar ou até perder o controle quando uma carga pesada é acoplada.
+
+Para contornar esse problema em um hexarrotor com câmera apontada para baixo, os autores acoplaram uma rede neural leve a cada eixo do controlador PID (PID-ANN). A rede ajustava os ganhos de controle em tempo real sempre que percebia uma reação anormal no movimento \cite{lopezfranco2017}. A Figura~\ref{fig:lopezfranco_pid_comparison} mostra a comparação entre o PID convencional e o PID adaptativo quando uma carga repentina foi adicionada ao robô.
+
+\begin{figure}[H]
+    \centering
+    \captionsetup{justification=centering}
+
+    \caption{Comparação do erro de rastreamento entre controlador PID convencional e PID Neural sob perturbação}
+    \label{fig:lopezfranco_pid_comparison}
+
+    \vspace{0.2cm}
+
+    \includegraphics[width=0.7\linewidth]{figuras/lopezfranco_pid_comparison.png}
+
+    \vspace{0.2cm}
+
+    \begin{flushleft}
+        \footnotesize Fonte: Lopez-Franco \textit{et al.}~\cite{lopezfranco2017}.
+    \end{flushleft}
+\end{figure}
+
+Nos testes práticos, os pesquisadores adicionaram repentinamente 50\% a mais de peso ao drone durante o voo pairado. O PID clássico não aguentou a mudança de massa e perdeu o controle, com o erro na imagem subindo para 1.741,9 pixels. Já o PID adaptativo corrigiu os ganhos em milissegundos, mantendo o drone estável sobre o alvo com erro médio de 43,2 pixels. O resultado evidencia a importância de contar com um bom amortecimento derivativo na malha de controle para absorver impactos e variações de carga na captura \cite{lopezfranco2017}.
+
+\subsubsecao{Análise Comparativa dos Trabalhos Correlatos}
+
+Com o intuito de fundamentar as escolhas metodológicas deste trabalho, a Tab.~\ref{tab:correlatos} sintetiza de forma comparativa as principais pesquisas desenvolvidas nas áreas de manipulação aérea autônoma, detecção e rastreamento de alvos. O levantamento destaca as estratégias visuais empregadas, as técnicas de controle cinemático e dinâmico, os mecanismos de acoplamento físico adotados, bem como as limitações operacionais e os resultados quantitativos obtidos em cada estudo.
+
+\renewcommand{\arraystretch}{1.3} 
+\footnotesize 
+
+% Encolhe o espaço em branco entre as colunas (o padrão é 6pt)
+\setlength{\tabcolsep}{3.5pt} 
+
+% O @{} nas pontas arranca a margem invisível externa da tabela
+\begin{longtable}{
+    @{} 
+    >{\raggedright\arraybackslash}p{0.13\textwidth} 
+    >{\raggedright\arraybackslash}p{0.155\textwidth} 
+    >{\raggedright\arraybackslash}p{0.135\textwidth} 
+    >{\raggedright\arraybackslash}p{0.12\textwidth} 
+    >{\raggedright\arraybackslash}p{0.18\textwidth} 
+    >{\raggedright\arraybackslash}p{0.175\textwidth}
+    @{} 
+}
+    \caption{Análise Comparativa dos Trabalhos Correlatos}
+    \label{tab:correlatos} \\
+    \multicolumn{6}{@{}r@{}}{\footnotesize (continua)} \\
+    \hline
+    \textbf{Autor (Ano)} & \textbf{Detecção e Rastreamento} & \textbf{Técnica de Controle} & \textbf{Mecanismo de Captura} & \textbf{Limitações do Estudo} & \textbf{Principais Resultados} \\ \hline
+    \endfirsthead
+
+    % Cabeçalho para as páginas seguintes (padrão IBGE)
+    \multicolumn{6}{c}{\normalsize \tablename\ \thetable: Análise Comparativa dos Trabalhos Correlatos} \\
+    \multicolumn{6}{@{}r@{}}{\footnotesize (continuação)} \\
+    \hline
+    \textbf{Autor (Ano)} & \textbf{Detecção e Rastreamento} & \textbf{Técnica de Controle} & \textbf{Mecanismo de Captura} & \textbf{Limitações do Estudo} & \textbf{Principais Resultados} \\ \hline
+    \endhead
+
+    % Rodapé intermediário e final da primeira parte abertos (sem traço horizontal inferior, conforme normas do IBGE)
+    \endfoot
+    \endlastfoot
+
+    % Conteúdo da tabela (páginas 1 e 2)
+    Thomas \textit{et al.}~\cite{thomas2014} & Câmeras externas (MOCAP) e Servovisão (IBVS) & Estabilização reativa pós-impacto & Garra passiva de base (fechamento por impacto) & Dependência de laboratório com câmeras MOCAP; inviável em áreas externas. & 100\% de sucesso mecânico com cargas de 77~g; desligamento de motores em \textit{perching}. \\[6pt]
+    
+    Bauer \textit{et al.}~\cite{bauer2023} & Câmera de profundidade RGB-D (Mask R-CNN) & Aproximação autônoma não detalhada & Garra robótica flexível (\textit{soft gripper}) & Processamento em GPU externa (RTX-3070); impacto em alta velocidade requer desaceleração. & 89\% de sucesso em voo livre; absorção mecânica de erros de estimativa de pose. \\[6pt]
+    
+    Ubellacker \textit{et al.}~\cite{ubellacker2024} & Visão 3D embarcada e pontos-chave & Controle adaptativo de tranco mínimo & Garra macia com tendões passivos & Queda brusca para 30\% de sucesso a velocidades acima de 2,0~m/s por erro de visão. & 100\% de sucesso a 0,5~m/s em garrafas e 90\% em kits médicos em ambiente externo. \\[6pt]
+    
+    Luo \textit{et al.}~\cite{luo2020} & Características visuais naturais (extrator ORB) & Servovisão em estágios (IBVS/PBVS) & Braço robótico leve de 6-DoF (0,9~kg) & Adição de massa e inércia do braço; exige alvos com texturas ricas e bem definidas. & Captura iniciada a 3,0~m, estabilização a 0,4~m e encaixe fino a 20~cm com erro $< 5$~mm. \\[6pt]
+    
+    Barisic \textit{et al.}~\cite{barisic2019} & YOLOv3-Tiny e Filtro de Kalman Discreto & Servovisão para perseguição ativa & Não aplicável (Rastreamento de outro VANT) & Oscilações da caixa delimitadora causadas por vibração estrutural e rotação de hélices. & $mAP$ de 97,88\% a 20~fps; seguimento estável mesmo em trajetórias complexas em forma de oito. \\[6pt]
+    
+    Vidal e Casanova~\cite{vidal2007} & \textit{Window-Matching} e Filtro de Kalman & Visão preditiva em vídeo & Não aplicável (Rastreamento em vídeo) & Rastreamento visual puro sofre deriva de câmera (\textit{drift}) e perde o alvo para o fundo. & Compensação de perdas visuais e oclusões dinâmicas em garrafas no mar e cruzamentos. \\[6pt]
+    
+    Shen \textit{et al.}~\cite{shen2023} & DS-YOLOv8 (Foco em pequenos alvos aéreos) & Não aplicável (Detecção remota) & Não aplicável & Queda de desempenho em cenários com alvos densamente aglomerados. & $mAP@50$ de 91,0\% e $F_1$\textit{-score} de 90,4\% em alvos com menos de $16 \times 16$ pixels. \\[6pt]
+    
+    Zhang \textit{et al.}~\cite{remotesensing2024} & LCNN-DMT (SqueezeNet com atenção visual) & Não aplicável (Reconhecimento espacial) & Não aplicável & Tendência inicial da rede de fragmentar o alvo em caixas delimitadoras redundantes. & $mAP$ de 97,50\%; inferência em 6,1~ms consumindo 0,464~GFLOPs e 0,928M de parâmetros (\textit{Low-SWaP}). \\[6pt]
+    
+    Pramono~\cite{pramono2025} & Câmera de profundidade e servovisão híbrida & Controle Preditivo Baseado em Modelo (MPC) & Mecanismo de acoplagem (\textit{docking}) & Complexidade geométrica na comutação das matrizes visuais de PBVS para IBVS. & 80\% a 100\% de sucesso; erro residual nulo de 1,0~mm em posição e $0{,}25^\circ$ em orientação. \\
+\end{longtable}
+
+\newpage
+
+\begin{longtable}{
+    @{} 
+    >{\raggedright\arraybackslash}p{0.13\textwidth} 
+    >{\raggedright\arraybackslash}p{0.155\textwidth} 
+    >{\raggedright\arraybackslash}p{0.135\textwidth} 
+    >{\raggedright\arraybackslash}p{0.12\textwidth} 
+    >{\raggedright\arraybackslash}p{0.18\textwidth} 
+    >{\raggedright\arraybackslash}p{0.175\textwidth} 
+    @{} 
+}
+    % Cabeçalho para a última página (padrão IBGE)
+    \multicolumn{6}{c}{\normalsize \tablename\ \thetable: Análise Comparativa dos Trabalhos Correlatos} \\
+    \multicolumn{6}{@{}r@{}}{\footnotesize (conclusão)} \\
+    \hline
+    \textbf{Autor (Ano)} & \textbf{Detecção e Rastreamento} & \textbf{Técnica de Controle} & \textbf{Mecanismo de Captura} & \textbf{Limitações do Estudo} & \textbf{Principais Resultados} \\ \hline
+    \endfirsthead
+
+    \multicolumn{6}{c}{\normalsize \tablename\ \thetable: Análise Comparativa dos Trabalhos Correlatos} \\
+    \multicolumn{6}{@{}r@{}}{\footnotesize (conclusão)} \\
+    \hline
+    \textbf{Autor (Ano)} & \textbf{Detecção e Rastreamento} & \textbf{Técnica de Controle} & \textbf{Mecanismo de Captura} & \textbf{Limitações do Estudo} & \textbf{Principais Resultados} \\ \hline
+    \endhead
+
+    \endfoot
+
+    % Fechamento inferior e fonte apenas na última página (conforme normas do IBGE)
+    \hline
+    \multicolumn{6}{@{}l@{}}{\footnotesize Fonte: Elaborado pelo autor (2026).} \\
+    \endlastfoot
+
+    Shang \textit{et al.}~\cite{shang2016} & Servovisão com atraso de amostragem & Controle em cascata FOPD (Ordem Fracionária) & Não aplicável (Foco em voo pairado) & Atraso de processamento de imagem desestabiliza controladores PID convencionais. & Voo estabilizado sob atraso severo de 0,58~s, contendo o desvio em raio de 58~pixels (ganho de 20\%). \\[6pt]
+    
+    Carvajal \textit{et al.}~\cite{carvajal2024} & Câmera a 50~Hz (Rastreamento de esfera) & Modos Deslizantes (SMC) com compensador & Não aplicável (Acompanhamento terrestre) & Inércia da aeronave induz atraso de perseguição sem compensador preditivo de aceleração. & Rastreamento durante 120~s em forma de oito a 2,5~m de distância com erro de velocidade nulo. \\[6pt]
+    
+    Lopez-Franco \textit{et al.}~\cite{lopezfranco2017} & Servovisão 2D no plano da imagem & PID Neural adaptativo (PID-ANN) & Não aplicável (Alinhamento sobre o alvo) & Controladores convencionais divergem (1.741~pixels) sob variações súbitas de massa. & Erro contido a 212~pixels mesmo após aumento imprevisto de 50\% no peso da aeronave. \\
+\end{longtable}
+\normalsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.0}
+
+A análise dos trabalhos correlatos mostra que diferentes partes do problema de captura aérea já foram exploradas com sucesso, mas que a integração completa em uma aeronave leve e com sensores puramente embarcados ainda traz desafios práticos importantes. Estudos como o de Thomas \textit{et al.}~\cite{thomas2014} comprovaram que garras mecânicas passivas simplificam a estrutura e economizam peso, embora a dependência de sistemas externos de câmeras (MOCAP) restrinja sua aplicação fora de laboratórios. Em contrapartida, trabalhos mais recentes como os de Bauer \textit{et al.}~\cite{bauer2023} e Ubellacker \textit{et al.}~\cite{ubellacker2024} demonstraram a viabilidade de dispensar marcadores visuais fiduciais e operar em ambientes sem GPS utilizando câmeras e aprendizado profundo embarcado. Em paralelo, as contribuições de Shen \textit{et al.}~\cite{shen2023} e Zhang \textit{et al.}~\cite{remotesensing2024} confirmam que modelos convolucionais leves atingem taxas de acerto elevadas ($mAP > 90\%$) com tempos de processamento abaixo de 15~ms, justificando a escolha da família YOLO neste trabalho para identificar a armadilha em tempo real ($> 20$~fps) diretamente no computador de bordo.
+
+Por outro lado, a literatura deixa claro que os dados visuais gerados pela rede neural não devem ser enviados diretamente aos motores. Como demonstrado por Barisic \textit{et al.}~\cite{barisic2019} e Vidal e Casanova~\cite{vidal2007}, as vibrações mecânicas do \textit{frame} da aeronave e eventuais oclusões pelas hélices geram ruídos e pequenas falhas que desestabilizam o voo. O emprego de Filtros de Kalman surge, portanto, como uma etapa fundamental para suavizar essas estimativas visuais e manter a continuidade da trajetória durante breves perdas de visão.
+
+Quanto ao guiamento cinemático, as pesquisas de Pramono~\cite{pramono2025} e Carvajal \textit{et al.}~\cite{carvajal2024} indicam que a utilização de coordenadas espaciais métricas, expressas em metros, para orientar o movimento da aeronave (PBVS) favorece trajetórias de aproximação mais previsíveis e suaves em comparação com estratégias de controle baseadas diretamente nas coordenadas da imagem, expressas em pixels (IBVS). Além disso, Shang \textit{et al.}~\cite{shang2016} reforçam que separar o controle em cascata, deixando a malha visual no computador auxiliar e a estabilização rápida de atitude no piloto automático, evita que atrasos de imagem desestabilizem a aeronave. Essa combinação fundamenta a abordagem metodológica adotada nesta pesquisa, que integra o modelo de câmera \textit{Pinhole} para estimar a posição tridimensional ($X, Y, Z$) e a orientação angular de guinada da armadilha, o Filtro de Kalman Estendido (EKF) para atenuar os ruídos nas estimativas visuais e controladores proporcionais-derivativos (PD) desacoplados para orientar o posicionamento preciso do VANT em relação ao alvo, antes da etapa final de descida e acoplamento.

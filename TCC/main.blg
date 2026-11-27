@@ -1,0 +1,59 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: IEEEtran.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Database file #1: referencias.bib
+Warning--entry type for "tcc_mariahelena" isn't style-file defined
+--line 456 of file referencias.bib
+-- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+
+Done.
+You've used 53 entries,
+            4087 wiz_defined-function locations,
+            1120 strings with 18519 characters,
+and the built_in function-call counts, 40828 in all, are:
+= -- 3296
+> -- 1018
+< -- 314
++ -- 558
+- -- 197
+* -- 1941
+:= -- 5986
+add.period$ -- 120
+call.type$ -- 53
+change.case$ -- 60
+chr.to.int$ -- 702
+cite$ -- 53
+duplicate$ -- 3007
+empty$ -- 3308
+format.name$ -- 229
+if$ -- 9565
+int.to.chr$ -- 0
+int.to.str$ -- 53
+missing$ -- 550
+newline$ -- 182
+num.names$ -- 54
+pop$ -- 1283
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 2
+skip$ -- 3132
+stack$ -- 0
+substring$ -- 1805
+swap$ -- 2463
+text.length$ -- 80
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 53
+warning$ -- 0
+while$ -- 170
+width$ -- 55
+write$ -- 533
+(There was 1 warning)
